@@ -3,7 +3,8 @@ import sqlite3
 from datetime import datetime
 import os
 
-app = Flask(__name__)
+# Explicit template folder for Render reliability
+app = Flask(__name__, template_folder="templates")
 
 DB = "specials.db"
 
@@ -97,7 +98,8 @@ def health():
 
 
 # ---------------------------
-# Only for local testing
+# Local development ONLY
+# (Gunicorn ignores this)
 # ---------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
