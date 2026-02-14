@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, jsonify
 import sqlite3
 from datetime import datetime
+import os
 
 app = Flask(__name__)
 
@@ -33,7 +34,7 @@ init_db()
 
 
 # ---------------------------
-# Main page
+# Home page
 # ---------------------------
 @app.route("/")
 def home():
@@ -41,7 +42,7 @@ def home():
 
 
 # ---------------------------
-# Add a beer special
+# Add special
 # ---------------------------
 @app.route("/add", methods=["POST"])
 def add_special():
@@ -65,17 +66,15 @@ def add_special():
 
 
 # ---------------------------
-# Get specials (filtered by today)
+# Get specials (today only)
 # ---------------------------
 @app.route("/specials")
 def get_specials():
-
     today = datetime.now().strftime("%A")
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    # Pull today's specials first
     c.execute("""
         SELECT bar, price, day, notes
         FROM specials
@@ -90,17 +89,16 @@ def get_specials():
 
 
 # ---------------------------
-# Health check (helps Render)
+# Health check for Render
 # ---------------------------
 @app.route("/health")
 def health():
-    return "OK"
+    return "OK", 200
 
 
 # ---------------------------
-# Run locally
+# Only for local testing
 # ---------------------------
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
