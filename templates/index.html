@@ -26,10 +26,14 @@
             border-radius: 6px;
         }
 
+        #results {
+            margin-top: 20px;
+        }
+
         .card {
             background: #f4f4f4;
             padding: 12px;
-            margin-top: 10px;
+            margin: 10px 0;
             border-radius: 8px;
         }
     </style>
@@ -45,18 +49,39 @@
     <input name="day" placeholder="Day (Saturday etc)" required>
     <textarea name="notes" placeholder="Notes"></textarea>
 
+    <input type="hidden" name="lat" id="lat">
+    <input type="hidden" name="lon" id="lon">
+
     <button>Add Special</button>
 </form>
 
 <hr>
 
-<button onclick="loadSpecials()">Show Specials</button>
+<button onclick="loadSpecials()">Find Specials Near Me</button>
 
 <div id="results"></div>
 
 <script>
+let userLat = null;
+let userLon = null;
+
+navigator.geolocation.getCurrentPosition(pos => {
+    userLat = pos.coords.latitude;
+    userLon = pos.coords.longitude;
+
+    document.getElementById("lat").value = userLat;
+    document.getElementById("lon").value = userLon;
+});
+
+
 async function loadSpecials() {
-    const res = await fetch("/specials");
+
+    let url = "/specials";
+    if (userLat && userLon) {
+        url += `?lat=${userLat}&lon=${userLon}`;
+    }
+
+    const res = await fetch(url);
     const data = await res.json();
 
     let html = "";
@@ -67,7 +92,11 @@ async function loadSpecials() {
             <b>${d[0]}</b><br>
             Price: ${d[1]}<br>
             Day: ${d[2]}<br>
-            Notes: ${d[3]}
+            Notes: ${d[3] || ""}<br>
+            <a target="_blank"
+               href="https://www.google.com/maps?q=${d[4]},${d[5]}">
+               📍 Directions
+            </a>
         </div>
         `;
     });
