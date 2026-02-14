@@ -9,7 +9,7 @@ DB = "specials.db"
 
 
 # ---------------------------
-# Database setup + seed data
+# Database setup
 # ---------------------------
 def init_db():
     conn = sqlite3.connect(DB)
@@ -22,6 +22,8 @@ def init_db():
             price TEXT,
             day TEXT,
             notes TEXT,
+            lat REAL,
+            lon REAL,
             created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -30,12 +32,12 @@ def init_db():
     c.execute("SELECT COUNT(*) FROM specials")
     if c.fetchone()[0] == 0:
         c.executemany("""
-            INSERT INTO specials (bar, price, day, notes)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO specials (bar, price, day, notes, lat, lon)
+            VALUES (?, ?, ?, ?, ?, ?)
         """, [
-            ("Rusty Tap", "$1.00", "Friday", "College night"),
-            ("Brick House Bar", "$1.50", "Saturday", "Local favorite"),
-            ("Downtown Pub", "$1.25", "Thursday", "Happy hour special")
+            ("Lanai Lounge", "$1.50", "Sunday", "Cans", 40.888, -80.693),
+            ("Rusty Tap", "$1.00", "Friday", "College night", 41.099, -80.649),
+            ("Downtown Pub", "$1.25", "Thursday", "Happy hour", 41.101, -80.652)
         ])
 
     conn.commit()
@@ -62,14 +64,16 @@ def add_special():
     price = request.form.get("price")
     day = request.form.get("day")
     notes = request.form.get("notes")
+    lat = request.form.get("lat")
+    lon = request.form.get("lon")
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    c.execute(
-        "INSERT INTO specials (bar, price, day, notes) VALUES (?, ?, ?, ?)",
-        (bar, price, day, notes)
-    )
+    c.execute("""
+        INSERT INTO specials (bar, price, day, notes, lat, lon)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (bar, price, day, notes, lat, lon))
 
     conn.commit()
     conn.close()
@@ -78,21 +82,21 @@ def add_special():
 
 
 # ---------------------------
-# Get specials (today first)
+# Get specials
 # ---------------------------
 @app.route("/specials")
 def get_specials():
+
     today = datetime.now().strftime("%A")
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    # Today's specials first
     c.execute("""
-        SELECT bar, price, day, notes
+        SELECT bar, price, day, notes, lat, lon
         FROM specials
         ORDER BY
-            CASE WHEN LOWER(day) = LOWER(?) THEN 0 ELSE 1 END,
+            CASE WHEN LOWER(day)=LOWER(?) THEN 0 ELSE 1 END,
             created DESC
     """, (today,))
 
@@ -103,7 +107,7 @@ def get_specials():
 
 
 # ---------------------------
-# Health check for Render
+# Health check (Render needs this)
 # ---------------------------
 @app.route("/health")
 def health():
@@ -111,7 +115,7 @@ def health():
 
 
 # ---------------------------
-# Local testing only
+# Local test only
 # ---------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
