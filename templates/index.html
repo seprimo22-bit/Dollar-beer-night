@@ -1,38 +1,19 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Dollar Beer Night</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dollar Beer Night</title>
 
-    <style>
-        body {
-            font-family: Arial;
-            max-width: 800px;
-            margin: auto;
-            padding: 20px;
-        }
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-        input, textarea {
-            width: 100%;
-            padding: 10px;
-            margin: 6px 0;
-        }
+<link rel="stylesheet"
+ href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
-        button {
-            padding: 12px;
-            background: #2e7dff;
-            color: white;
-            border: none;
-            border-radius: 6px;
-        }
-
-        .card {
-            background: #f4f4f4;
-            padding: 12px;
-            margin: 10px 0;
-            border-radius: 8px;
-        }
-    </style>
+<style>
+body {font-family: Arial; max-width: 800px; margin:auto;}
+button {padding:12px; background:#2e7dff; color:white;}
+.card {background:#eee; padding:12px; margin:10px 0;}
+#map {height:300px; margin-top:20px;}
+</style>
 </head>
 
 <body>
@@ -40,62 +21,83 @@
 <h2>🍺 Dollar Beer Night</h2>
 
 <form action="/add" method="POST">
-    <input name="bar" placeholder="Bar Name" required>
-    <input name="price" placeholder="Price ($1.50 etc)" required>
-    <input name="day" placeholder="Day (Friday etc)" required>
-    <textarea name="notes" placeholder="Notes"></textarea>
+<input name="bar" placeholder="Bar Name" required>
+<input name="price" placeholder="Price">
+<input name="day" placeholder="Day">
+<textarea name="notes" placeholder="Notes"></textarea>
 
-    <!-- GPS hidden fields -->
-    <input type="hidden" name="lat" id="lat">
-    <input type="hidden" name="lon" id="lon">
+<input type="hidden" name="lat" id="lat">
+<input type="hidden" name="lon" id="lon">
 
-    <button>Add Special</button>
+<button>Add Special</button>
 </form>
 
 <hr>
 
-<button onclick="loadSpecials()">Find Specials Near Me</button>
+<button onclick="findBars()">Find Specials Near Me</button>
 
+<div id="map"></div>
 <div id="results"></div>
 
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
 <script>
-let userLat = null;
-let userLon = null;
+let map;
+let userLat, userLon;
 
-navigator.geolocation.getCurrentPosition(pos => {
-    userLat = pos.coords.latitude;
-    userLon = pos.coords.longitude;
+navigator.geolocation.getCurrentPosition(pos=>{
+    userLat=pos.coords.latitude;
+    userLon=pos.coords.longitude;
 
-    document.getElementById("lat").value = userLat;
-    document.getElementById("lon").value = userLon;
+    document.getElementById("lat").value=userLat;
+    document.getElementById("lon").value=userLon;
 });
 
-async function loadSpecials() {
-    const res = await fetch("/specials");
+function initMap(lat,lon){
+    map=L.map('map').setView([lat,lon],13);
+    L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+    ).addTo(map);
+
+    L.marker([lat,lon]).addTo(map)
+      .bindPopup("You are here");
+}
+
+async function findBars(){
+
+    initMap(userLat,userLon);
+
+    const res = await fetch(
+      `/specials?lat=${userLat}&lon=${userLon}`
+    );
+
     const data = await res.json();
 
-    let html = "";
+    let html="";
 
-    if (data.length === 0) {
-        html = "<h3>No specials found yet.</h3>";
-    } else {
-        data.forEach(d => {
-            html += `
-            <div class="card">
-                <b>${d[0]}</b><br>
-                Price: ${d[1]}<br>
-                Day: ${d[2]}<br>
-                Notes: ${d[3] || ""}<br>
-                <a target="_blank"
-                   href="https://www.google.com/maps?q=${d[4]},${d[5]}">
-                   📍 Directions
-                </a>
-            </div>
-            `;
-        });
+    if(data.length===0){
+        html="<h3>No specials nearby.</h3>";
     }
 
-    document.getElementById("results").innerHTML = html;
+    data.forEach(b=>{
+
+        L.marker([b[4],b[5]]).addTo(map)
+          .bindPopup(b[0]);
+
+        html+=`
+        <div class="card">
+            <b>${b[0]}</b><br>
+            Price: ${b[1]}<br>
+            Day: ${b[2]}<br>
+            ${b[6] ? "Distance: "+b[6]+" mi<br>" : ""}
+            <a target="_blank"
+            href="https://www.google.com/maps?q=${b[4]},${b[5]}">
+            Directions
+            </a>
+        </div>`;
+    });
+
+    document.getElementById("results").innerHTML=html;
 }
 </script>
 
