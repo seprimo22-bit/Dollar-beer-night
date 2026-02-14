@@ -1,126 +1,91 @@
-import sqlite3
-from flask import Flask, render_template, request, redirect, jsonify
-from datetime import datetime
-from math import radians, cos, sin, sqrt, atan2
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dollar Beer Night</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-app = Flask(__name__)
+    <style>
+        body {
+            font-family: Arial;
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+            background: #fafafa;
+        }
 
-DB = "beer.db"
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
 
+        button {
+            padding: 12px;
+            background: #2e7dff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
 
-# ----------------------------
-# DATABASE SETUP
-# ----------------------------
-def init_db():
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
+        .card {
+            background: #f4f4f4;
+            padding: 12px;
+            margin-top: 12px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
 
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS specials (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        bar TEXT,
-        price TEXT,
-        day TEXT,
-        notes TEXT,
-        lat REAL,
-        lon REAL
-    )
-    """)
+<body>
 
-    conn.commit()
-    conn.close()
+<h2>🍺 Dollar Beer Night</h2>
 
+<form action="/add" method="POST">
+    <input name="bar" placeholder="Bar Name" required>
+    <input name="price" placeholder="Price ($1.50 etc)" required>
+    <input name="day" placeholder="Day (Saturday etc)" required>
+    <textarea name="notes" placeholder="Notes"></textarea>
 
-init_db()
+    <button>Add Special</button>
+</form>
 
+<hr>
 
-# ----------------------------
-# DISTANCE CALCULATOR
-# ----------------------------
-def distance(lat1, lon1, lat2, lon2):
-    R = 6371
-    dlat = radians(float(lat2) - float(lat1))
-    dlon = radians(float(lon2) - float(lon1))
+<button type="button" onclick="findSpecials()">
+    Find Specials Near Me
+</button>
 
-    a = sin(dlat/2)**2 + cos(radians(float(lat1))) \
-        * cos(radians(float(lat2))) * sin(dlon/2)**2
-
-    return R * 2 * atan2(sqrt(a), sqrt(1-a))
-
-
-# ----------------------------
-# HOME PAGE
-# ----------------------------
-@app.route("/")
-def home():
-    return render_template("index.html")
-
-
-# ----------------------------
-# ADD SPECIAL
-# ----------------------------
-@app.route("/add", methods=["POST"])
-def add_special():
-    bar = request.form.get("bar")
-    price = request.form.get("price")
-    day = request.form.get("day")
-    notes = request.form.get("notes")
-    lat = request.form.get("lat")
-    lon = request.form.get("lon")
-
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-
-    c.execute(
-        "INSERT INTO specials (bar, price, day, notes, lat, lon) VALUES (?, ?, ?, ?, ?, ?)",
-        (bar, price, day, notes, lat, lon),
-    )
-
-    conn.commit()
-    conn.close()
-
-    return redirect("/")
+<div id="results"></div>
 
 
-# ----------------------------
-# VIEW SPECIALS
-# ----------------------------
-@app.route("/specials")
-def view_specials():
+<script>
+async function findSpecials() {
+    const res = await fetch("/specials");
+    const data = await res.json();
 
-    today = datetime.now().strftime("%A")
-    user_lat = request.args.get("lat")
-    user_lon = request.args.get("lon")
+    let html = "";
 
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
+    if (data.length === 0) {
+        html = "<p>No specials yet.</p>";
+    } else {
+        data.forEach(d => {
+            html += `
+            <div class="card">
+                <b>${d[0]}</b><br>
+                Price: ${d[1]}<br>
+                Day: ${d[2]}<br>
+                Notes: ${d[3]}
+            </div>
+            `;
+        });
+    }
 
-    c.execute("""
-        SELECT bar, price, day, notes, lat, lon
-        FROM specials
-        WHERE day LIKE ?
-        ORDER BY id DESC
-    """, (f"%{today}%",))
+    document.getElementById("results").innerHTML = html;
+}
+</script>
 
-    data = c.fetchall()
-    conn.close()
-
-    filtered = []
-
-    for row in data:
-        if user_lat and user_lon and row[4] and row[5]:
-            if distance(user_lat, user_lon, row[4], row[5]) < 60:
-                filtered.append(row)
-        else:
-            filtered.append(row)
-
-    return jsonify(filtered)
-
-
-# ----------------------------
-# RENDER DEPLOYMENT ENTRY
-# ----------------------------
-if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+</body>
+</html>
