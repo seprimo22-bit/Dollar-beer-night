@@ -8,11 +8,38 @@
  href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
 <style>
-body {font-family:Arial; max-width:800px; margin:auto; padding:20px;}
-button {padding:12px; background:#2e7dff; color:white; border:none;}
-.card {background:#eee; padding:12px; margin:10px 0;}
-#map {height:300px; margin-top:20px;}
-input, textarea {width:100%; padding:10px; margin:6px 0;}
+body {
+    font-family: Arial;
+    max-width: 800px;
+    margin: auto;
+    padding: 20px;
+}
+
+input, textarea {
+    width: 100%;
+    padding: 10px;
+    margin: 6px 0;
+}
+
+button {
+    padding: 12px;
+    background: #2e7dff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+}
+
+.card {
+    background: #eee;
+    padding: 12px;
+    margin: 10px 0;
+    border-radius: 8px;
+}
+
+#map {
+    height: 300px;
+    margin-top: 20px;
+}
 </style>
 </head>
 
@@ -42,70 +69,76 @@ input, textarea {width:100%; padding:10px; margin:6px 0;}
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-let userLat=null,userLon=null,map;
+let userLat = null;
+let userLon = null;
+let map = null;
 
-// Get GPS
-navigator.geolocation.getCurrentPosition(pos=>{
- userLat=pos.coords.latitude;
- userLon=pos.coords.longitude;
- document.getElementById("lat").value=userLat;
- document.getElementById("lon").value=userLon;
- initMap();
+// Get user GPS
+navigator.geolocation.getCurrentPosition(pos => {
+    userLat = pos.coords.latitude;
+    userLon = pos.coords.longitude;
+
+    document.getElementById("lat").value = userLat;
+    document.getElementById("lon").value = userLon;
+
+    initMap();
 });
 
-// Map setup
-function initMap(){
- if(!userLat||!userLon)return;
+// Initialize map
+function initMap() {
+    if (!userLat || !userLon) return;
 
- map=L.map('map').setView([userLat,userLon],13);
+    map = L.map('map').setView([userLat, userLon], 13);
 
- L.tileLayer(
-  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
- ).addTo(map);
+    L.tileLayer(
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+    ).addTo(map);
 
- L.marker([userLat,userLon])
-  .addTo(map)
-  .bindPopup("You are here");
+    L.marker([userLat, userLon])
+        .addTo(map)
+        .bindPopup("You are here");
 }
 
-// Load bars
-async function findBars(){
- if(!userLat||!userLon){
-  alert("Location not ready yet.");
-  return;
- }
+// Find bars
+async function findBars() {
 
- const res=await fetch(`/specials?lat=${userLat}&lon=${userLon}`);
- const data=await res.json();
+    if (!userLat || !userLon) {
+        alert("Location not ready yet.");
+        return;
+    }
 
- let html="";
+    const res = await fetch(`/specials?lat=${userLat}&lon=${userLon}`);
+    const data = await res.json();
 
- if(data.length===0){
-  html="<h3>No specials nearby.</h3>";
- }
+    let html = "";
 
- data.forEach(b=>{
-  if(b[4]&&b[5]){
-   L.marker([b[4],b[5]])
-    .addTo(map)
-    .bindPopup(b[0]);
-  }
+    if (data.length === 0) {
+        html = "<h3>No specials nearby.</h3>";
+    }
 
-  html+=`
-  <div class="card">
-   <b>${b[0]}</b><br>
-   Price: ${b[1]||"N/A"}<br>
-   Day: ${b[2]||"Any"}<br>
-   Notes: ${b[3]||""}<br>
-   ${b[6]?"Distance: "+b[6]+" miles<br>":""}
-   <a target="_blank"
-    href="https://www.google.com/maps?q=${b[4]},${b[5]}">
-    Directions
-   </a>
-  </div>`;
- });
+    data.forEach(b => {
 
- document.getElementById("results").innerHTML=html;
+        if (b[4] && b[5]) {
+            L.marker([b[4], b[5]])
+                .addTo(map)
+                .bindPopup(b[0]);
+        }
+
+        html += `
+        <div class="card">
+            <b>${b[0]}</b><br>
+            Price: ${b[1] || "N/A"}<br>
+            Day: ${b[2] || "Any"}<br>
+            Notes: ${b[3] || ""}<br>
+            ${b[6] ? "Distance: " + b[6] + " miles<br>" : ""}
+            <a target="_blank"
+               href="https://www.google.com/maps?q=${b[4]},${b[5]}">
+               Directions
+            </a>
+        </div>`;
+    });
+
+    document.getElementById("results").innerHTML = html;
 }
 </script>
 
