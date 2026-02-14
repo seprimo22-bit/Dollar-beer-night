@@ -26,10 +26,6 @@
             border-radius: 6px;
         }
 
-        #results {
-            margin-top: 20px;
-        }
-
         .card {
             background: #f4f4f4;
             padding: 12px;
@@ -46,9 +42,10 @@
 <form action="/add" method="POST">
     <input name="bar" placeholder="Bar Name" required>
     <input name="price" placeholder="Price ($1.50 etc)" required>
-    <input name="day" placeholder="Day (Saturday etc)" required>
+    <input name="day" placeholder="Day (Friday etc)" required>
     <textarea name="notes" placeholder="Notes"></textarea>
 
+    <!-- GPS hidden fields -->
     <input type="hidden" name="lat" id="lat">
     <input type="hidden" name="lon" id="lon">
 
@@ -73,33 +70,30 @@ navigator.geolocation.getCurrentPosition(pos => {
     document.getElementById("lon").value = userLon;
 });
 
-
 async function loadSpecials() {
-
-    let url = "/specials";
-    if (userLat && userLon) {
-        url += `?lat=${userLat}&lon=${userLon}`;
-    }
-
-    const res = await fetch(url);
+    const res = await fetch("/specials");
     const data = await res.json();
 
     let html = "";
 
-    data.forEach(d => {
-        html += `
-        <div class="card">
-            <b>${d[0]}</b><br>
-            Price: ${d[1]}<br>
-            Day: ${d[2]}<br>
-            Notes: ${d[3] || ""}<br>
-            <a target="_blank"
-               href="https://www.google.com/maps?q=${d[4]},${d[5]}">
-               📍 Directions
-            </a>
-        </div>
-        `;
-    });
+    if (data.length === 0) {
+        html = "<h3>No specials found yet.</h3>";
+    } else {
+        data.forEach(d => {
+            html += `
+            <div class="card">
+                <b>${d[0]}</b><br>
+                Price: ${d[1]}<br>
+                Day: ${d[2]}<br>
+                Notes: ${d[3] || ""}<br>
+                <a target="_blank"
+                   href="https://www.google.com/maps?q=${d[4]},${d[5]}">
+                   📍 Directions
+                </a>
+            </div>
+            `;
+        });
+    }
 
     document.getElementById("results").innerHTML = html;
 }
