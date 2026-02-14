@@ -1,91 +1,104 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Dollar Beer Night</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+from flask import Flask, render_template, request, redirect, jsonify
+import sqlite3
+from datetime import datetime
 
-    <style>
-        body {
-            font-family: Arial;
-            max-width: 800px;
-            margin: auto;
-            padding: 20px;
-            background: #fafafa;
-        }
+app = Flask(__name__)
 
-        input, textarea {
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-        }
-
-        button {
-            padding: 12px;
-            background: #2e7dff;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            margin-top: 10px;
-        }
-
-        .card {
-            background: #f4f4f4;
-            padding: 12px;
-            margin-top: 12px;
-            border-radius: 8px;
-        }
-    </style>
-</head>
-
-<body>
-
-<h2>🍺 Dollar Beer Night</h2>
-
-<form action="/add" method="POST">
-    <input name="bar" placeholder="Bar Name" required>
-    <input name="price" placeholder="Price ($1.50 etc)" required>
-    <input name="day" placeholder="Day (Saturday etc)" required>
-    <textarea name="notes" placeholder="Notes"></textarea>
-
-    <button>Add Special</button>
-</form>
-
-<hr>
-
-<button type="button" onclick="findSpecials()">
-    Find Specials Near Me
-</button>
-
-<div id="results"></div>
+DB = "specials.db"
 
 
-<script>
-async function findSpecials() {
-    const res = await fetch("/specials");
-    const data = await res.json();
+# ---------------------------
+# Database setup
+# ---------------------------
+def init_db():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
 
-    let html = "";
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS specials (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bar TEXT,
+            price TEXT,
+            day TEXT,
+            notes TEXT,
+            created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
 
-    if (data.length === 0) {
-        html = "<p>No specials yet.</p>";
-    } else {
-        data.forEach(d => {
-            html += `
-            <div class="card">
-                <b>${d[0]}</b><br>
-                Price: ${d[1]}<br>
-                Day: ${d[2]}<br>
-                Notes: ${d[3]}
-            </div>
-            `;
-        });
-    }
+    conn.commit()
+    conn.close()
 
-    document.getElementById("results").innerHTML = html;
-}
-</script>
 
-</body>
-</html>
+init_db()
+
+
+# ---------------------------
+# Main page
+# ---------------------------
+@app.route("/")
+def home():
+    return render_template("index.html")
+
+
+# ---------------------------
+# Add a beer special
+# ---------------------------
+@app.route("/add", methods=["POST"])
+def add_special():
+    bar = request.form.get("bar")
+    price = request.form.get("price")
+    day = request.form.get("day")
+    notes = request.form.get("notes")
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute(
+        "INSERT INTO specials (bar, price, day, notes) VALUES (?, ?, ?, ?)",
+        (bar, price, day, notes)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect("/")
+
+
+# ---------------------------
+# Get specials (filtered by today)
+# ---------------------------
+@app.route("/specials")
+def get_specials():
+
+    today = datetime.now().strftime("%A")
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    # Pull today's specials first
+    c.execute("""
+        SELECT bar, price, day, notes
+        FROM specials
+        WHERE LOWER(day) = LOWER(?)
+        ORDER BY created DESC
+    """, (today,))
+
+    results = c.fetchall()
+    conn.close()
+
+    return jsonify(results)
+
+
+# ---------------------------
+# Health check (helps Render)
+# ---------------------------
+@app.route("/health")
+def health():
+    return "OK"
+
+
+# ---------------------------
+# Run locally
+# ---------------------------
+if __name__ == "__main__":
+    app.run(debug=True)
