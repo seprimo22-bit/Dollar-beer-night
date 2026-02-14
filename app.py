@@ -1,118 +1,118 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Dollar Beer Night</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+from flask import Flask, render_template, request, redirect, jsonify
+import sqlite3
+import os
+from datetime import datetime
 
-    <!-- Leaflet Map -->
-    <link rel="stylesheet"
-      href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+app = Flask(__name__, template_folder="templates")
 
-    <style>
-        body {
-            font-family: Arial;
-            max-width: 800px;
-            margin: auto;
-            padding: 20px;
-        }
+DB = "specials.db"
 
-        input, textarea {
-            width: 100%;
-            padding: 10px;
-            margin: 6px 0;
-        }
 
-        button {
-            padding: 12px;
-            background: #2e7dff;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            margin-top: 10px;
-        }
+# ---------------------------
+# Database setup + seed data
+# ---------------------------
+def init_db():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
 
-        #map {
-            height: 300px;
-            margin-top: 20px;
-        }
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS specials (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bar TEXT,
+            price TEXT,
+            day TEXT,
+            notes TEXT,
+            created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
 
-        .card {
-            background: #f4f4f4;
-            padding: 10px;
-            margin-top: 10px;
-            border-radius: 8px;
-        }
-    </style>
-</head>
+    # Seed starter data if empty
+    c.execute("SELECT COUNT(*) FROM specials")
+    if c.fetchone()[0] == 0:
+        c.executemany("""
+            INSERT INTO specials (bar, price, day, notes)
+            VALUES (?, ?, ?, ?)
+        """, [
+            ("Rusty Tap", "$1.00", "Friday", "College night"),
+            ("Brick House Bar", "$1.50", "Saturday", "Local favorite"),
+            ("Downtown Pub", "$1.25", "Thursday", "Happy hour special")
+        ])
 
-<body>
+    conn.commit()
+    conn.close()
 
-<h2>🍺 Dollar Beer Night</h2>
 
-<form action="/add" method="POST">
-    <input name="bar" placeholder="Bar Name" required>
-    <input name="price" placeholder="Price ($1.50)" required>
-    <input name="day" placeholder="Day (Friday etc)" required>
-    <textarea name="notes" placeholder="Notes"></textarea>
-    <button>Add Special</button>
-</form>
+init_db()
 
-<hr>
 
-<button onclick="findSpecials()">Find Specials Near Me</button>
+# ---------------------------
+# Home page
+# ---------------------------
+@app.route("/")
+def home():
+    return render_template("index.html")
 
-<div id="map"></div>
-<div id="results"></div>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+# ---------------------------
+# Add special
+# ---------------------------
+@app.route("/add", methods=["POST"])
+def add_special():
+    bar = request.form.get("bar")
+    price = request.form.get("price")
+    day = request.form.get("day")
+    notes = request.form.get("notes")
 
-<script>
-let map;
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
 
-function initMap(lat, lon) {
-    map = L.map('map').setView([lat, lon], 13);
+    c.execute(
+        "INSERT INTO specials (bar, price, day, notes) VALUES (?, ?, ?, ?)",
+        (bar, price, day, notes)
+    )
 
-    L.tileLayer(
-      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-    ).addTo(map);
+    conn.commit()
+    conn.close()
 
-    L.marker([lat, lon]).addTo(map)
-      .bindPopup("You are here")
-      .openPopup();
-}
+    return redirect("/")
 
-async function findSpecials() {
 
-    navigator.geolocation.getCurrentPosition(async position => {
+# ---------------------------
+# Get specials (today first)
+# ---------------------------
+@app.route("/specials")
+def get_specials():
+    today = datetime.now().strftime("%A")
 
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
 
-        initMap(lat, lon);
+    # Today's specials first
+    c.execute("""
+        SELECT bar, price, day, notes
+        FROM specials
+        ORDER BY
+            CASE WHEN LOWER(day) = LOWER(?) THEN 0 ELSE 1 END,
+            created DESC
+    """, (today,))
 
-        const res = await fetch("/specials");
-        const data = await res.json();
+    results = c.fetchall()
+    conn.close()
 
-        let html = "";
+    return jsonify(results)
 
-        if (data.length === 0) {
-            html = "<h3>No specials today near you.</h3>";
-        } else {
-            data.forEach(d => {
-                html += `
-                <div class="card">
-                    <b>${d[0]}</b><br>
-                    Price: ${d[1]}<br>
-                    Day: ${d[2]}<br>
-                    Notes: ${d[3]}
-                </div>`;
-            });
-        }
 
-        document.getElementById("results").innerHTML = html;
-    });
-}
-</script>
+# ---------------------------
+# Health check for Render
+# ---------------------------
+@app.route("/health")
+def health():
+    return "OK", 200
 
-</body>
-</html>
+
+# ---------------------------
+# Local testing only
+# ---------------------------
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
