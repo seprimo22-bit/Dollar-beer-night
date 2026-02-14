@@ -1,16 +1,16 @@
 from flask import Flask, render_template, request, redirect, jsonify
 import sqlite3
 import os
-from datetime import datetime
+import math
 
 app = Flask(__name__, template_folder="templates")
 
 DB = "specials.db"
 
 
-# ---------------------------
+# -----------------------------
 # Database setup
-# ---------------------------
+# -----------------------------
 def init_db():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -23,22 +23,9 @@ def init_db():
             day TEXT,
             notes TEXT,
             lat REAL,
-            lon REAL,
-            created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            lon REAL
         )
     """)
-
-    # Seed starter data if empty
-    c.execute("SELECT COUNT(*) FROM specials")
-    if c.fetchone()[0] == 0:
-        c.executemany("""
-            INSERT INTO specials (bar, price, day, notes, lat, lon)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, [
-            ("Lanai Lounge", "$1.50", "Sunday", "Cans", 40.888, -80.693),
-            ("Rusty Tap", "$1.00", "Friday", "College night", 41.099, -80.649),
-            ("Downtown Pub", "$1.25", "Thursday", "Happy hour", 41.101, -80.652)
-        ])
 
     conn.commit()
     conn.close()
@@ -47,17 +34,17 @@ def init_db():
 init_db()
 
 
-# ---------------------------
+# -----------------------------
 # Home page
-# ---------------------------
+# -----------------------------
 @app.route("/")
 def home():
     return render_template("index.html")
 
 
-# ---------------------------
-# Add special
-# ---------------------------
+# -----------------------------
+# Add bar special
+# -----------------------------
 @app.route("/add", methods=["POST"])
 def add_special():
     bar = request.form.get("bar")
@@ -81,13 +68,36 @@ def add_special():
     return redirect("/")
 
 
-# ---------------------------
-# Get specials
-# ---------------------------
+# -----------------------------
+# Distance calculation
+# -----------------------------
+def haversine(lat1, lon1, lat2, lon2):
+    R = 3959  # miles
+    lat1, lon1, lat2, lon2 = map(
+        math.radians,
+        [float(lat1), float(lon1), float(lat2), float(lon2)]
+    )
+
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+
+    a = (
+        math.sin(dlat / 2) ** 2 +
+        math.cos(lat1) *
+        math.cos(lat2) *
+        math.sin(dlon / 2) ** 2
+    )
+
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+# -----------------------------
+# Get nearby specials
+# -----------------------------
 @app.route("/specials")
 def get_specials():
-
-    today = datetime.now().strftime("%A")
+    user_lat = request.args.get("lat")
+    user_lon = request.args.get("lon")
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -95,28 +105,33 @@ def get_specials():
     c.execute("""
         SELECT bar, price, day, notes, lat, lon
         FROM specials
-        ORDER BY
-            CASE WHEN LOWER(day)=LOWER(?) THEN 0 ELSE 1 END,
-            created DESC
-    """, (today,))
+        WHERE lat IS NOT NULL
+    """)
 
-    results = c.fetchall()
+    rows = c.fetchall()
     conn.close()
+
+    if not user_lat:
+        return jsonify(rows)
+
+    results = []
+    for r in rows:
+        distance = haversine(user_lat, user_lon, r[4], r[5])
+        results.append(list(r) + [round(distance, 2)])
+
+    results.sort(key=lambda x: x[6])
 
     return jsonify(results)
 
 
-# ---------------------------
-# Health check (Render needs this)
-# ---------------------------
+# -----------------------------
+# Health check for Render
+# -----------------------------
 @app.route("/health")
 def health():
     return "OK", 200
 
 
-# ---------------------------
-# Local test only
-# ---------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
