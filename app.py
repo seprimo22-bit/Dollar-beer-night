@@ -1,106 +1,118 @@
-from flask import Flask, render_template, request, redirect, jsonify
-import sqlite3
-from datetime import datetime
-import os
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dollar Beer Night</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-# Explicit template folder for Render reliability
-app = Flask(__name__, template_folder="templates")
+    <!-- Leaflet Map -->
+    <link rel="stylesheet"
+      href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
-DB = "specials.db"
+    <style>
+        body {
+            font-family: Arial;
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+        }
 
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 6px 0;
+        }
 
-# ---------------------------
-# Database setup
-# ---------------------------
-def init_db():
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
+        button {
+            padding: 12px;
+            background: #2e7dff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
 
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS specials (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            bar TEXT,
-            price TEXT,
-            day TEXT,
-            notes TEXT,
-            created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
+        #map {
+            height: 300px;
+            margin-top: 20px;
+        }
 
-    conn.commit()
-    conn.close()
+        .card {
+            background: #f4f4f4;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
 
+<body>
 
-init_db()
+<h2>🍺 Dollar Beer Night</h2>
 
+<form action="/add" method="POST">
+    <input name="bar" placeholder="Bar Name" required>
+    <input name="price" placeholder="Price ($1.50)" required>
+    <input name="day" placeholder="Day (Friday etc)" required>
+    <textarea name="notes" placeholder="Notes"></textarea>
+    <button>Add Special</button>
+</form>
 
-# ---------------------------
-# Home page
-# ---------------------------
-@app.route("/")
-def home():
-    return render_template("index.html")
+<hr>
 
+<button onclick="findSpecials()">Find Specials Near Me</button>
 
-# ---------------------------
-# Add special
-# ---------------------------
-@app.route("/add", methods=["POST"])
-def add_special():
-    bar = request.form.get("bar")
-    price = request.form.get("price")
-    day = request.form.get("day")
-    notes = request.form.get("notes")
+<div id="map"></div>
+<div id="results"></div>
 
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-    c.execute(
-        "INSERT INTO specials (bar, price, day, notes) VALUES (?, ?, ?, ?)",
-        (bar, price, day, notes)
-    )
+<script>
+let map;
 
-    conn.commit()
-    conn.close()
+function initMap(lat, lon) {
+    map = L.map('map').setView([lat, lon], 13);
 
-    return redirect("/")
+    L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+    ).addTo(map);
 
+    L.marker([lat, lon]).addTo(map)
+      .bindPopup("You are here")
+      .openPopup();
+}
 
-# ---------------------------
-# Get specials (today only)
-# ---------------------------
-@app.route("/specials")
-def get_specials():
-    today = datetime.now().strftime("%A")
+async function findSpecials() {
 
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
+    navigator.geolocation.getCurrentPosition(async position => {
 
-    c.execute("""
-        SELECT bar, price, day, notes
-        FROM specials
-        WHERE LOWER(day) = LOWER(?)
-        ORDER BY created DESC
-    """, (today,))
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
 
-    results = c.fetchall()
-    conn.close()
+        initMap(lat, lon);
 
-    return jsonify(results)
+        const res = await fetch("/specials");
+        const data = await res.json();
 
+        let html = "";
 
-# ---------------------------
-# Health check for Render
-# ---------------------------
-@app.route("/health")
-def health():
-    return "OK", 200
+        if (data.length === 0) {
+            html = "<h3>No specials today near you.</h3>";
+        } else {
+            data.forEach(d => {
+                html += `
+                <div class="card">
+                    <b>${d[0]}</b><br>
+                    Price: ${d[1]}<br>
+                    Day: ${d[2]}<br>
+                    Notes: ${d[3]}
+                </div>`;
+            });
+        }
 
+        document.getElementById("results").innerHTML = html;
+    });
+}
+</script>
 
-# ---------------------------
-# Local development ONLY
-# (Gunicorn ignores this)
-# ---------------------------
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+</body>
+</html>
