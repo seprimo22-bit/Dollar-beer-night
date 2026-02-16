@@ -11,16 +11,16 @@ button{background:#2563eb;color:white;border:none;}
 #map{height:340px;margin-top:10px;border-radius:10px;}
 .result{background:white;padding:10px;margin-top:6px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.12);} 
 </style></head>
-<body><h2>🍺 Dollar Beer Night</h2><h3>Add a Special</h3>
+<body><h2>🍺 Dollar Beer Night</h2><h3>Add Special</h3>
 <input id="barName" placeholder="Bar Name" />
 <input id="dealDesc" placeholder="Price or Deal ($1.50 etc)" />
 <input id="location" placeholder="City / Area" />
-<input id="day" placeholder="Day (Monday–Sunday)" />
+<input id="day" placeholder="Day (Sunday–Saturday)" />
 <button onclick="saveSpecial()">Save Special</button><h3>Find Specials Near Me</h3>
-<button onclick="useMyLocation()">Locate Me</button><div id="map"></div>
+<button onclick="locateUser()">Locate Me</button><div id="map"></div>
 <div id="results"></div><script>
 let map;
-let markers=[];
+let userMarker=null;
 
 function initMap(){
   map=L.map('map').setView([41.055,-80.619],13);
@@ -28,11 +28,17 @@ function initMap(){
 }
 initMap();
 
+function normalizeDay(day){
+  const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const match=days.find(d=>d.toLowerCase()===day.toLowerCase());
+  return match||day;
+}
+
 function saveSpecial(){
   const name=document.getElementById('barName').value.trim();
   const deal=document.getElementById('dealDesc').value.trim();
   const location=document.getElementById('location').value.trim();
-  const day=document.getElementById('day').value.trim();
+  const day=normalizeDay(document.getElementById('day').value.trim());
 
   if(!name||!deal||!location||!day){
     alert('Fill all fields');
@@ -40,14 +46,14 @@ function saveSpecial(){
   }
 
   const specials=JSON.parse(localStorage.getItem('specials')||'[]');
-  specials.push({name,deal,location,day});
+  specials.push({name,deal,location,day,id:Date.now()});
   localStorage.setItem('specials',JSON.stringify(specials));
 
   document.querySelectorAll('input').forEach(i=>i.value='');
-  alert('Saved');
+  alert('Special saved correctly');
 }
 
-function useMyLocation(){
+function locateUser(){
   if(!navigator.geolocation){alert('GPS unsupported');return;}
 
   navigator.geolocation.getCurrentPosition(pos=>{
@@ -55,19 +61,15 @@ function useMyLocation(){
     const lng=pos.coords.longitude;
 
     map.setView([lat,lng],14);
-    clearMarkers();
 
-    const marker=L.marker([lat,lng]).addTo(map)
+    if(userMarker) map.removeLayer(userMarker);
+
+    userMarker=L.marker([lat,lng]).addTo(map)
       .bindPopup('You are here').openPopup();
-    markers.push(marker);
 
     showTodaySpecials();
-  });
-}
 
-function clearMarkers(){
-  markers.forEach(m=>map.removeLayer(m));
-  markers=[];
+  },()=>alert('Location permission denied'));
 }
 
 function showTodaySpecials(){
@@ -77,7 +79,7 @@ function showTodaySpecials(){
 
   const today=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date().getDay()];
 
-  const filtered=specials.filter(s=>s.day.toLowerCase()===today.toLowerCase());
+  const filtered=specials.filter(s=>s.day===today);
 
   if(!filtered.length){
     results.innerHTML='<p>No specials today.</p>';
