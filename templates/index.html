@@ -1,74 +1,74 @@
-from flask import Flask, render_template, request, redirect, jsonify
-import json, os, requests
-from datetime import datetime
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dollar Beer Night</title>
+    <link rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
 
-app = Flask(__name__)
+<body>
+<h2>🍺 Dollar Beer Night</h2>
 
-DATA_FILE = "bars.json"
+<form action="/add" method="POST">
+    <input name="name" placeholder="Bar Name" required><br>
+    <input name="special" placeholder="$1.50 cans etc" required><br>
+    <input name="address" placeholder="City / Address" required><br>
 
-# Load saved bars
-def load_bars():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r") as f:
-            return json.load(f)
-    return []
+    <select name="day">
+        <option>Monday</option>
+        <option>Tuesday</option>
+        <option>Wednesday</option>
+        <option>Thursday</option>
+        <option>Friday</option>
+        <option>Saturday</option>
+        <option>Sunday</option>
+    </select><br>
 
-# Save bars
-def save_bars(data):
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f, indent=2)
+    <button type="submit">Save Special</button>
+</form>
 
-# Simple geocoder (OpenStreetMap free API)
-def geocode(address):
-    url = f"https://nominatim.openstreetmap.org/search?format=json&q={address}"
-    try:
-        r = requests.get(url, headers={"User-Agent": "beer-app"}).json()
-        if r:
-            return float(r[0]["lat"]), float(r[0]["lon"])
-    except:
-        pass
-    return None, None
+<hr>
 
+<h3>Find Beer Near Me</h3>
+<button onclick="loadBars()">Find Bars</button>
 
-@app.route("/")
-def home():
-    return render_template("index.html")
+<div id="map" style="height:500px;"></div>
 
+<script>
+var map = L.map('map').setView([41.1, -80.6], 11);
 
-@app.route("/add", methods=["POST"])
-def add_bar():
-    bars = load_bars()
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19
+}).addTo(map);
 
-    name = request.form["name"]
-    special = request.form["special"]
-    address = request.form["address"]
-    day = request.form["day"]
+navigator.geolocation.getCurrentPosition(pos => {
+    var lat = pos.coords.latitude;
+    var lng = pos.coords.longitude;
 
-    lat, lng = geocode(address)
+    map.setView([lat,lng], 12);
+    L.marker([lat,lng]).addTo(map)
+      .bindPopup("You are here").openPopup();
+});
 
-    bars.append({
-        "name": name,
-        "special": special,
-        "address": address,
-        "day": day,
-        "lat": lat,
-        "lng": lng
-    })
+function loadBars(){
+    fetch("/bars")
+    .then(r => r.json())
+    .then(data => {
+        data.forEach(bar => {
+            if(bar.lat && bar.lng){
+                L.marker([bar.lat, bar.lng])
+                 .addTo(map)
+                 .bindPopup(
+                    "<b>"+bar.name+"</b><br>"
+                    +bar.special+"<br>"
+                    +bar.day
+                 );
+            }
+        });
+    });
+}
+</script>
 
-    save_bars(bars)
-    return redirect("/")
-
-
-@app.route("/bars")
-def bars():
-    bars = load_bars()
-    today = datetime.now().strftime("%A")
-
-    # Only show today's specials
-    filtered = [b for b in bars if b["day"] == today]
-
-    return jsonify(filtered)
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
+</body>
+</html>
