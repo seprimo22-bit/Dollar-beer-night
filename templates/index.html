@@ -8,14 +8,10 @@
 href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-body {font-family: Arial; padding:20px;}
-input,button {width:100%; padding:10px; margin:5px 0;}
-#map {height:400px; margin-top:10px;}
-.card {
-  background:#eee;
-  padding:8px;
-  margin:6px 0;
-}
+body {font-family: Arial;padding:20px;}
+input,select,button {width:100%;padding:10px;margin:5px 0;}
+#map {height:400px;margin-top:10px;}
+.card {background:#eee;padding:8px;margin:6px 0;}
 </style>
 </head>
 
@@ -26,8 +22,22 @@ input,button {width:100%; padding:10px; margin:5px 0;}
 <h3>Add Special</h3>
 
 <input id="name" placeholder="Bar Name">
-<input id="deal" placeholder="Deal">
+<input id="deal" placeholder="Price (ex: 1.50)">
 <input id="address" placeholder="City/State or Address">
+
+<select id="day">
+<option>Monday</option>
+<option>Tuesday</option>
+<option>Wednesday</option>
+<option>Thursday</option>
+<option>Friday</option>
+<option>Saturday</option>
+<option>Sunday</option>
+</select>
+
+<label>
+<input type="checkbox" id="verified"> Verified
+</label>
 
 <button onclick="save()">Save Special</button>
 <button onclick="locate()">Locate Me</button>
@@ -38,12 +48,13 @@ input,button {width:100%; padding:10px; margin:5px 0;}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-let map = L.map("map").setView([41.1,-80.65],11);
+let map=L.map("map").setView([41.1,-80.65],11);
 let userLat=null,userLon=null;
+let markers=[];
 
 L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
-// ---- GEOCODING ----
+// geocode address
 async function geocode(addr){
  const r=await fetch(
   `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}`
@@ -53,7 +64,7 @@ async function geocode(addr){
  return {lat:+d[0].lat,lon:+d[0].lon};
 }
 
-// ---- DISTANCE ----
+// distance calc
 function dist(a,b,c,d){
  const R=3958.8;
  const dLat=(c-a)*Math.PI/180;
@@ -64,11 +75,13 @@ function dist(a,b,c,d){
  return (2*R*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))).toFixed(1);
 }
 
-// ---- SAVE SPECIAL ----
+// save special
 async function save(){
- const name=document.getElementById("name").value;
- const deal=document.getElementById("deal").value;
- const addr=document.getElementById("address").value;
+ const name=nameField.value;
+ const deal=dealField.value;
+ const addr=address.value;
+ const day=document.getElementById("day").value;
+ const verified=document.getElementById("verified").checked;
 
  const coords=await geocode(addr);
  if(!coords)return;
@@ -76,42 +89,54 @@ async function save(){
  await fetch("/api/specials",{
   method:"POST",
   headers:{"Content-Type":"application/json"},
-  body:JSON.stringify({name,deal,addr,...coords})
+  body:JSON.stringify({
+   name,deal:+deal,addr,day,verified,
+   lat:coords.lat,lon:coords.lon
+  })
  });
 
  load();
 }
 
-// ---- LOAD SPECIALS ----
-async function load(){
- const r=await fetch("/api/specials");
- const data=await r.json();
-
- document.getElementById("list").innerHTML="";
-
- data.forEach(s=>{
-  L.marker([s.lat,s.lon])
-   .addTo(map)
-   .bindPopup(`<b>${s.name}</b><br>${s.deal}`);
-
-  let d=userLat?` (${dist(userLat,userLon,s.lat,s.lon)} mi)`:"";
-
-  document.getElementById("list").innerHTML+=
-   `<div class="card"><b>${s.name}</b>
-   <br>${s.deal}<br>${s.addr}${d}</div>`;
- });
-}
-
-// ---- LOCATE USER ----
+// locate user
 function locate(){
  navigator.geolocation.getCurrentPosition(p=>{
   userLat=p.coords.latitude;
   userLon=p.coords.longitude;
   map.setView([userLat,userLon],13);
-  L.marker([userLat,userLon])
-   .addTo(map)
-   .bindPopup("You are here").openPopup();
   load();
+ });
+}
+
+// load today's specials
+async function load(){
+ markers.forEach(m=>map.removeLayer(m));
+ markers=[];
+
+ const today=new Date().toLocaleDateString("en-US",{weekday:"long"});
+ const r=await fetch(`/api/specials?day=${today}`);
+ const data=await r.json();
+
+ // cheapest first
+ data.sort((a,b)=>a.deal-b.deal);
+
+ list.innerHTML="";
+
+ data.forEach(s=>{
+  const m=L.marker([s.lat,s.lon])
+   .addTo(map)
+   .bindPopup(`<b>${s.name}</b><br>$${s.deal} (${s.day})`);
+
+  markers.push(m);
+
+  let d=userLat?` (${dist(userLat,userLon,s.lat,s.lon)} mi)`:"";
+
+  list.innerHTML+=`
+   <div class="card">
+   <b>${s.name}</b> — $${s.deal}<br>
+   ${s.addr}${d}<br>
+   ${s.day} | ${s.verified?"✔ Verified":"User Submitted"}
+   </div>`;
  });
 }
 
