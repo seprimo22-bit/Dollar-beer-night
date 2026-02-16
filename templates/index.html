@@ -1,18 +1,18 @@
-<!DOCTYPE html>
-<html>
+<!DOCTYPE html><html lang="en">
 <head>
-<title>Dollar Beer Night</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<link rel="stylesheet"
- href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-
-<style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dollar Beer Night</title><link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script><style>
 body {
-    font-family: Arial;
+    font-family: Arial, sans-serif;
     max-width: 800px;
     margin: auto;
     padding: 20px;
+}
+
+h2 {
+    text-align: center;
 }
 
 input, textarea {
@@ -27,6 +27,7 @@ button {
     color: white;
     border: none;
     border-radius: 6px;
+    cursor: pointer;
 }
 
 .card {
@@ -37,75 +38,83 @@ button {
 }
 
 #map {
-    height: 300px;
+    height: 320px;
     margin-top: 20px;
 }
-</style>
-</head>
+</style></head>
+<body><h2>🍺 Dollar Beer Night</h2><input id="lat" placeholder="Latitude" readonly>
+<input id="lon" placeholder="Longitude" readonly><button onclick="findBars()">Find Specials Near Me</button>
 
-<body>
-
-<h2>🍺 Dollar Beer Night</h2>
-
-<form action="/add" method="POST">
-<input name="bar" placeholder="Bar Name" required>
-<input name="price" placeholder="Drink Price">
-<input name="day" placeholder="Day">
-<textarea name="notes" placeholder="Notes"></textarea>
-
-<input type="hidden" name="lat" id="lat">
-<input type="hidden" name="lon" id="lon">
-
-<button>Add Special</button>
-</form>
-
-<hr>
-
-<button onclick="findBars()">Find Specials Near Me</button>
-
-<div id="map"></div>
-<div id="results"></div>
-
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
-<script>
+<div id="map"></div><div id="results"></div><script>
 let userLat = null;
 let userLon = null;
 let map = null;
 
-// Get user GPS
-navigator.geolocation.getCurrentPosition(pos => {
-    userLat = pos.coords.latitude;
-    userLon = pos.coords.longitude;
+/* Load saved location first */
+window.onload = () => {
+    const savedLat = localStorage.getItem("userLat");
+    const savedLon = localStorage.getItem("userLon");
 
-    document.getElementById("lat").value = userLat;
-    document.getElementById("lon").value = userLon;
+    if (savedLat && savedLon) {
+        userLat = parseFloat(savedLat);
+        userLon = parseFloat(savedLon);
+        document.getElementById("lat").value = userLat;
+        document.getElementById("lon").value = userLon;
+        initMap();
+    }
 
-    initMap();
-});
+    getGPS();
+};
 
-// Initialize map
+/* GPS capture with persistence */
+function getGPS() {
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+            userLat = pos.coords.latitude;
+            userLon = pos.coords.longitude;
+
+            document.getElementById("lat").value = userLat;
+            document.getElementById("lon").value = userLon;
+
+            localStorage.setItem("userLat", userLat);
+            localStorage.setItem("userLon", userLon);
+
+            initMap();
+        },
+        () => alert("Location permission helps find nearby specials.")
+    );
+}
+
+/* Map initialization */
 function initMap() {
     if (!userLat || !userLon) return;
 
-    map = L.map('map').setView([userLat, userLon], 13);
+    if (!map) {
+        map = L.map('map').setView([userLat, userLon], 13);
 
-    L.tileLayer(
-        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-    ).addTo(map);
+        L.tileLayer(
+            'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+        ).addTo(map);
+    } else {
+        map.setView([userLat, userLon], 13);
+    }
 
     L.marker([userLat, userLon])
         .addTo(map)
         .bindPopup("You are here");
 }
 
-// Find bars
+/* Bar finder */
 async function findBars() {
-
     if (!userLat || !userLon) {
         alert("Location not ready yet.");
         return;
     }
+
+    // Remove old markers
+    map.eachLayer(layer => {
+        if (layer instanceof L.Marker) map.removeLayer(layer);
+    });
 
     const res = await fetch(`/specials?lat=${userLat}&lon=${userLon}`);
     const data = await res.json();
@@ -117,7 +126,6 @@ async function findBars() {
     }
 
     data.forEach(b => {
-
         if (b[4] && b[5]) {
             L.marker([b[4], b[5]])
                 .addTo(map)
@@ -131,16 +139,12 @@ async function findBars() {
             Day: ${b[2] || "Any"}<br>
             Notes: ${b[3] || ""}<br>
             ${b[6] ? "Distance: " + b[6] + " miles<br>" : ""}
-            <a target="_blank"
-               href="https://www.google.com/maps?q=${b[4]},${b[5]}">
-               Directions
-            </a>
+            <a target="_blank" href="https://www.google.com/maps?q=${b[4]},${b[5]}">
+            Directions</a>
         </div>`;
     });
 
     document.getElementById("results").innerHTML = html;
 }
-</script>
-
-</body>
+</script></body>
 </html>
