@@ -5,10 +5,11 @@ import json, os, math, datetime
 app = Flask(__name__)
 
 DATA_FILE = "specials.json"
-geolocator = Nominatim(user_agent="beer_locator")
+geolocator = Nominatim(user_agent="beer_locator", timeout=5)
 
 
 # ---------- Utility ----------
+
 def load_specials():
     if not os.path.exists(DATA_FILE):
         return []
@@ -22,13 +23,14 @@ def save_specials(data):
 
 
 def haversine(lat1, lon1, lat2, lon2):
-    R = 3958.8  # miles
+    R = 3958.8
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
     dlambda = math.radians(lon2 - lon1)
 
     a = math.sin(dphi/2)**2 + \
-        math.cos(phi1) * math.cos(phi2) * math.sin(dlambda/2)**2
+        math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
+
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
 
@@ -43,26 +45,32 @@ def index():
 def add_special():
     data = request.json
 
-    # Geocode address automatically
-    location = geolocator.geocode(data["address"])
-    if not location:
-        return jsonify({"error": "Address not found"}), 400
+    try:
+        location = geolocator.geocode(data["address"])
+    except Exception as e:
+        print("Geocode error:", e)
+        location = None
+
+    # fallback coords if geocode fails
+    lat = location.latitude if location else 41.1
+    lng = location.longitude if location else -80.6
 
     specials = load_specials()
 
     specials.append({
-        "name": data["name"],
-        "deal": data["deal"],
-        "address": data["address"],
-        "day": data["day"],
-        "lat": location.latitude,
-        "lng": location.longitude,
+        "name": data["name"].strip(),
+        "deal": data["deal"].strip(),
+        "address": data["address"].strip(),
+        "day": data["day"].strip().lower(),
+        "lat": lat,
+        "lng": lng,
         "validated": False,
         "timestamp": datetime.datetime.now().isoformat()
     })
 
     save_specials(specials)
 
+    print("Saved special:", specials[-1])
     return jsonify({"status": "saved"})
 
 
@@ -70,18 +78,20 @@ def add_special():
 def get_specials():
     specials = load_specials()
 
-    user_lat = float(request.args.get("lat"))
-    user_lng = float(request.args.get("lng"))
-    today = datetime.datetime.now().strftime("%A")
+    user_lat = float(request.args.get("lat", 41.1))
+    user_lng = float(request.args.get("lng", -80.6))
+
+    today = datetime.datetime.now().strftime("%A").lower()
 
     results = []
 
     for s in specials:
-        if s["day"] != today:
+        if s["day"].lower() != today:
             continue
 
         dist = haversine(user_lat, user_lng, s["lat"], s["lng"])
-        if dist <= 60:  # 60 mile radius
+
+        if dist <= 60:
             s["distance"] = round(dist, 1)
             results.append(s)
 
