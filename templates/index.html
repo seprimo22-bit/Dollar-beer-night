@@ -7,15 +7,15 @@
 body{font-family:Arial;margin:0;padding:12px;background:#f4f4f4;}
 h2{text-align:center;}
 input,button{width:100%;padding:10px;margin:6px 0;border-radius:6px;border:1px solid #ccc;font-size:16px;}
-button{background:#2563eb;color:white;border:none;}
-#map{height:340px;margin-top:10px;border-radius:10px;}
+button{background:#2563eb;color:white;border:none;cursor:pointer;}
+#map{height:350px;margin-top:10px;border-radius:10px;}
 .result{background:white;padding:10px;margin-top:6px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.12);} 
 </style></head>
 <body><h2>🍺 Dollar Beer Night</h2><h3>Add Special</h3>
 <input id="barName" placeholder="Bar Name" />
-<input id="dealDesc" placeholder="Price or Deal ($1.50 etc)" />
-<input id="lat" placeholder="Latitude (tap button below if unknown)" />
-<input id="lng" placeholder="Longitude (tap button below if unknown)" />
+<input id="dealDesc" placeholder="Deal ($1.50 etc)" />
+<input id="lat" placeholder="Latitude" />
+<input id="lng" placeholder="Longitude" />
 <button onclick="fillBarLocation()">Use My Location For Bar</button>
 <input id="day" placeholder="Day (Sunday–Saturday)" />
 <button onclick="saveSpecial()">Save Special</button><h3>Find Specials Near Me</h3>
@@ -40,8 +40,8 @@ function fillBarLocation(){
   navigator.geolocation.getCurrentPosition(pos=>{
     document.getElementById('lat').value=pos.coords.latitude.toFixed(6);
     document.getElementById('lng').value=pos.coords.longitude.toFixed(6);
-    alert('Bar location filled from GPS');
-  },()=>alert('Could not get GPS'));
+    alert('Bar coordinates filled');
+  },()=>alert('GPS unavailable'));
 }
 
 function saveSpecial(){
@@ -61,7 +61,7 @@ function saveSpecial(){
   localStorage.setItem('specials',JSON.stringify(specials));
 
   document.querySelectorAll('input').forEach(i=>i.value='');
-  alert('Saved successfully');
+  alert('Saved');
 }
 
 function locateUser(){
