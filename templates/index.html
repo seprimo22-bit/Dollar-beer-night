@@ -1,150 +1,113 @@
 <!DOCTYPE html><html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dollar Beer Night</title><link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script><style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dollar Beer Night</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<style>
 body {
-    font-family: Arial, sans-serif;
-    max-width: 800px;
-    margin: auto;
-    padding: 20px;
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 12px;
+  background: #f5f5f5;
+}h2 { text-align: center; }
+
+#map { height: 320px; margin-top: 10px; border-radius: 8px; }
+
+input, button { margin: 6px 0; padding: 10px; width: 100%; border-radius: 6px; border: 1px solid #ccc; font-size: 16px; }
+
+button { background: #2d6cdf; color: white; border: none; cursor: pointer; }
+
+button:hover { background: #1f4fb5; }
+
+.result { background: white; padding: 10px; margin-top: 6px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,.1); } </style>
+
+</head>
+<body><h2>🍺 Dollar Beer Night</h2><h3>Add Special</h3>
+<input id="barName" placeholder="Bar Name" />
+<input id="dealDesc" placeholder="Deal Description" />
+<input id="lat" placeholder="Latitude" />
+<input id="lng" placeholder="Longitude" />
+<button onclick="addSpecial()">Save Special</button><h3>Find Specials Near Me</h3>
+<button onclick="getLocation()">Use My Location</button>
+<div id="map"></div>
+<div id="results"></div><script>
+let map = L.map('map').setView([41.055, -80.619], 13);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
+}).addTo(map);
+
+function addSpecial() {
+  const name = document.getElementById('barName').value.trim();
+  const deal = document.getElementById('dealDesc').value.trim();
+  const lat = parseFloat(document.getElementById('lat').value);
+  const lng = parseFloat(document.getElementById('lng').value);
+
+  if (!name || !deal || isNaN(lat) || isNaN(lng)) {
+    alert('Fill out all fields correctly');
+    return;
+  }
+
+  const specials = JSON.parse(localStorage.getItem('specials') || '[]');
+  specials.push({ name, deal, lat, lng });
+  localStorage.setItem('specials', JSON.stringify(specials));
+
+  document.getElementById('barName').value = '';
+  document.getElementById('dealDesc').value = '';
+  document.getElementById('lat').value = '';
+  document.getElementById('lng').value = '';
+
+  alert('Special saved successfully');
 }
 
-h2 {
-    text-align: center;
+function getLocation() {
+  if (!navigator.geolocation) {
+    alert('Geolocation not supported');
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    position => {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+
+      map.setView([lat, lng], 14);
+      L.marker([lat, lng]).addTo(map)
+        .bindPopup('You are here')
+        .openPopup();
+
+      findNearby(lat, lng);
+    },
+    () => alert('Location permission denied')
+  );
 }
 
-input, textarea {
-    width: 100%;
-    padding: 10px;
-    margin: 6px 0;
-}
+function findNearby(userLat, userLng) {
+  const specials = JSON.parse(localStorage.getItem('specials') || '[]');
+  const results = document.getElementById('results');
+  results.innerHTML = '';
 
-button {
-    padding: 12px;
-    background: #2e7dff;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-}
+  const nearby = specials.filter(s =>
+    Math.abs(s.lat - userLat) < 0.05 &&
+    Math.abs(s.lng - userLng) < 0.05
+  );
 
-.card {
-    background: #eee;
-    padding: 12px;
-    margin: 10px 0;
-    border-radius: 8px;
-}
+  if (!nearby.length) {
+    results.innerHTML = '<p>No specials nearby.</p>';
+    return;
+  }
 
-#map {
-    height: 320px;
-    margin-top: 20px;
-}
-</style></head>
-<body><h2>🍺 Dollar Beer Night</h2><input id="lat" placeholder="Latitude" readonly>
-<input id="lon" placeholder="Longitude" readonly><button onclick="findBars()">Find Specials Near Me</button>
+  nearby.forEach(s => {
+    L.marker([s.lat, s.lng]).addTo(map)
+      .bindPopup(`${s.name}: ${s.deal}`);
 
-<div id="map"></div><div id="results"></div><script>
-let userLat = null;
-let userLon = null;
-let map = null;
-
-/* Load saved location first */
-window.onload = () => {
-    const savedLat = localStorage.getItem("userLat");
-    const savedLon = localStorage.getItem("userLon");
-
-    if (savedLat && savedLon) {
-        userLat = parseFloat(savedLat);
-        userLon = parseFloat(savedLon);
-        document.getElementById("lat").value = userLat;
-        document.getElementById("lon").value = userLon;
-        initMap();
-    }
-
-    getGPS();
-};
-
-/* GPS capture with persistence */
-function getGPS() {
-    navigator.geolocation.getCurrentPosition(
-        pos => {
-            userLat = pos.coords.latitude;
-            userLon = pos.coords.longitude;
-
-            document.getElementById("lat").value = userLat;
-            document.getElementById("lon").value = userLon;
-
-            localStorage.setItem("userLat", userLat);
-            localStorage.setItem("userLon", userLon);
-
-            initMap();
-        },
-        () => alert("Location permission helps find nearby specials.")
-    );
-}
-
-/* Map initialization */
-function initMap() {
-    if (!userLat || !userLon) return;
-
-    if (!map) {
-        map = L.map('map').setView([userLat, userLon], 13);
-
-        L.tileLayer(
-            'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-        ).addTo(map);
-    } else {
-        map.setView([userLat, userLon], 13);
-    }
-
-    L.marker([userLat, userLon])
-        .addTo(map)
-        .bindPopup("You are here");
-}
-
-/* Bar finder */
-async function findBars() {
-    if (!userLat || !userLon) {
-        alert("Location not ready yet.");
-        return;
-    }
-
-    // Remove old markers
-    map.eachLayer(layer => {
-        if (layer instanceof L.Marker) map.removeLayer(layer);
-    });
-
-    const res = await fetch(`/specials?lat=${userLat}&lon=${userLon}`);
-    const data = await res.json();
-
-    let html = "";
-
-    if (data.length === 0) {
-        html = "<h3>No specials nearby.</h3>";
-    }
-
-    data.forEach(b => {
-        if (b[4] && b[5]) {
-            L.marker([b[4], b[5]])
-                .addTo(map)
-                .bindPopup(b[0]);
-        }
-
-        html += `
-        <div class="card">
-            <b>${b[0]}</b><br>
-            Price: ${b[1] || "N/A"}<br>
-            Day: ${b[2] || "Any"}<br>
-            Notes: ${b[3] || ""}<br>
-            ${b[6] ? "Distance: " + b[6] + " miles<br>" : ""}
-            <a target="_blank" href="https://www.google.com/maps?q=${b[4]},${b[5]}">
-            Directions</a>
-        </div>`;
-    });
-
-    document.getElementById("results").innerHTML = html;
+    const div = document.createElement('div');
+    div.className = 'result';
+    div.textContent = `${s.name} — ${s.deal}`;
+    results.appendChild(div);
+  });
 }
 </script></body>
 </html>
