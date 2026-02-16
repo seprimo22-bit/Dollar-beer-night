@@ -1,8 +1,7 @@
 from flask import Flask, render_template, request, jsonify
-import json, os
+import json, os, datetime
 
 app = Flask(__name__)
-
 DATA_FILE = "specials.json"
 
 
@@ -25,14 +24,25 @@ def index():
 
 @app.route("/api/specials", methods=["GET"])
 def get_specials():
-    return jsonify(load_specials())
+    day = request.args.get("day")
+    specials = load_specials()
+
+    if day:
+        specials = [s for s in specials if s.get("day") == day]
+
+    return jsonify(specials)
 
 
 @app.route("/api/specials", methods=["POST"])
 def add_special():
     specials = load_specials()
-    specials.append(request.json)
+    new = request.json
+
+    new["timestamp"] = datetime.datetime.now().isoformat()
+
+    specials.append(new)
     save_specials(specials)
+
     return jsonify({"status": "saved"})
 
 
