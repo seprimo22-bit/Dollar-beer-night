@@ -1,92 +1,92 @@
-from flask import Flask, render_template, request, redirect, jsonify
-import json, os, requests
-from datetime import datetime
+from flask import Flask, render_template, request, jsonify
+from geopy.geocoders import Nominatim
+import json, os, math, datetime
 
 app = Flask(__name__)
 
-DATA_FILE = "bars.json"
+DATA_FILE = "specials.json"
+geolocator = Nominatim(user_agent="beer_locator")
 
 
-# ---------- JSON STORAGE ----------
-
-def load_bars():
+# ---------- Utility ----------
+def load_specials():
     if not os.path.exists(DATA_FILE):
         return []
     with open(DATA_FILE, "r") as f:
-        try:
-            return json.load(f)
-        except:
-            return []
+        return json.load(f)
 
 
-def save_bars(bars):
+def save_specials(data):
     with open(DATA_FILE, "w") as f:
-        json.dump(bars, f, indent=2)
+        json.dump(data, f, indent=2)
 
 
-# ---------- GEOCODING ----------
+def haversine(lat1, lon1, lat2, lon2):
+    R = 3958.8  # miles
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
 
-def geocode(address):
-    try:
-        url = "https://nominatim.openstreetmap.org/search"
-        params = {"q": address, "format": "json"}
-        headers = {"User-Agent": "BeerFinderApp"}
-
-        r = requests.get(url, params=params, headers=headers, timeout=5)
-        data = r.json()
-
-        if data:
-            return float(data[0]["lat"]), float(data[0]["lon"])
-    except:
-        pass
-
-    return None, None
+    a = math.sin(dphi/2)**2 + \
+        math.cos(phi1) * math.cos(phi2) * math.sin(dlambda/2)**2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
 
-# ---------- ROUTES ----------
+# ---------- Routes ----------
 
 @app.route("/")
-def home():
+def index():
     return render_template("index.html")
 
 
-@app.route("/add", methods=["POST"])
-def add_bar():
-    bars = load_bars()
+@app.route("/api/specials", methods=["POST"])
+def add_special():
+    data = request.json
 
-    name = request.form["name"]
-    special = request.form["special"]
-    address = request.form["address"]
-    day = request.form["day"]
+    # Geocode address automatically
+    location = geolocator.geocode(data["address"])
+    if not location:
+        return jsonify({"error": "Address not found"}), 400
 
-    lat, lng = geocode(address)
+    specials = load_specials()
 
-    bars.append({
-        "name": name,
-        "special": special,
-        "address": address,
-        "day": day.strip(),
-        "lat": lat,
-        "lng": lng
+    specials.append({
+        "name": data["name"],
+        "deal": data["deal"],
+        "address": data["address"],
+        "day": data["day"],
+        "lat": location.latitude,
+        "lng": location.longitude,
+        "validated": False,
+        "timestamp": datetime.datetime.now().isoformat()
     })
 
-    save_bars(bars)
-    return redirect("/")
+    save_specials(specials)
+
+    return jsonify({"status": "saved"})
 
 
-@app.route("/bars")
-def get_bars():
-    bars = load_bars()
-    today = datetime.now().strftime("%A")
+@app.route("/api/specials", methods=["GET"])
+def get_specials():
+    specials = load_specials()
 
-    # Only today's bars
-    today_bars = [
-        b for b in bars
-        if b.get("day", "").lower() == today.lower()
-        and b.get("lat") and b.get("lng")
-    ]
+    user_lat = float(request.args.get("lat"))
+    user_lng = float(request.args.get("lng"))
+    today = datetime.datetime.now().strftime("%A")
 
-    return jsonify(today_bars)
+    results = []
+
+    for s in specials:
+        if s["day"] != today:
+            continue
+
+        dist = haversine(user_lat, user_lng, s["lat"], s["lng"])
+        if dist <= 60:  # 60 mile radius
+            s["distance"] = round(dist, 1)
+            results.append(s)
+
+    results.sort(key=lambda x: x["distance"])
+    return jsonify(results)
 
 
 if __name__ == "__main__":
