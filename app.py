@@ -24,13 +24,17 @@ def index():
 
 @app.route("/api/specials", methods=["GET"])
 def get_specials():
-    day = request.args.get("day")
     specials = load_specials()
 
-    if day:
-        specials = [s for s in specials if s.get("day") == day]
+    # today's weekday automatically
+    today = datetime.datetime.now().strftime("%A")
 
-    return jsonify(specials)
+    # optional override (if you add day selector later)
+    requested_day = request.args.get("day", today)
+
+    filtered = [s for s in specials if s.get("day") == requested_day]
+
+    return jsonify(filtered)
 
 
 @app.route("/api/specials", methods=["POST"])
