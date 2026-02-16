@@ -14,8 +14,9 @@ button{background:#2563eb;color:white;border:none;}
 <body><h2>🍺 Dollar Beer Night</h2><h3>Add Special</h3>
 <input id="barName" placeholder="Bar Name" />
 <input id="dealDesc" placeholder="Price or Deal ($1.50 etc)" />
-<input id="lat" placeholder="Latitude (ex: 41.10)" />
-<input id="lng" placeholder="Longitude (ex: -80.65)" />
+<input id="lat" placeholder="Latitude (tap button below if unknown)" />
+<input id="lng" placeholder="Longitude (tap button below if unknown)" />
+<button onclick="fillBarLocation()">Use My Location For Bar</button>
 <input id="day" placeholder="Day (Sunday–Saturday)" />
 <button onclick="saveSpecial()">Save Special</button><h3>Find Specials Near Me</h3>
 <button onclick="locateUser()">Locate Me</button><div id="map"></div>
@@ -35,6 +36,14 @@ function normalizeDay(day){
   return days.find(d=>d.toLowerCase()===day.toLowerCase())||day;
 }
 
+function fillBarLocation(){
+  navigator.geolocation.getCurrentPosition(pos=>{
+    document.getElementById('lat').value=pos.coords.latitude.toFixed(6);
+    document.getElementById('lng').value=pos.coords.longitude.toFixed(6);
+    alert('Bar location filled from GPS');
+  },()=>alert('Could not get GPS'));
+}
+
 function saveSpecial(){
   const name=document.getElementById('barName').value.trim();
   const deal=document.getElementById('dealDesc').value.trim();
@@ -43,7 +52,7 @@ function saveSpecial(){
   const day=normalizeDay(document.getElementById('day').value.trim());
 
   if(!name||!deal||isNaN(lat)||isNaN(lng)||!day){
-    alert('Fill everything correctly (lat/lng required)');
+    alert('Fill everything correctly');
     return;
   }
 
