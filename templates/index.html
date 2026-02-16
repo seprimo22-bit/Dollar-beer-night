@@ -35,10 +35,6 @@ input,select,button {width:100%;padding:10px;margin:5px 0;}
 <option>Sunday</option>
 </select>
 
-<label>
-<input type="checkbox" id="verified"> Verified
-</label>
-
 <button onclick="save()">Save Special</button>
 <button onclick="locate()">Locate Me</button>
 
@@ -54,7 +50,8 @@ let markers=[];
 
 L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
-// geocode address
+
+// ---------- GEOCODE ----------
 async function geocode(addr){
  const r=await fetch(
   `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}`
@@ -64,24 +61,13 @@ async function geocode(addr){
  return {lat:+d[0].lat,lon:+d[0].lon};
 }
 
-// distance calc
-function dist(a,b,c,d){
- const R=3958.8;
- const dLat=(c-a)*Math.PI/180;
- const dLon=(d-b)*Math.PI/180;
- const x=Math.sin(dLat/2)**2+
- Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*
- Math.sin(dLon/2)**2;
- return (2*R*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))).toFixed(1);
-}
 
-// save special
+// ---------- SAVE SPECIAL ----------
 async function save(){
- const name=nameField.value;
- const deal=dealField.value;
- const addr=address.value;
+ const name=document.getElementById("name").value;
+ const deal=document.getElementById("deal").value;
+ const addr=document.getElementById("address").value;
  const day=document.getElementById("day").value;
- const verified=document.getElementById("verified").checked;
 
  const coords=await geocode(addr);
  if(!coords)return;
@@ -90,15 +76,20 @@ async function save(){
   method:"POST",
   headers:{"Content-Type":"application/json"},
   body:JSON.stringify({
-   name,deal:+deal,addr,day,verified,
-   lat:coords.lat,lon:coords.lon
+   name,
+   deal:+deal,
+   addr,
+   day,
+   lat:coords.lat,
+   lon:coords.lon
   })
  });
 
  load();
 }
 
-// locate user
+
+// ---------- LOCATE USER ----------
 function locate(){
  navigator.geolocation.getCurrentPosition(p=>{
   userLat=p.coords.latitude;
@@ -108,12 +99,17 @@ function locate(){
  });
 }
 
-// load today's specials
+
+// ---------- LOAD TODAY'S SPECIALS ----------
 async function load(){
+
  markers.forEach(m=>map.removeLayer(m));
  markers=[];
 
- const today=new Date().toLocaleDateString("en-US",{weekday:"long"});
+ const today=new Date().toLocaleDateString(
+   "en-US",{weekday:"long"}
+ );
+
  const r=await fetch(`/api/specials?day=${today}`);
  const data=await r.json();
 
@@ -125,17 +121,15 @@ async function load(){
  data.forEach(s=>{
   const m=L.marker([s.lat,s.lon])
    .addTo(map)
-   .bindPopup(`<b>${s.name}</b><br>$${s.deal} (${s.day})`);
+   .bindPopup(`<b>${s.name}</b><br>$${s.deal} — ${s.day}`);
 
   markers.push(m);
-
-  let d=userLat?` (${dist(userLat,userLon,s.lat,s.lon)} mi)`:"";
 
   list.innerHTML+=`
    <div class="card">
    <b>${s.name}</b> — $${s.deal}<br>
-   ${s.addr}${d}<br>
-   ${s.day} | ${s.verified?"✔ Verified":"User Submitted"}
+   ${s.addr}<br>
+   Special Day: ${s.day}
    </div>`;
  });
 }
