@@ -1,118 +1,181 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html>
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Dollar Beer Night</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><style>
-body{font-family:Arial;margin:0;padding:12px;background:#f4f4f4;}
-h2{text-align:center;}
-input,button{width:100%;padding:10px;margin:6px 0;border-radius:6px;border:1px solid #ccc;font-size:16px;}
-button{background:#2563eb;color:white;border:none;cursor:pointer;}
-#map{height:350px;margin-top:10px;border-radius:10px;}
-.result{background:white;padding:10px;margin-top:6px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.12);} 
-</style></head>
-<body><h2>🍺 Dollar Beer Night</h2><h3>Add Special</h3>
-<input id="barName" placeholder="Bar Name" />
-<input id="dealDesc" placeholder="Deal ($1.50 etc)" />
-<input id="address" placeholder="Bar Address or City" />
-<input id="day" placeholder="Day (Sunday–Saturday)" />
-<button onclick="saveSpecial()">Save Special</button><h3>Find Specials Near Me</h3>
-<button onclick="locateUser()">Locate Me</button><div id="map"></div>
-<div id="results"></div><script>
-let map;
-let userMarker;
-let barMarkers=[];
+<meta charset="utf-8"/>
+<title>Dollar Beer Night</title>
 
-function initMap(){
-  map=L.map('map').setView([41.055,-80.619],13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
-}
-initMap();
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
-function normalizeDay(day){
-  const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  return days.find(d=>d.toLowerCase()===day.toLowerCase())||day;
-}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-async function geocode(address){
-  const url=`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
-  const res=await fetch(url);
-  const data=await res.json();
-  if(!data.length) return null;
-  return {lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon)};
-}
+<style>
+body{font-family:Arial;padding:10px;background:#f4f4f4;}
+input,button{width:100%;padding:10px;margin:6px 0;}
+#map{height:400px;margin-top:10px;}
+.result{background:white;padding:8px;margin:6px 0;}
+</style>
+</head>
 
-async function saveSpecial(){
-  const name=document.getElementById('barName').value.trim();
-  const deal=document.getElementById('dealDesc').value.trim();
-  const address=document.getElementById('address').value.trim();
-  const day=normalizeDay(document.getElementById('day').value.trim());
+<body>
 
-  if(!name||!deal||!address||!day){
-    alert('Fill everything');
-    return;
-  }
+<h2>🍺 Dollar Beer Night</h2>
 
-  const coords=await geocode(address);
-  if(!coords){
-    alert('Address not found');
-    return;
-  }
+<h3>Add Special</h3>
 
-  const specials=JSON.parse(localStorage.getItem('specials')||'[]');
-  specials.push({name,deal,address,day,lat:coords.lat,lng:coords.lng});
-  localStorage.setItem('specials',JSON.stringify(specials));
+<input id="barName" placeholder="Bar Name">
+<input id="deal" placeholder="$1.50 cans etc">
+<input id="address" placeholder="City / State / Address">
+<input id="day" placeholder="Sunday–Saturday">
 
-  document.querySelectorAll('input').forEach(i=>i.value='');
-  alert('Saved');
+<button onclick="addSpecial()">Save Special</button>
+
+<hr>
+
+<button onclick="locate()">Find Beer Near Me</button>
+
+<div id="map"></div>
+<div id="results"></div>
+
+<script>
+let map=L.map('map').setView([41.08,-80.65],12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+maxZoom:19}).addTo(map);
+
+let userLat,userLng;
+
+
+// ---------- GEOCODING ----------
+
+async function geocode(addr){
+const url=`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}`;
+const res=await fetch(url);
+const data=await res.json();
+if(!data.length) return null;
+return {
+lat:parseFloat(data[0].lat),
+lng:parseFloat(data[0].lon)
+};
 }
 
-function locateUser(){
-  navigator.geolocation.getCurrentPosition(pos=>{
-    const lat=pos.coords.latitude;
-    const lng=pos.coords.longitude;
 
-    map.setView([lat,lng],14);
+// ---------- ADD SPECIAL ----------
 
-    if(userMarker) map.removeLayer(userMarker);
-    userMarker=L.marker([lat,lng]).addTo(map)
-      .bindPopup('You are here').openPopup();
+async function addSpecial(){
 
-    showTodaySpecials();
-  });
+const name=document.getElementById('barName').value.trim();
+const deal=document.getElementById('deal').value.trim();
+const address=document.getElementById('address').value.trim();
+const day=document.getElementById('day').value.trim();
+
+if(!name||!deal||!address||!day){
+alert("Fill everything");
+return;
 }
 
-function clearBars(){
-  barMarkers.forEach(m=>map.removeLayer(m));
-  barMarkers=[];
+const coords=await geocode(address);
+
+if(!coords){
+alert("Address not found");
+return;
 }
 
-function showTodaySpecials(){
-  clearBars();
+await fetch('/api/specials',{
+method:'POST',
+headers:{'Content-Type':'application/json'},
+body:JSON.stringify({
+name,
+deal,
+address,
+day,
+lat:coords.lat,
+lng:coords.lng
+})
+});
 
-  const specials=JSON.parse(localStorage.getItem('specials')||'[]');
-  const results=document.getElementById('results');
-  results.innerHTML='';
-
-  const today=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date().getDay()];
-
-  const filtered=specials.filter(s=>s.day===today);
-
-  if(!filtered.length){
-    results.innerHTML='<p>No specials today.</p>';
-    return;
-  }
-
-  filtered.forEach(s=>{
-    const marker=L.marker([s.lat,s.lng]).addTo(map)
-      .bindPopup(`${s.name}<br>${s.deal}`);
-    barMarkers.push(marker);
-
-    const div=document.createElement('div');
-    div.className='result';
-    div.innerHTML=`<b>${s.name}</b> — ${s.deal}<br>${s.address}<br>Day: ${s.day}`;
-    results.appendChild(div);
-  });
+alert("Saved!");
 }
-</script></body>
+
+
+// ---------- FIND NEARBY ----------
+
+function locate(){
+
+navigator.geolocation.getCurrentPosition(pos=>{
+
+userLat=pos.coords.latitude;
+userLng=pos.coords.longitude;
+
+map.setView([userLat,userLng],11);
+
+L.marker([userLat,userLng])
+.addTo(map)
+.bindPopup("You are here");
+
+loadSpecials();
+
+});
+}
+
+
+// ---------- DISTANCE CALC ----------
+
+function milesBetween(lat1,lon1,lat2,lon2){
+
+const R=3958.8;
+const dLat=(lat2-lat1)*Math.PI/180;
+const dLon=(lon2-lon1)*Math.PI/180;
+
+const a=Math.sin(dLat/2)**2+
+Math.cos(lat1*Math.PI/180)*
+Math.cos(lat2*Math.PI/180)*
+Math.sin(dLon/2)**2;
+
+return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+
+// ---------- LOAD TODAY SPECIALS ----------
+
+async function loadSpecials(){
+
+const res=await fetch('/api/specials');
+const specials=await res.json();
+
+document.getElementById('results').innerHTML="";
+
+specials.forEach(s=>{
+
+const dist=milesBetween(userLat,userLng,s.lat,s.lng);
+
+if(dist<=60){
+
+const marker=L.marker([s.lat,s.lng])
+.addTo(map)
+.bindPopup(`
+<b>${s.name}</b><br>
+${s.deal}<br>
+${dist.toFixed(1)} miles<br>
+${s.validated?"✔ Validated":"User Submitted"}
+`);
+
+const div=document.createElement("div");
+div.className="result";
+div.innerHTML=`
+<b>${s.name}</b> — ${s.deal}<br>
+${dist.toFixed(1)} miles<br>
+${s.validated?"✔ Verified":"User Entry"}
+`;
+
+document.getElementById('results').appendChild(div);
+
+}
+
+});
+
+}
+
+</script>
+
+</body>
 </html>
