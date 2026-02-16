@@ -14,9 +14,7 @@ button{background:#2563eb;color:white;border:none;cursor:pointer;}
 <body><h2>🍺 Dollar Beer Night</h2><h3>Add Special</h3>
 <input id="barName" placeholder="Bar Name" />
 <input id="dealDesc" placeholder="Deal ($1.50 etc)" />
-<input id="lat" placeholder="Latitude" />
-<input id="lng" placeholder="Longitude" />
-<button onclick="fillBarLocation()">Use My Location For Bar</button>
+<input id="address" placeholder="Bar Address or City" />
 <input id="day" placeholder="Day (Sunday–Saturday)" />
 <button onclick="saveSpecial()">Save Special</button><h3>Find Specials Near Me</h3>
 <button onclick="locateUser()">Locate Me</button><div id="map"></div>
@@ -36,28 +34,33 @@ function normalizeDay(day){
   return days.find(d=>d.toLowerCase()===day.toLowerCase())||day;
 }
 
-function fillBarLocation(){
-  navigator.geolocation.getCurrentPosition(pos=>{
-    document.getElementById('lat').value=pos.coords.latitude.toFixed(6);
-    document.getElementById('lng').value=pos.coords.longitude.toFixed(6);
-    alert('Bar coordinates filled');
-  },()=>alert('GPS unavailable'));
+async function geocode(address){
+  const url=`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+  const res=await fetch(url);
+  const data=await res.json();
+  if(!data.length) return null;
+  return {lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon)};
 }
 
-function saveSpecial(){
+async function saveSpecial(){
   const name=document.getElementById('barName').value.trim();
   const deal=document.getElementById('dealDesc').value.trim();
-  const lat=parseFloat(document.getElementById('lat').value);
-  const lng=parseFloat(document.getElementById('lng').value);
+  const address=document.getElementById('address').value.trim();
   const day=normalizeDay(document.getElementById('day').value.trim());
 
-  if(!name||!deal||isNaN(lat)||isNaN(lng)||!day){
-    alert('Fill everything correctly');
+  if(!name||!deal||!address||!day){
+    alert('Fill everything');
+    return;
+  }
+
+  const coords=await geocode(address);
+  if(!coords){
+    alert('Address not found');
     return;
   }
 
   const specials=JSON.parse(localStorage.getItem('specials')||'[]');
-  specials.push({name,deal,lat,lng,day});
+  specials.push({name,deal,address,day,lat:coords.lat,lng:coords.lng});
   localStorage.setItem('specials',JSON.stringify(specials));
 
   document.querySelectorAll('input').forEach(i=>i.value='');
@@ -107,7 +110,7 @@ function showTodaySpecials(){
 
     const div=document.createElement('div');
     div.className='result';
-    div.innerHTML=`<b>${s.name}</b> — ${s.deal}<br>Day: ${s.day}`;
+    div.innerHTML=`<b>${s.name}</b> — ${s.deal}<br>${s.address}<br>Day: ${s.day}`;
     results.appendChild(div);
   });
 }
