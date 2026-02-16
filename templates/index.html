@@ -14,14 +14,15 @@ button{background:#2563eb;color:white;border:none;}
 <body><h2>🍺 Dollar Beer Night</h2><h3>Add Special</h3>
 <input id="barName" placeholder="Bar Name" />
 <input id="dealDesc" placeholder="Price or Deal ($1.50 etc)" />
-<input id="location" placeholder="City / Address" />
+<input id="lat" placeholder="Latitude (ex: 41.10)" />
+<input id="lng" placeholder="Longitude (ex: -80.65)" />
 <input id="day" placeholder="Day (Sunday–Saturday)" />
 <button onclick="saveSpecial()">Save Special</button><h3>Find Specials Near Me</h3>
 <button onclick="locateUser()">Locate Me</button><div id="map"></div>
 <div id="results"></div><script>
 let map;
 let userMarker;
-let specialMarkers=[];
+let barMarkers=[];
 
 function initMap(){
   map=L.map('map').setView([41.055,-80.619],13);
@@ -34,40 +35,24 @@ function normalizeDay(day){
   return days.find(d=>d.toLowerCase()===day.toLowerCase())||day;
 }
 
-async function geocode(address){
-  const url=`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
-  const res=await fetch(url);
-  const data=await res.json();
-  if(data.length===0) return null;
-  return {
-    lat:parseFloat(data[0].lat),
-    lng:parseFloat(data[0].lon)
-  };
-}
-
-async function saveSpecial(){
+function saveSpecial(){
   const name=document.getElementById('barName').value.trim();
   const deal=document.getElementById('dealDesc').value.trim();
-  const location=document.getElementById('location').value.trim();
+  const lat=parseFloat(document.getElementById('lat').value);
+  const lng=parseFloat(document.getElementById('lng').value);
   const day=normalizeDay(document.getElementById('day').value.trim());
 
-  if(!name||!deal||!location||!day){
-    alert('Fill all fields');
-    return;
-  }
-
-  const coords=await geocode(location);
-  if(!coords){
-    alert('Could not find location');
+  if(!name||!deal||isNaN(lat)||isNaN(lng)||!day){
+    alert('Fill everything correctly (lat/lng required)');
     return;
   }
 
   const specials=JSON.parse(localStorage.getItem('specials')||'[]');
-  specials.push({name,deal,location,day,lat:coords.lat,lng:coords.lng});
+  specials.push({name,deal,lat,lng,day});
   localStorage.setItem('specials',JSON.stringify(specials));
 
   document.querySelectorAll('input').forEach(i=>i.value='');
-  alert('Special saved with map location');
+  alert('Saved successfully');
 }
 
 function locateUser(){
@@ -85,13 +70,13 @@ function locateUser(){
   });
 }
 
-function clearSpecialMarkers(){
-  specialMarkers.forEach(m=>map.removeLayer(m));
-  specialMarkers=[];
+function clearBars(){
+  barMarkers.forEach(m=>map.removeLayer(m));
+  barMarkers=[];
 }
 
 function showTodaySpecials(){
-  clearSpecialMarkers();
+  clearBars();
 
   const specials=JSON.parse(localStorage.getItem('specials')||'[]');
   const results=document.getElementById('results');
@@ -109,11 +94,11 @@ function showTodaySpecials(){
   filtered.forEach(s=>{
     const marker=L.marker([s.lat,s.lng]).addTo(map)
       .bindPopup(`${s.name}<br>${s.deal}`);
-    specialMarkers.push(marker);
+    barMarkers.push(marker);
 
     const div=document.createElement('div');
     div.className='result';
-    div.innerHTML=`<b>${s.name}</b> — ${s.deal}<br>${s.location}<br>Special Day: ${s.day}`;
+    div.innerHTML=`<b>${s.name}</b> — ${s.deal}<br>Day: ${s.day}`;
     results.appendChild(div);
   });
 }
