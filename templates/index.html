@@ -1,75 +1,111 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Dollar Beer Night</title>
-    <link rel="stylesheet"
-     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<title>Dollar Beer Night</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link rel="stylesheet"
+ href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+body{font-family:Arial;padding:10px;background:#f4f4f4;}
+input,button{
+  width:100%;padding:10px;margin:6px 0;
+  border-radius:6px;border:1px solid #ccc;
+}
+button{background:#2563eb;color:white;border:none;}
+#map{height:400px;margin-top:10px;border-radius:10px;}
+.result{
+  background:white;padding:10px;margin-top:6px;
+  border-radius:6px;
+}
+</style>
 </head>
 
 <body>
+
 <h2>🍺 Dollar Beer Night</h2>
 
-<form action="/add" method="POST">
-    <input name="name" placeholder="Bar Name" required><br>
-    <input name="special" placeholder="$1.50 cans etc" required><br>
-    <input name="address" placeholder="City or Address" required><br>
+<h3>Add Special</h3>
 
-    <select name="day">
-        <option>Monday</option>
-        <option>Tuesday</option>
-        <option>Wednesday</option>
-        <option>Thursday</option>
-        <option>Friday</option>
-        <option>Saturday</option>
-        <option>Sunday</option>
-    </select><br>
+<input id="name" placeholder="Bar Name">
+<input id="deal" placeholder="$1.50 cans etc">
+<input id="address" placeholder="City / State / Address">
+<input id="day" placeholder="Sunday–Saturday">
 
-    <button type="submit">Save Special</button>
-</form>
+<button onclick="saveSpecial()">Save Special</button>
 
-<hr>
+<h3>Find Beer Near Me</h3>
+<button onclick="findBeer()">Find Beer</button>
 
-<button onclick="loadBars()">Find Bars</button>
-
-<div id="map" style="height:500px;"></div>
+<div id="map"></div>
+<div id="results"></div>
 
 <script>
-var map = L.map('map').setView([41.1,-80.6], 11);
+let map = L.map('map').setView([41.1,-80.6],11);
+L.tileLayer(
+ 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+ {maxZoom:19}).addTo(map);
 
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    maxZoom:19
-}).addTo(map);
-
-
-// Show your location
-navigator.geolocation.getCurrentPosition(pos=>{
-    let lat = pos.coords.latitude;
-    let lng = pos.coords.longitude;
-
-    map.setView([lat,lng],12);
-
-    L.marker([lat,lng])
-     .addTo(map)
-     .bindPopup("You are here")
-     .openPopup();
-});
+let userMarker;
 
 
-function loadBars(){
-    fetch("/bars")
-    .then(r=>r.json())
-    .then(data=>{
-        data.forEach(bar=>{
-            L.marker([bar.lat, bar.lng])
-             .addTo(map)
-             .bindPopup(
-               "<b>"+bar.name+"</b><br>"
-               +bar.special+"<br>"
-               +bar.day
-             );
-        });
-    });
+async function saveSpecial(){
+
+  let payload = {
+    name:name.value,
+    deal:deal.value,
+    address:address.value,
+    day:day.value
+  };
+
+  await fetch("/api/specials",{
+    method:"POST",
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  });
+
+  document.querySelectorAll("input")
+    .forEach(i=>i.value="");
+
+  alert("Saved!");
+}
+
+
+function findBeer(){
+ navigator.geolocation.getCurrentPosition(async pos=>{
+
+  let lat=pos.coords.latitude;
+  let lng=pos.coords.longitude;
+
+  if(userMarker) map.removeLayer(userMarker);
+
+  userMarker=L.marker([lat,lng])
+    .addTo(map)
+    .bindPopup("You are here");
+
+  map.setView([lat,lng],12);
+
+  let res=await fetch(`/api/specials?lat=${lat}&lng=${lng}`);
+  let data=await res.json();
+
+  results.innerHTML="";
+
+  data.forEach(bar=>{
+    L.marker([bar.lat,bar.lng])
+      .addTo(map)
+      .bindPopup(bar.name+"<br>"+bar.deal);
+
+    results.innerHTML += `
+      <div class="result">
+      <b>${bar.name}</b> — ${bar.deal}<br>
+      ${bar.distance} miles<br>
+      ${bar.validated ? "✔ Verified" : "User Entry"}
+      </div>`;
+  });
+
+ });
 }
 </script>
 
