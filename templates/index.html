@@ -1,103 +1,74 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Dollar Beer Night</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+from flask import Flask, render_template, request, redirect, jsonify
+import json, os, requests
+from datetime import datetime
 
-<style>
-body {font-family: Arial; padding:10px; background:#f4f4f4;}
-input,button {
-  width:100%; padding:10px; margin:5px 0;
-  border-radius:6px; border:1px solid #ccc;
-}
-button {background:#2563eb; color:white;}
-#map {height:350px; margin-top:10px;}
-.result {background:white; padding:10px; margin-top:5px;}
-</style>
-</head>
+app = Flask(__name__)
 
-<body>
+DATA_FILE = "bars.json"
 
-<h2>🍺 Dollar Beer Night</h2>
+# Load saved bars
+def load_bars():
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r") as f:
+            return json.load(f)
+    return []
 
-<h3>Add Special</h3>
-<input id="name" placeholder="Bar Name">
-<input id="deal" placeholder="$1.50 cans etc">
-<input id="address" placeholder="City / State / Address">
-<input id="day" placeholder="Sunday-Saturday">
-<button onclick="saveSpecial()">Save Special</button>
+# Save bars
+def save_bars(data):
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f, indent=2)
 
-<h3>Find Beer Near Me</h3>
-<button onclick="findBars()">Find Bars</button>
-
-<div id="map"></div>
-<div id="results"></div>
-
-<script>
-let map = L.map('map').setView([41.1,-80.6], 11);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-let userMarker;
-let markers = [];
+# Simple geocoder (OpenStreetMap free API)
+def geocode(address):
+    url = f"https://nominatim.openstreetmap.org/search?format=json&q={address}"
+    try:
+        r = requests.get(url, headers={"User-Agent": "beer-app"}).json()
+        if r:
+            return float(r[0]["lat"]), float(r[0]["lon"])
+    except:
+        pass
+    return None, None
 
 
-function saveSpecial(){
-  fetch("/api/add", {
-    method:"POST",
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      name: name.value,
-      deal: deal.value,
-      address: address.value,
-      day: day.value
+@app.route("/")
+def home():
+    return render_template("index.html")
+
+
+@app.route("/add", methods=["POST"])
+def add_bar():
+    bars = load_bars()
+
+    name = request.form["name"]
+    special = request.form["special"]
+    address = request.form["address"]
+    day = request.form["day"]
+
+    lat, lng = geocode(address)
+
+    bars.append({
+        "name": name,
+        "special": special,
+        "address": address,
+        "day": day,
+        "lat": lat,
+        "lng": lng
     })
-  })
-  .then(r=>r.json())
-  .then(d=>{
-    alert("Saved!");
-    document.querySelectorAll("input").forEach(i=>i.value="");
-  });
-}
+
+    save_bars(bars)
+    return redirect("/")
 
 
-function findBars(){
-navigator.geolocation.getCurrentPosition(pos=>{
-  const lat = pos.coords.latitude;
-  const lng = pos.coords.longitude;
+@app.route("/bars")
+def bars():
+    bars = load_bars()
+    today = datetime.now().strftime("%A")
 
-  if(userMarker) map.removeLayer(userMarker);
-  userMarker = L.marker([lat,lng]).addTo(map)
-      .bindPopup("You are here").openPopup();
+    # Only show today's specials
+    filtered = [b for b in bars if b["day"] == today]
 
-  fetch(`/api/find?lat=${lat}&lng=${lng}`)
-  .then(r=>r.json())
-  .then(data=>{
+    return jsonify(filtered)
 
-    markers.forEach(m=>map.removeLayer(m));
-    markers=[];
 
-    results.innerHTML="";
-
-    data.forEach(b=>{
-      const m = L.marker([b.lat,b.lng]).addTo(map)
-          .bindPopup(`${b.name}<br>${b.deal}<br>${b.distance} miles`);
-      markers.push(m);
-
-      results.innerHTML += `
-        <div class="result">
-        <b>${b.name}</b> — ${b.deal}<br>
-        ${b.distance} miles away<br>
-        ${b.validated ? "✅ Validated" : "User Entry"}
-        </div>
-      `;
-    });
-
-  });
-});
-}
-</script>
-
-</body>
-</html>
+if __name__ == "__main__":
+    app.run(debug=True)
