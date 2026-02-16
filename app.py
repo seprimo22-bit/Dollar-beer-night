@@ -2,8 +2,11 @@ from flask import Flask, render_template, request, jsonify
 import json, os, datetime
 
 app = Flask(__name__)
+
 DATA_FILE = "specials.json"
 
+
+# ---------- DATA HELPERS ----------
 
 def load_specials():
     if not os.path.exists(DATA_FILE):
@@ -17,6 +20,8 @@ def save_specials(data):
         json.dump(data, f, indent=2)
 
 
+# ---------- ROUTES ----------
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -26,13 +31,9 @@ def index():
 def get_specials():
     specials = load_specials()
 
-    # today's weekday automatically
     today = datetime.datetime.now().strftime("%A")
 
-    # optional override (if you add day selector later)
-    requested_day = request.args.get("day", today)
-
-    filtered = [s for s in specials if s.get("day") == requested_day]
+    filtered = [s for s in specials if s.get("day") == today]
 
     return jsonify(filtered)
 
@@ -42,6 +43,7 @@ def add_special():
     specials = load_specials()
     new = request.json
 
+    new["validated"] = False
     new["timestamp"] = datetime.datetime.now().isoformat()
 
     specials.append(new)
