@@ -1,75 +1,30 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Dollar Beer Night</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<hr>
 
-    <link rel="stylesheet"
-          href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<h3>Add Beer Special</h3>
 
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
-    <style>
-        body { font-family: Arial; margin: 0; padding: 0; }
-        #map { height: 70vh; }
-        button { width: 100%; padding: 12px; margin-top: 10px; }
-    </style>
-</head>
-<body>
-
-<h2>🍺 Dollar Beer Night</h2>
-
-<button onclick="findSpecials()">Find Specials Near Me</button>
-
-<div id="map"></div>
+<input id="name" placeholder="Bar Name"><br>
+<input id="deal" placeholder="Deal"><br>
+<input id="address" placeholder="Address"><br>
+<input id="day" placeholder="Day (monday, friday, etc)"><br>
+<button onclick="addSpecial()">Save Special</button>
 
 <script>
-
-let map = L.map('map').setView([41.02, -80.66], 12);
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-}).addTo(map);
-
-let userMarker;
-
-function findSpecials() {
+function addSpecial() {
     navigator.geolocation.getCurrentPosition(pos => {
-
-        let lat = pos.coords.latitude;
-        let lng = pos.coords.longitude;
-
-        if (userMarker) {
-            map.removeLayer(userMarker);
-        }
-
-        userMarker = L.marker([lat, lng]).addTo(map)
-            .bindPopup("You are here")
-            .openPopup();
-
-        map.setView([lat, lng], 13);
-
-        fetch(`/api/specials?lat=${lat}&lng=${lng}`)
-            .then(res => res.json())
-            .then(data => {
-
-                data.forEach(bar => {
-                    L.marker([bar.lat, bar.lng])
-                        .addTo(map)
-                        .bindPopup(`
-                            <b>${bar.name}</b><br>
-                            ${bar.deal}<br>
-                            ${bar.address}<br>
-                            ${bar.distance} miles away
-                        `);
-                });
-
-            });
-
+        fetch("/api/add_special", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                name: document.getElementById("name").value,
+                deal: document.getElementById("deal").value,
+                address: document.getElementById("address").value,
+                day: document.getElementById("day").value,
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude
+            })
+        })
+        .then(r => r.json())
+        .then(() => alert("Saved!"));
     });
 }
-
 </script>
-
-</body>
-</html>
