@@ -1,113 +1,91 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>Dollar Beer Night</title>
-<link rel="stylesheet"
-href="https://unpkg.com/leaflet/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+from flask import Flask, request, jsonify, render_template
+import json, os, math
+from datetime import datetime
 
-<style>
-body {font-family:Arial;margin:20px;}
-#map {height:400px;margin-top:20px;}
-.card {background:#eee;padding:10px;margin:10px 0;}
-</style>
-</head>
+app = Flask(__name__)
+SPECIALS_FILE = "Specials.json"
 
-<body>
 
-<h1>🍺 Dollar Beer Night</h1>
+# ---------- Load JSON ----------
+def load_specials():
+    if not os.path.exists(SPECIALS_FILE):
+        return []
+    with open(SPECIALS_FILE) as f:
+        return json.load(f)
 
-<button onclick="findMe()">Find Specials Near Me</button>
 
-<div id="map"></div>
-<div id="results"></div>
+def save_specials(data):
+    with open(SPECIALS_FILE, "w") as f:
+        json.dump(data, f, indent=2)
 
-<hr>
 
-<h2>Add Special</h2>
+# ---------- Distance ----------
+def haversine(lat1, lon1, lat2, lon2):
+    R = 3958.8
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
 
-<input id="name" placeholder="Bar Name"><br>
-<input id="deal" placeholder="Deal"><br>
-<input id="address" placeholder="Address (optional)"><br>
+    a = (
+        math.sin(dlat/2)**2 +
+        math.cos(math.radians(lat1)) *
+        math.cos(math.radians(lat2)) *
+        math.sin(dlon/2)**2
+    )
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    return R * c
 
-<select id="day">
-<option value="monday">Monday</option>
-<option value="tuesday">Tuesday</option>
-<option value="wednesday">Wednesday</option>
-<option value="thursday">Thursday</option>
-<option value="friday">Friday</option>
-<option value="saturday">Saturday</option>
-<option value="sunday">Sunday</option>
-</select><br>
 
-<button onclick="addSpecial()">Submit</button>
+# ---------- Routes ----------
+@app.route("/")
+def home():
+    return render_template("index.html")
 
-<script>
-let map, markers=[];
 
-function findMe(){
-navigator.geolocation.getCurrentPosition(pos=>{
+# GET specials near user
+@app.route("/api/specials")
+def specials():
+    lat = float(request.args.get("lat"))
+    lng = float(request.args.get("lng"))
+    today = datetime.now().strftime("%A").lower()
 
-const lat=pos.coords.latitude;
-const lng=pos.coords.longitude;
+    specials = load_specials()
+    results = []
 
-if(!map){
-map=L.map('map').setView([lat,lng],11);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
-.addTo(map);
-}
+    for s in specials:
+        if s.get("day","").lower() != today:
+            continue
 
-markers.forEach(m=>map.removeLayer(m));
-markers=[];
+        dist = haversine(lat, lng, s["lat"], s["lng"])
 
-let me=L.marker([lat,lng]).addTo(map)
-.bindPopup("You are here").openPopup();
+        if dist <= 100:
+            s["distance"] = round(dist,1)
+            results.append(s)
 
-markers.push(me);
+    return jsonify(results)
 
-fetch(`/api/specials?lat=${lat}&lng=${lng}`)
-.then(r=>r.json())
-.then(showResults);
 
-});
-}
+# Add special
+@app.route("/api/add_special", methods=["POST"])
+def add_special():
+    data = request.json
+    specials = load_specials()
 
-function showResults(data){
-const res=document.getElementById("results");
-res.innerHTML="";
+    # crude geocode fallback
+    # (you already have lat/lng in JSON, so this keeps it simple)
+    new_special = {
+        "name": data["name"],
+        "deal": data["deal"],
+        "address": data["address"],
+        "day": data["day"].lower(),
+        "lat": 41.02,  # default if none
+        "lng": -80.66
+    }
 
-if(!data.length){
-res.innerHTML="<p>No specials today.</p>";
-return;
-}
+    specials.append(new_special)
+    save_specials(specials)
 
-data.forEach(s=>{
-let m=L.marker([s.lat,s.lng]).addTo(map)
-.bindPopup(`${s.name}<br>${s.deal}<br>${s.distance} miles`);
-markers.push(m);
+    return jsonify({"status":"saved"})
 
-res.innerHTML+=`
-<div class="card">
-<b>${s.name}</b><br>
-${s.deal}<br>
-${s.distance} miles away
-</div>`;
-});
-}
 
-function addSpecial(){
-fetch("/api/add_special",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({
-name:name.value,
-deal:deal.value,
-address:address.value,
-day:day.value
-})
-}).then(()=>alert("Saved!"));
-}
-</script>
-
-</body>
-</html>
+if __name__ == "__main__":
+    app.run(debug=True)
