@@ -41,7 +41,6 @@ def haversine(lat1, lon1, lat2, lon2):
 
 def geocode_bar(query):
     url = "https://us1.locationiq.com/v1/search.php"
-
     params = {
         "key": LOCATIONIQ_KEY,
         "q": query + " Ohio USA",
@@ -55,7 +54,7 @@ def geocode_bar(query):
             if data:
                 return float(data[0]["lat"]), float(data[0]["lon"])
     except Exception as e:
-        print("Geocode error:", e)
+        print(e)
 
     return None, None
 
@@ -69,8 +68,8 @@ def index():
 
 @app.route("/api/add_special", methods=["POST"])
 def add_special():
-
     data = request.json
+
     name = data.get("name","").strip()
     deal = data.get("deal","").strip()
     address = data.get("address","").strip()
@@ -79,11 +78,10 @@ def add_special():
     if not name or not deal or not day:
         return jsonify({"error":"Missing info"}), 400
 
-    # Try address first, fallback to name
     lat, lng = geocode_bar(address if address else name)
 
     if lat is None:
-        return jsonify({"error":"Could not locate bar"}), 400
+        return jsonify({"error":"Location not found"}), 400
 
     specials = load_specials()
 
@@ -94,7 +92,6 @@ def add_special():
         "day": day,
         "lat": lat,
         "lng": lng,
-        "verified": False,
         "timestamp": datetime.datetime.now().isoformat()
     })
 
@@ -105,7 +102,6 @@ def add_special():
 
 @app.route("/api/specials")
 def get_specials():
-
     specials = load_specials()
 
     user_lat = float(request.args.get("lat"))
@@ -115,8 +111,6 @@ def get_specials():
     results = []
 
     for s in specials:
-
-        # Show today's specials only
         if s.get("day") != today:
             continue
 
@@ -125,7 +119,6 @@ def get_specials():
         results.append(s)
 
     results.sort(key=lambda x: x["distance"])
-
     return jsonify(results)
 
 
