@@ -1,83 +1,66 @@
 [
   {
-    "name": "Test Bar",
-    "deal": "$1 beers",
-    "address": "Youngstown Ohio",
-    "day": "sunday",
-    "lat": 41.0998,
-    "lng": -80.6495,
-    "validated": true
-  },
-  {
     "name": "Corner Tavern",
     "deal": "$1.75 cans",
-    "address": "Leetonia Ohio",
+    "address": "Leetonia, Ohio",
     "day": "monday",
-    "lat": 40.877,
-    "lng": -80.755,
-    "validated": false
+    "lat": 40.8770,
+    "lng": -80.7556
   },
   {
-    "name": "Till Then Lounge",
-    "deal": "$1.50 cans",
-    "address": "Boardman Ohio",
-    "day": "sunday",
-    "lat": 41.024,
-    "lng": -80.662,
-    "validated": false
+    "name": "Los Galos",
+    "deal": "$2 bottles",
+    "address": "Boardman, Ohio",
+    "day": "monday",
+    "lat": 41.0242,
+    "lng": -80.6629
+  },
+  {
+    "name": "Los Galos",
+    "deal": "$2 bottles",
+    "address": "Boardman, Ohio",
+    "day": "tuesday",
+    "lat": 41.0242,
+    "lng": -80.6629
+  },
+  {
+    "name": "Los Galos",
+    "deal": "$2 bottles",
+    "address": "Boardman, Ohio",
+    "day": "wednesday",
+    "lat": 41.0242,
+    "lng": -80.6629
+  },
+  {
+    "name": "Los Galos",
+    "deal": "$2 bottles",
+    "address": "Boardman, Ohio",
+    "day": "thursday",
+    "lat": 41.0242,
+    "lng": -80.6629
+  },
+  {
+    "name": "Brick House Tavern",
+    "deal": "$2.50 bottles",
+    "address": "Youngstown, Ohio",
+    "day": "friday",
+    "lat": 41.0998,
+    "lng": -80.6495
   },
   {
     "name": "Steel City",
-    "deal": "$2 bottles",
-    "address": "Youngstown Ohio",
-    "day": "friday",
+    "deal": "$2 bottles from 2pm to 8pm",
+    "address": "Youngstown, Ohio",
+    "day": "saturday",
     "lat": 41.0998,
-    "lng": -80.6495,
-    "validated": false
+    "lng": -80.6495
   },
   {
-    "name": "Brickhouse Tavern",
-    "deal": "$2 beers",
-    "address": "Youngstown Ohio",
+    "name": "Lanai Lounge",
+    "deal": "$1.50 cans",
+    "address": "Youngstown, Ohio",
     "day": "sunday",
     "lat": 41.0998,
-    "lng": -80.6495,
-    "validated": false
-  },
-  {
-    "name": "Los Gallos",
-    "deal": "$2 bottles",
-    "address": "Boardman Ohio",
-    "day": "monday",
-    "lat": 41.024,
-    "lng": -80.662,
-    "validated": false
-  },
-  {
-    "name": "Los Gallos",
-    "deal": "$2 bottles",
-    "address": "Boardman Ohio",
-    "day": "tuesday",
-    "lat": 41.024,
-    "lng": -80.662,
-    "validated": false
-  },
-  {
-    "name": "Los Gallos",
-    "deal": "$2 bottles",
-    "address": "Boardman Ohio",
-    "day": "wednesday",
-    "lat": 41.024,
-    "lng": -80.662,
-    "validated": false
-  },
-  {
-    "name": "Los Gallos",
-    "deal": "$2 bottles",
-    "address": "Boardman Ohio",
-    "day": "thursday",
-    "lat": 41.024,
-    "lng": -80.662,
-    "validated": false
+    "lng": -80.6495
   }
 ]
