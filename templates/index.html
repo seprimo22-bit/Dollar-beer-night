@@ -21,10 +21,6 @@
             margin-bottom: 10px;
         }
 
-        #list {
-            margin-top: 10px;
-        }
-
         input, button {
             width: 100%;
             padding: 10px;
@@ -41,92 +37,116 @@
 
 <h2>🍺 Dollar Beer Night</h2>
 
+<button onclick="findSpecials()">Find Specials Near Me</button>
+
 <div id="map"></div>
-<div id="list"></div>
 
 <hr>
 
 <h3>Add Beer Special</h3>
+
 <input id="name" placeholder="Bar Name">
 <input id="deal" placeholder="Deal ($2 bottles etc)">
 <input id="address" placeholder="Address">
-<input id="day" placeholder="Day (monday etc)">
-<input id="lat" placeholder="Latitude">
-<input id="lng" placeholder="Longitude">
-
-<button onclick="saveSpecial()">Save Special</button>
+<input id="day" placeholder="Day (monday, friday etc)">
+<button onclick="addSpecial()">Save Special</button>
 
 <script>
 
 let map = L.map('map').setView([41.02, -80.66], 12);
-let markers = [];
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
+let userMarker;
+let barMarkers = [];
 
-function loadSpecials(lat, lng) {
-    fetch(`/api/specials?lat=${lat}&lng=${lng}`)
-        .then(res => res.json())
-        .then(data => {
 
-            document.getElementById("list").innerHTML = "";
+// FIND SPECIALS
+function findSpecials() {
 
-            markers.forEach(m => map.removeLayer(m));
-            markers = [];
+    navigator.geolocation.getCurrentPosition(pos => {
 
-            data.forEach(bar => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
 
-                let marker = L.marker([bar.lat, bar.lng])
-                    .addTo(map)
-                    .bindPopup(`<b>${bar.name}</b><br>${bar.deal}<br>${bar.distance} miles`);
+        if (userMarker) map.removeLayer(userMarker);
 
-                markers.push(marker);
+        userMarker = L.marker([lat, lng])
+            .addTo(map)
+            .bindPopup("You are here")
+            .openPopup();
 
-                document.getElementById("list").innerHTML += `
-                    <b>${bar.name}</b><br>
-                    ${bar.deal}<br>
-                    ${bar.address}<br>
-                    ${bar.distance} miles away
-                    <hr>
-                `;
+        map.setView([lat, lng], 13);
+
+        barMarkers.forEach(m => map.removeLayer(m));
+        barMarkers = [];
+
+        fetch(`/api/specials?lat=${lat}&lng=${lng}`)
+            .then(res => res.json())
+            .then(data => {
+
+                if (!data.length) {
+                    alert("No specials found for today nearby.");
+                    return;
+                }
+
+                data.forEach(bar => {
+                    const marker = L.marker([bar.lat, bar.lng])
+                        .addTo(map)
+                        .bindPopup(`
+                            <b>${bar.name}</b><br>
+                            ${bar.deal}<br>
+                            ${bar.address}<br>
+                            ${bar.distance} miles away
+                        `);
+
+                    barMarkers.push(marker);
+                });
+
             });
-        });
+
+    }, () => {
+        alert("Location permission required.");
+    });
 }
 
 
-navigator.geolocation.getCurrentPosition(pos => {
+// ADD SPECIAL
+function addSpecial() {
 
-    let lat = pos.coords.latitude;
-    let lng = pos.coords.longitude;
+    const name = document.getElementById("name").value;
+    const deal = document.getElementById("deal").value;
+    const address = document.getElementById("address").value;
+    const day = document.getElementById("day").value;
 
-    L.marker([lat, lng])
-        .addTo(map)
-        .bindPopup("You are here")
-        .openPopup();
+    if (!name || !deal || !address || !day) {
+        alert("Fill all fields.");
+        return;
+    }
 
-    map.setView([lat, lng], 13);
+    navigator.geolocation.getCurrentPosition(pos => {
 
-    loadSpecials(lat, lng);
-});
-
-
-function saveSpecial() {
-
-    fetch("/api/add_special", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-            name: document.getElementById("name").value,
-            deal: document.getElementById("deal").value,
-            address: document.getElementById("address").value,
-            day: document.getElementById("day").value,
-            lat: document.getElementById("lat").value,
-            lng: document.getElementById("lng").value
+        fetch("/api/add_special", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                name,
+                deal,
+                address,
+                day,
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude
+            })
         })
-    })
-    .then(() => alert("Saved! Refresh to see it."));
+        .then(res => res.json())
+        .then(() => {
+            alert("Saved.");
+            findSpecials();
+        });
+
+    });
 }
 
 </script>
