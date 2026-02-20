@@ -7,9 +7,10 @@ import requests
 
 app = Flask(__name__)
 
-DATA_FILE = "bars.json"
+# Match your repo filename exactly
+DATA_FILE = "Specials.json"
 
-# 🔑 Your LocationIQ API Key
+# Your LocationIQ key
 LOCATIONIQ_KEY = "pk.294e06f9df72782c42392cee32c94dd9"
 
 
@@ -18,8 +19,11 @@ LOCATIONIQ_KEY = "pk.294e06f9df72782c42392cee32c94dd9"
 def load_specials():
     if not os.path.exists(DATA_FILE):
         return []
-    with open(DATA_FILE, "r") as f:
-        return json.load(f)
+    try:
+        with open(DATA_FILE, "r") as f:
+            return json.load(f)
+    except:
+        return []
 
 
 def save_specials(data):
@@ -49,10 +53,10 @@ def geocode_bar(query):
     }
 
     try:
-        response = requests.get(url, params=params)
+        response = requests.get(url, params=params, timeout=8)
         if response.status_code == 200:
             data = response.json()
-            if len(data) > 0:
+            if data:
                 return float(data[0]["lat"]), float(data[0]["lon"])
     except Exception as e:
         print("Geocode error:", e)
@@ -71,13 +75,16 @@ def index():
 def add_special():
     data = request.json
 
-    bar_name = data["name"].strip()
-    deal = data["deal"].strip()
+    name = data.get("name", "").strip()
+    deal = data.get("deal", "").strip()
     address = data.get("address", "").strip()
-    day = data["day"].strip().lower()
+    day = data.get("day", "").strip().lower()
 
-    # 🔥 Auto geocode by name only
-    lat, lng = geocode_bar(bar_name)
+    if not name or not deal or not day:
+        return jsonify({"error": "Missing required fields"}), 400
+
+    # Try address first, fallback to name
+    lat, lng = geocode_bar(address if address else name)
 
     if lat is None or lng is None:
         return jsonify({"error": "Could not locate bar"}), 400
@@ -85,7 +92,7 @@ def add_special():
     specials = load_specials()
 
     specials.append({
-        "name": bar_name,
+        "name": name,
         "deal": deal,
         "address": address,
         "day": day,
@@ -105,19 +112,19 @@ def get_specials():
 
     user_lat = float(request.args.get("lat"))
     user_lng = float(request.args.get("lng"))
+
     today = datetime.datetime.now().strftime("%A").lower()
 
     results = []
 
     for s in specials:
-        if s["day"] != today:
+        if s.get("day") != today:
             continue
 
         dist = haversine(user_lat, user_lng, s["lat"], s["lng"])
         s["distance"] = round(dist, 1)
         results.append(s)
 
-    # Sort by closest
     results.sort(key=lambda x: x["distance"])
 
     return jsonify(results)
