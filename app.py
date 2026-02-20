@@ -1,21 +1,13 @@
 from flask import Flask, request, jsonify, render_template
-import json
-import os
-import math
-import datetime
-import requests
+import json, os, math, datetime, requests
 
 app = Flask(__name__)
 
-# Match your repo filename exactly
 DATA_FILE = "Specials.json"
-
-# Your LocationIQ key
 LOCATIONIQ_KEY = "pk.294e06f9df72782c42392cee32c94dd9"
 
 
-# ---------- Utility Functions ----------
-
+# ---------- Storage ----------
 def load_specials():
     if not os.path.exists(DATA_FILE):
         return []
@@ -31,8 +23,9 @@ def save_specials(data):
         json.dump(data, f, indent=2)
 
 
+# ---------- Distance ----------
 def haversine(lat1, lon1, lat2, lon2):
-    R = 3958.8  # miles
+    R = 3958.8
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
     dlambda = math.radians(lon2 - lon1)
@@ -43,19 +36,19 @@ def haversine(lat1, lon1, lat2, lon2):
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
 
+# ---------- Geocode ----------
 def geocode_bar(query):
     url = "https://us1.locationiq.com/v1/search.php"
-
     params = {
         "key": LOCATIONIQ_KEY,
-        "q": query + " Ohio USA",
+        "q": query,
         "format": "json"
     }
 
     try:
-        response = requests.get(url, params=params, timeout=8)
-        if response.status_code == 200:
-            data = response.json()
+        r = requests.get(url, params=params, timeout=8)
+        if r.status_code == 200:
+            data = r.json()
             if data:
                 return float(data[0]["lat"]), float(data[0]["lon"])
     except Exception as e:
@@ -65,7 +58,6 @@ def geocode_bar(query):
 
 
 # ---------- Routes ----------
-
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -81,12 +73,11 @@ def add_special():
     day = data.get("day", "").strip().lower()
 
     if not name or not deal or not day:
-        return jsonify({"error": "Missing required fields"}), 400
+        return jsonify({"error": "Missing fields"}), 400
 
-    # Try address first, fallback to name
     lat, lng = geocode_bar(address if address else name)
 
-    if lat is None or lng is None:
+    if lat is None:
         return jsonify({"error": "Could not locate bar"}), 400
 
     specials = load_specials()
@@ -102,17 +93,15 @@ def add_special():
     })
 
     save_specials(specials)
-
     return jsonify({"status": "saved"})
 
 
-@app.route("/api/specials", methods=["GET"])
+@app.route("/api/specials")
 def get_specials():
     specials = load_specials()
 
-    user_lat = float(request.args.get("lat"))
-    user_lng = float(request.args.get("lng"))
-
+    lat = float(request.args.get("lat"))
+    lng = float(request.args.get("lng"))
     today = datetime.datetime.now().strftime("%A").lower()
 
     results = []
@@ -121,12 +110,11 @@ def get_specials():
         if s.get("day") != today:
             continue
 
-        dist = haversine(user_lat, user_lng, s["lat"], s["lng"])
-        s["distance"] = round(dist, 1)
+        d = haversine(lat, lng, s["lat"], s["lng"])
+        s["distance"] = round(d, 1)
         results.append(s)
 
     results.sort(key=lambda x: x["distance"])
-
     return jsonify(results)
 
 
