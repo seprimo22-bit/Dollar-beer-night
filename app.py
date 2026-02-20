@@ -1,56 +1,47 @@
 from flask import Flask, request, jsonify, render_template
-import sqlite3
 from datetime import datetime
+import json
 import math
 import os
 
 app = Flask(__name__)
 
-DATABASE = "events.db"
+SPECIALS_FILE = "Specials.json"
 
 
 # -------------------------
-# Database Init
+# Load Specials
 # -------------------------
-def init_db():
-    conn = sqlite3.connect(DATABASE)
-    c = conn.cursor()
+def load_specials():
+    if not os.path.exists(SPECIALS_FILE):
+        return []
 
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            location TEXT,
-            latitude REAL,
-            longitude REAL,
-            price TEXT,
-            description TEXT,
-            day TEXT,
-            created_at TEXT
-        )
-    """)
-
-    conn.commit()
-    conn.close()
+    with open(SPECIALS_FILE, "r") as f:
+        return json.load(f)
 
 
-init_db()
+# -------------------------
+# Save Specials
+# -------------------------
+def save_specials(data):
+    with open(SPECIALS_FILE, "w") as f:
+        json.dump(data, f, indent=2)
 
 
 # -------------------------
 # Distance Calculation
 # -------------------------
 def haversine(lat1, lon1, lat2, lon2):
-    R = 3958.8  # Earth radius in miles
+    R = 3958.8  # miles
 
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
 
     a = (
-        math.sin(dlat / 2) ** 2
-        + math.cos(math.radians(lat1))
-        * math.cos(math.radians(lat2))
-        * math.sin(dlon / 2) ** 2
+        math.sin(dlat / 2) ** 2 +
+        math.cos(math.radians(lat1)) *
+        math.cos(math.radians(lat2)) *
+        math.sin(dlon / 2) ** 2
     )
 
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
@@ -69,83 +60,58 @@ def home():
 # Submit New Special
 # -------------------------
 @app.route("/submit", methods=["POST"])
-def submit_event():
+def submit():
     data = request.json
 
-    conn = sqlite3.connect(DATABASE)
-    c = conn.cursor()
+    specials = load_specials()
 
-    c.execute("""
-        INSERT INTO events
-        (name, location, latitude, longitude, price, description, day, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        data.get("name"),
-        data.get("location"),
-        data.get("lat"),
-        data.get("lon"),
-        data.get("price"),
-        data.get("description"),
-        data.get("day").lower(),  # store lowercase for consistency
-        datetime.utcnow().isoformat()
-    ))
+    new_special = {
+        "name": data.get("name"),
+        "deal": data.get("deal"),
+        "address": data.get("address"),
+        "day": data.get("day").lower(),
+        "lat": float(data.get("lat")),
+        "lng": float(data.get("lng"))
+    }
 
-    conn.commit()
-    conn.close()
+    specials.append(new_special)
+    save_specials(specials)
 
-    return jsonify({"status": "submitted"})
+    return jsonify({"status": "saved"})
 
 
 # -------------------------
-# Nearby Filter (Day + Radius)
+# Find Nearby Specials
 # -------------------------
 @app.route("/nearby", methods=["POST"])
 def nearby():
     user_lat = float(request.json["lat"])
-    user_lon = float(request.json["lon"])
+    user_lng = float(request.json["lng"])
 
     today = datetime.now().strftime("%A").lower()
 
-    conn = sqlite3.connect(DATABASE)
-    c = conn.cursor()
-
-    c.execute("SELECT * FROM events")
-    rows = c.fetchall()
-    conn.close()
-
+    specials = load_specials()
     results = []
 
-    for r in rows:
-        event_day = (r[7] or "").lower()
-
-        if event_day != today:
+    for bar in specials:
+        if bar["day"].lower() != today:
             continue
 
-        event_lat = r[3]
-        event_lon = r[4]
-
-        if event_lat is None or event_lon is None:
-            continue
-
-        distance = haversine(user_lat, user_lon, event_lat, event_lon)
+        distance = haversine(
+            user_lat,
+            user_lng,
+            float(bar["lat"]),
+            float(bar["lng"])
+        )
 
         if distance <= 100:  # 100-mile radius
-            results.append({
-                "id": r[0],
-                "name": r[1],
-                "location": r[2],
-                "lat": event_lat,
-                "lon": event_lon,
-                "price": r[5],
-                "description": r[6],
-                "day": r[7]
-            })
+            results.append(bar)
 
     return jsonify(results)
 
 
 # -------------------------
-# Run Server
+# Run
 # -------------------------
 if __name__ == "__main__":
     app.run(debug=True)
