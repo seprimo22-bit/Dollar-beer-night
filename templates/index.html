@@ -1,52 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
 <title>Dollar Beer Night</title>
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
 <style>
-body {
-    font-family: Arial, sans-serif;
-    margin: 30px;
-    background: #f4f6f8;
-}
-
-h1 {
-    color: #222;
-}
-
-button {
-    padding: 10px 16px;
-    border: none;
-    background: #1976d2;
-    color: white;
-    border-radius: 6px;
-    cursor: pointer;
-    margin-top: 10px;
-}
-
-button:hover {
-    background: #145ca3;
-}
-
-.card {
-    background: white;
-    padding: 15px;
-    margin: 12px 0;
-    border-radius: 8px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-}
-
-input, select {
-    padding: 8px;
-    margin: 6px 0;
-    width: 300px;
-    max-width: 90%;
-}
-
-hr {
-    margin: 40px 0;
-}
+body { font-family: Arial; margin: 20px; }
+#map { height: 400px; margin-top: 20px; }
+.card { margin:10px 0; padding:10px; background:#f5f5f5; }
+button { padding:8px 15px; }
 </style>
 </head>
 
@@ -56,6 +20,7 @@ hr {
 
 <button onclick="findMe()">Find Specials Near Me</button>
 
+<div id="map"></div>
 <div id="results"></div>
 
 <hr>
@@ -79,27 +44,41 @@ hr {
 <button onclick="addSpecial()">Submit Special</button>
 
 <script>
+let map;
+
 function findMe() {
+
     if (!navigator.geolocation) {
         alert("Geolocation not supported.");
         return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-        position => {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
+    navigator.geolocation.getCurrentPosition(position => {
 
-            fetch(`/api/specials?lat=${lat}&lng=${lng}`)
-                .then(res => res.json())
-                .then(showResults)
-                .catch(err => alert("Error loading specials"));
-        },
-        () => alert("Location permission denied.")
-    );
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        if (!map) {
+            map = L.map('map').setView([lat, lng], 10);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+        }
+
+        L.marker([lat, lng]).addTo(map)
+            .bindPopup("You are here")
+            .openPopup();
+
+        fetch(`/api/specials?lat=${lat}&lng=${lng}`)
+            .then(res => res.json())
+            .then(data => showResults(data, lat, lng));
+
+    }, () => alert("Location permission denied."));
 }
 
-function showResults(data) {
+function showResults(data, lat, lng) {
+
     const container = document.getElementById("results");
     container.innerHTML = "";
 
@@ -109,6 +88,10 @@ function showResults(data) {
     }
 
     data.forEach(s => {
+
+        L.marker([s.lat, s.lng]).addTo(map)
+            .bindPopup(`${s.name}<br>${s.deal}<br>${s.distance} miles away`);
+
         container.innerHTML += `
             <div class="card">
                 <strong>${s.name}</strong><br>
@@ -121,6 +104,7 @@ function showResults(data) {
 }
 
 function addSpecial() {
+
     const payload = {
         name: document.getElementById("name").value,
         deal: document.getElementById("deal").value,
@@ -134,13 +118,7 @@ function addSpecial() {
         body: JSON.stringify(payload)
     })
     .then(res => res.json())
-    .then(() => {
-        alert("Special added!");
-        document.getElementById("name").value = "";
-        document.getElementById("deal").value = "";
-        document.getElementById("address").value = "";
-    })
-    .catch(() => alert("Error adding special"));
+    .then(() => alert("Special added!"));
 }
 </script>
 
