@@ -1,11 +1,12 @@
 from flask import Flask, request, jsonify, render_template
 import json, os, math
+from datetime import datetime
 
 app = Flask(__name__)
 SPECIALS_FILE = "Specials.json"
 
 
-# -------- Load specials automatically on startup --------
+# -------- Load JSON --------
 def load_specials():
     if not os.path.exists(SPECIALS_FILE):
         return []
@@ -18,7 +19,7 @@ def save_specials(data):
         json.dump(data, f, indent=2)
 
 
-# -------- Distance calculation --------
+# -------- Distance --------
 def haversine(lat1, lon1, lat2, lon2):
     R = 3958.8  # miles
     dlat = math.radians(lat2 - lat1)
@@ -40,29 +41,37 @@ def home():
     return render_template("index.html")
 
 
-# -------- Get nearby beer specials --------
+# -------- Get specials --------
 @app.route("/api/specials")
 def get_specials():
     lat = float(request.args.get("lat"))
     lng = float(request.args.get("lng"))
 
+    today = datetime.now().strftime("%A").lower()
+
     specials = load_specials()
     results = []
 
     for s in specials:
-        if "lat" not in s or "lng" not in s:
+        if s.get("day", "").lower() != today:
             continue
 
         distance = haversine(lat, lng, s["lat"], s["lng"])
 
-        if distance <= 100:  # 100 mile radius
-            s["distance"] = round(distance, 1)
-            results.append(s)
+        if distance <= 100:
+            results.append({
+                "name": s["name"],
+                "deal": s["deal"],
+                "address": s["address"],
+                "lat": s["lat"],
+                "lng": s["lng"],
+                "distance": round(distance, 1)
+            })
 
     return jsonify(results)
 
 
-# -------- Add new bar special --------
+# -------- Add special --------
 @app.route("/api/add_special", methods=["POST"])
 def add_special():
     data = request.json
@@ -72,9 +81,11 @@ def add_special():
         "name": data["name"],
         "deal": data["deal"],
         "address": data["address"],
+        "day": data["day"].lower(),
         "lat": float(data["lat"]),
         "lng": float(data["lng"])
     })
 
     save_specials(specials)
+
     return jsonify({"status": "saved"})
