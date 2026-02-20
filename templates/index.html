@@ -1,111 +1,114 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
 <title>Dollar Beer Night</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<link rel="stylesheet"
- href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <style>
-body{font-family:Arial;padding:10px;background:#f4f4f4;}
-input,button{
-  width:100%;padding:10px;margin:6px 0;
-  border-radius:6px;border:1px solid #ccc;
+body {
+    font-family: Arial, sans-serif;
+    margin: 30px;
+    background: #f5f5f5;
 }
-button{background:#2563eb;color:white;border:none;}
-#map{height:400px;margin-top:10px;border-radius:10px;}
-.result{
-  background:white;padding:10px;margin-top:6px;
-  border-radius:6px;
+h1 { color: #333; }
+
+button {
+    padding: 10px 15px;
+    margin: 10px 0;
+    cursor: pointer;
+}
+
+.card {
+    background: white;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 8px;
+    box-shadow: 0 0 5px rgba(0,0,0,0.1);
 }
 </style>
 </head>
-
 <body>
 
-<h2>🍺 Dollar Beer Night</h2>
+<h1>🍺 Dollar Beer Night</h1>
 
-<h3>Add Special</h3>
+<button onclick="findMe()">Find Specials Near Me</button>
 
-<input id="name" placeholder="Bar Name">
-<input id="deal" placeholder="$1.50 cans etc">
-<input id="address" placeholder="City / State / Address">
-<input id="day" placeholder="Sunday–Saturday">
-
-<button onclick="saveSpecial()">Save Special</button>
-
-<h3>Find Beer Near Me</h3>
-<button onclick="findBeer()">Find Beer</button>
-
-<div id="map"></div>
 <div id="results"></div>
 
+<hr>
+
+<h2>Add a Special</h2>
+
+<input id="name" placeholder="Bar Name"><br>
+<input id="deal" placeholder="Special Deal"><br>
+<input id="address" placeholder="Address"><br>
+
+<select id="day">
+<option>monday</option>
+<option>tuesday</option>
+<option>wednesday</option>
+<option>thursday</option>
+<option>friday</option>
+<option>saturday</option>
+<option>sunday</option>
+</select><br>
+
+<button onclick="addSpecial()">Submit Special</button>
+
 <script>
-let map = L.map('map').setView([41.1,-80.6],11);
-L.tileLayer(
- 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
- {maxZoom:19}).addTo(map);
+function findMe() {
+    if (!navigator.geolocation) {
+        alert("Geolocation not supported.");
+        return;
+    }
 
-let userMarker;
+    navigator.geolocation.getCurrentPosition(pos => {
+        let lat = pos.coords.latitude;
+        let lng = pos.coords.longitude;
 
-
-async function saveSpecial(){
-
-  let payload = {
-    name:name.value,
-    deal:deal.value,
-    address:address.value,
-    day:day.value
-  };
-
-  await fetch("/api/specials",{
-    method:"POST",
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(payload)
-  });
-
-  document.querySelectorAll("input")
-    .forEach(i=>i.value="");
-
-  alert("Saved!");
+        fetch(`/api/specials?lat=${lat}&lng=${lng}`)
+        .then(res => res.json())
+        .then(showResults)
+        .catch(err => alert("Error loading specials"));
+    });
 }
 
+function showResults(data) {
+    let container = document.getElementById("results");
+    container.innerHTML = "";
 
-function findBeer(){
- navigator.geolocation.getCurrentPosition(async pos=>{
+    if (!data.length) {
+        container.innerHTML = "<p>No specials found today.</p>";
+        return;
+    }
 
-  let lat=pos.coords.latitude;
-  let lng=pos.coords.longitude;
+    data.forEach(s => {
+        container.innerHTML += `
+            <div class="card">
+                <strong>${s.name}</strong><br>
+                ${s.deal}<br>
+                ${s.address}<br>
+                Distance: ${s.distance} miles
+            </div>
+        `;
+    });
+}
 
-  if(userMarker) map.removeLayer(userMarker);
+function addSpecial() {
+    let payload = {
+        name: document.getElementById("name").value,
+        deal: document.getElementById("deal").value,
+        address: document.getElementById("address").value,
+        day: document.getElementById("day").value
+    };
 
-  userMarker=L.marker([lat,lng])
-    .addTo(map)
-    .bindPopup("You are here");
-
-  map.setView([lat,lng],12);
-
-  let res=await fetch(`/api/specials?lat=${lat}&lng=${lng}`);
-  let data=await res.json();
-
-  results.innerHTML="";
-
-  data.forEach(bar=>{
-    L.marker([bar.lat,bar.lng])
-      .addTo(map)
-      .bindPopup(bar.name+"<br>"+bar.deal);
-
-    results.innerHTML += `
-      <div class="result">
-      <b>${bar.name}</b> — ${bar.deal}<br>
-      ${bar.distance} miles<br>
-      ${bar.validated ? "✔ Verified" : "User Entry"}
-      </div>`;
-  });
-
- });
+    fetch("/api/add_special", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(() => alert("Special added!"))
+    .catch(() => alert("Error adding special"));
 }
 </script>
 
