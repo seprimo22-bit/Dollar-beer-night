@@ -2,10 +2,12 @@ from flask import Flask, request, jsonify, render_template
 import sqlite3
 import math
 import datetime
+from geopy.geocoders import Nominatim
 
 app = Flask(__name__)
 
 DB = "specials.db"
+geolocator = Nominatim(user_agent="beer_locator", timeout=5)
 
 
 # ---------- DATABASE SETUP ----------
@@ -58,6 +60,17 @@ def index():
 def add_special():
     data = request.json
 
+    address = data["address"]
+
+    # AUTO GEOCODE ADDRESS
+    try:
+        location = geolocator.geocode(address)
+        lat = location.latitude if location else None
+        lng = location.longitude if location else None
+    except Exception as e:
+        print("Geocode error:", e)
+        lat, lng = None, None
+
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
@@ -67,10 +80,10 @@ def add_special():
     """, (
         data["name"],
         data["deal"],
-        data["address"],
+        address,
         data["day"].lower(),
-        41.1,  # placeholder coords
-        -80.6
+        lat,
+        lng
     ))
 
     conn.commit()
@@ -84,38 +97,15 @@ def get_specials():
 
     user_lat = float(request.args.get("lat", 41.1))
     user_lng = float(request.args.get("lng", -80.6))
-    today = datetime.datetime.now().strftime("%A").lower()
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    c.execute("SELECT name, deal, address, day, lat, lng FROM specials")
+    c.execute("SELECT name, deal, address, lat, lng FROM specials")
     rows = c.fetchall()
 
     conn.close()
 
     results = []
 
-    for r in rows:
-        name, deal, address, day, lat, lng = r
-
-        if day != today:
-            continue
-
-        dist = haversine(user_lat, user_lng, lat, lng)
-
-        if dist <= 60:
-            results.append({
-                "name": name,
-                "deal": deal,
-                "address": address,
-                "lat": lat,
-                "lng": lng,
-                "distance": round(dist, 1)
-            })
-
-    return jsonify(results)
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
+    for name, deal, address, lat, lng in rows:
