@@ -1,11 +1,12 @@
-from flask import Flask, render_template, request, jsonify
-import json, os
+from flask import Flask, request, jsonify, render_template
+import json, os, math
+from datetime import datetime
 
 app = Flask(__name__)
 SPECIALS_FILE = "Specials.json"
 
 
-# Load specials
+# ---------- Load JSON ----------
 def load_specials():
     if not os.path.exists(SPECIALS_FILE):
         return []
@@ -13,41 +14,74 @@ def load_specials():
         return json.load(f)
 
 
-# Save specials
 def save_specials(data):
     with open(SPECIALS_FILE, "w") as f:
         json.dump(data, f, indent=2)
 
 
-# Homepage
+# ---------- Distance ----------
+def haversine(lat1, lon1, lat2, lon2):
+    R = 3958.8
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+
+    a = (
+        math.sin(dlat/2)**2 +
+        math.cos(math.radians(lat1)) *
+        math.cos(math.radians(lat2)) *
+        math.sin(dlon/2)**2
+    )
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    return R * c
+
+
+# ---------- Homepage ----------
 @app.route("/")
 def home():
     return render_template("index.html")
 
 
-# API: Get specials for map
-@app.route("/api/specials", methods=["POST"])
-def get_specials():
+# ---------- Get specials near user ----------
+@app.route("/api/specials")
+def specials():
+    lat = float(request.args.get("lat"))
+    lng = float(request.args.get("lng"))
+    today = datetime.now().strftime("%A").lower()
+
     specials = load_specials()
-    return jsonify(specials)
+    results = []
+
+    for s in specials:
+        if s.get("day", "").lower() != today:
+            continue
+
+        dist = haversine(lat, lng, s["lat"], s["lng"])
+
+        if dist <= 100:
+            s["distance"] = round(dist, 1)
+            results.append(s)
+
+    return jsonify(results)
 
 
-# API: Add special (crowdsourced)
+# ---------- Add special ----------
 @app.route("/api/add_special", methods=["POST"])
 def add_special():
     data = request.json
     specials = load_specials()
 
-    specials.append({
-        "name": data.get("name"),
-        "deal": data.get("deal"),
-        "address": data.get("address"),
-        "lat": data.get("lat"),
-        "lon": data.get("lon"),
-        "days": data.get("days")
-    })
+    new_special = {
+        "name": data["name"],
+        "deal": data["deal"],
+        "address": data["address"],
+        "day": data["day"].lower(),
+        "lat": data.get("lat", 41.02),
+        "lng": data.get("lng", -80.66)
+    }
 
+    specials.append(new_special)
     save_specials(specials)
+
     return jsonify({"status": "saved"})
 
 
