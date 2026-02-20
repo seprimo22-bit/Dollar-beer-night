@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify, render_template
 import sqlite3
 from datetime import datetime
+import math
+import os
 
 app = Flask(__name__)
 
@@ -21,10 +23,9 @@ def init_db():
             location TEXT,
             latitude REAL,
             longitude REAL,
-            price REAL,
+            price TEXT,
             description TEXT,
-            category TEXT,
-            verified INTEGER DEFAULT 0,
+            day TEXT,
             created_at TEXT
         )
     """)
@@ -37,41 +38,31 @@ init_db()
 
 
 # -------------------------
+# Distance Calculation
+# -------------------------
+def haversine(lat1, lon1, lat2, lon2):
+    R = 3958.8  # Earth radius in miles
+
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(math.radians(lat1))
+        * math.cos(math.radians(lat2))
+        * math.sin(dlon / 2) ** 2
+    )
+
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
+
+# -------------------------
 # Home Page
 # -------------------------
 @app.route("/")
 def home():
     return render_template("index.html")
-
-
-# -------------------------
-# Get All Events
-# -------------------------
-@app.route("/events")
-def get_events():
-    conn = sqlite3.connect(DATABASE)
-    c = conn.cursor()
-
-    c.execute("SELECT * FROM events ORDER BY created_at DESC")
-    rows = c.fetchall()
-    conn.close()
-
-    events = []
-    for r in rows:
-        events.append({
-            "id": r[0],
-            "name": r[1],
-            "location": r[2],
-            "lat": r[3],
-            "lon": r[4],
-            "price": r[5],
-            "description": r[6],
-            "category": r[7],
-            "verified": bool(r[8]),
-            "created_at": r[9]
-        })
-
-    return jsonify(events)
 
 
 # -------------------------
@@ -86,7 +77,7 @@ def submit_event():
 
     c.execute("""
         INSERT INTO events
-        (name, location, latitude, longitude, price, description, category, created_at)
+        (name, location, latitude, longitude, price, description, day, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         data.get("name"),
@@ -95,7 +86,7 @@ def submit_event():
         data.get("lon"),
         data.get("price"),
         data.get("description"),
-        data.get("category"),  # bar, baseball, hockey, etc.
+        data.get("day").lower(),  # store lowercase for consistency
         datetime.utcnow().isoformat()
     ))
 
@@ -106,25 +97,51 @@ def submit_event():
 
 
 # -------------------------
-# Simple Nearby Filter
-# (placeholder — real geo later)
+# Nearby Filter (Day + Radius)
 # -------------------------
 @app.route("/nearby", methods=["POST"])
 def nearby():
-    lat = float(request.json["lat"])
-    lon = float(request.json["lon"])
+    user_lat = float(request.json["lat"])
+    user_lon = float(request.json["lon"])
 
-    # MVP: just return all events for now
-    # later add distance calc (Haversine)
-    return get_events()
+    today = datetime.now().strftime("%A").lower()
 
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
 
-# -------------------------
-# Feedback Endpoint
-# -------------------------
-@app.route("/feedback", methods=["POST"])
-def feedback():
-    return jsonify({"status": "received"})
+    c.execute("SELECT * FROM events")
+    rows = c.fetchall()
+    conn.close()
+
+    results = []
+
+    for r in rows:
+        event_day = (r[7] or "").lower()
+
+        if event_day != today:
+            continue
+
+        event_lat = r[3]
+        event_lon = r[4]
+
+        if event_lat is None or event_lon is None:
+            continue
+
+        distance = haversine(user_lat, user_lon, event_lat, event_lon)
+
+        if distance <= 100:  # 100-mile radius
+            results.append({
+                "id": r[0],
+                "name": r[1],
+                "location": r[2],
+                "lat": event_lat,
+                "lon": event_lon,
+                "price": r[5],
+                "description": r[6],
+                "day": r[7]
+            })
+
+    return jsonify(results)
 
 
 # -------------------------
