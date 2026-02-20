@@ -1,11 +1,13 @@
 from flask import Flask, request, jsonify, render_template
 import json, os, math
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 app = Flask(__name__)
 SPECIALS_FILE = "Specials.json"
 
 
+# -------- Load JSON --------
 def load_specials():
     if not os.path.exists(SPECIALS_FILE):
         return []
@@ -13,11 +15,13 @@ def load_specials():
         return json.load(f)
 
 
+# -------- Save JSON --------
 def save_specials(data):
     with open(SPECIALS_FILE, "w") as f:
         json.dump(data, f, indent=2)
 
 
+# -------- Distance --------
 def haversine(lat1, lon1, lat2, lon2):
     R = 3958.8
     dlat = math.radians(lat2 - lat1)
@@ -43,7 +47,9 @@ def get_specials():
     lat = float(request.args.get("lat"))
     lng = float(request.args.get("lng"))
 
-    today = datetime.now().strftime("%A").lower()
+    # Correct timezone (Ohio Eastern Time)
+    today = datetime.now(ZoneInfo("America/New_York")).strftime("%A").lower()
+
     specials = load_specials()
     results = []
 
@@ -84,4 +90,5 @@ def add_special():
     })
 
     save_specials(specials)
+
     return jsonify({"status": "saved"})
