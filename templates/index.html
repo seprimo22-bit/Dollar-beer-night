@@ -2,15 +2,14 @@
 <html>
 <head>
 <title>Dollar Beer Night</title>
-
 <link rel="stylesheet"
 href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <style>
-body { font-family: Arial; margin:20px; }
-#map { height:400px; margin-top:20px; }
-.card { padding:10px; margin:10px 0; background:#eee; }
+body {font-family:Arial;margin:20px;}
+#map {height:400px;margin-top:20px;}
+.card {background:#eee;padding:10px;margin:10px 0;}
 </style>
 </head>
 
@@ -28,7 +27,7 @@ body { font-family: Arial; margin:20px; }
 <h2>Add Special</h2>
 
 <input id="name" placeholder="Bar Name"><br>
-<input id="deal" placeholder="Special"><br>
+<input id="deal" placeholder="Deal"><br>
 <input id="address" placeholder="Address (optional)"><br>
 
 <select id="day">
@@ -44,16 +43,16 @@ body { font-family: Arial; margin:20px; }
 <button onclick="addSpecial()">Submit</button>
 
 <script>
-let map;
-let markers=[];
+let map, markers=[];
 
 function findMe(){
 navigator.geolocation.getCurrentPosition(pos=>{
+
 const lat=pos.coords.latitude;
 const lng=pos.coords.longitude;
 
 if(!map){
-map=L.map('map').setView([lat,lng],10);
+map=L.map('map').setView([lat,lng],11);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
 .addTo(map);
 }
@@ -68,7 +67,8 @@ markers.push(me);
 
 fetch(`/api/specials?lat=${lat}&lng=${lng}`)
 .then(r=>r.json())
-.then(d=>showResults(d));
+.then(showResults);
+
 });
 }
 
@@ -82,17 +82,14 @@ return;
 }
 
 data.forEach(s=>{
-let m=L.marker([s.lat,s.lng])
-.addTo(map)
+let m=L.marker([s.lat,s.lng]).addTo(map)
 .bindPopup(`${s.name}<br>${s.deal}<br>${s.distance} miles`);
-
 markers.push(m);
 
 res.innerHTML+=`
 <div class="card">
 <b>${s.name}</b><br>
 ${s.deal}<br>
-${s.address||""}<br>
 ${s.distance} miles away
 </div>`;
 });
