@@ -1,49 +1,53 @@
 from flask import Flask, request, jsonify, render_template
-from geopy.geocoders import Nominatim
-import json
-import os
+import sqlite3
 import math
 import datetime
 
 app = Flask(__name__)
 
-DATA_FILE = "specials.json"
-geolocator = Nominatim(user_agent="beer_locator", timeout=5)
+DB = "specials.db"
 
 
-# ---------- Utility ----------
+# ---------- DATABASE SETUP ----------
+def init_db():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
 
-def load_specials():
-    if not os.path.exists(DATA_FILE):
-        return []
-    try:
-        with open(DATA_FILE, "r") as f:
-            return json.load(f)
-    except Exception as e:
-        print("JSON load error:", e)
-        return []
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS specials (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            deal TEXT,
+            address TEXT,
+            day TEXT,
+            lat REAL,
+            lng REAL
+        )
+    """)
+
+    conn.commit()
+    conn.close()
 
 
-def save_specials(data):
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f, indent=2)
+init_db()
 
 
+# ---------- DISTANCE FUNCTION ----------
 def haversine(lat1, lon1, lat2, lon2):
-    R = 3958.8  # miles
+    R = 3958.8
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
     dlambda = math.radians(lon2 - lon1)
 
     a = (
-        math.sin(dphi / 2) ** 2
-        + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+        math.sin(dphi/2)**2 +
+        math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
     )
 
-    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
 
-# ---------- Routes ----------
+# ---------- ROUTES ----------
 
 @app.route("/")
 def index():
@@ -54,67 +58,64 @@ def index():
 def add_special():
     data = request.json
 
-    name = data.get("name", "").strip()
-    deal = data.get("deal", "").strip()
-    address = data.get("address", "").strip()
-    day = data.get("day", "").strip().lower()
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
 
-    if not name or not address or not day:
-        return jsonify({"error": "Missing required fields"}), 400
+    c.execute("""
+        INSERT INTO specials (name, deal, address, day, lat, lng)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (
+        data["name"],
+        data["deal"],
+        data["address"],
+        data["day"].lower(),
+        41.1,  # placeholder coords
+        -80.6
+    ))
 
-    try:
-        location = geolocator.geocode(address)
-    except Exception as e:
-        print("Geocode error:", e)
-        location = None
+    conn.commit()
+    conn.close()
 
-    lat = location.latitude if location else 41.1
-    lng = location.longitude if location else -80.6
-
-    specials = load_specials()
-
-    specials.append({
-        "name": name,
-        "deal": deal,
-        "address": address,
-        "day": day,
-        "lat": lat,
-        "lng": lng,
-        "validated": False,
-        "timestamp": datetime.datetime.now().isoformat()
-    })
-
-    save_specials(specials)
     return jsonify({"status": "saved"})
 
 
-@app.route("/api/specials", methods=["GET"])
+@app.route("/api/specials")
 def get_specials():
-    specials = load_specials()
 
     user_lat = float(request.args.get("lat", 41.1))
     user_lng = float(request.args.get("lng", -80.6))
     today = datetime.datetime.now().strftime("%A").lower()
 
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute("SELECT name, deal, address, day, lat, lng FROM specials")
+    rows = c.fetchall()
+
+    conn.close()
+
     results = []
 
-    for s in specials:
-        try:
-            if s.get("day", "").lower() != today:
-                continue
+    for r in rows:
+        name, deal, address, day, lat, lng = r
 
-            dist = haversine(user_lat, user_lng, s["lat"], s["lng"])
+        if day != today:
+            continue
 
-            if dist <= 60:
-                s["distance"] = round(dist, 1)
-                results.append(s)
+        dist = haversine(user_lat, user_lng, lat, lng)
 
-        except Exception as e:
-            print("Special processing error:", e)
+        if dist <= 60:
+            results.append({
+                "name": name,
+                "deal": deal,
+                "address": address,
+                "lat": lat,
+                "lng": lng,
+                "distance": round(dist, 1)
+            })
 
-    results.sort(key=lambda x: x["distance"])
     return jsonify(results)
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(debug=True)
