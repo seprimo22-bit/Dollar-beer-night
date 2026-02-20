@@ -3,14 +3,13 @@
 <head>
 <title>Dollar Beer Night</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <style>
-body { font-family: Arial; margin: 20px; }
-#map { height: 400px; margin-top: 20px; }
-.card { margin:10px 0; padding:10px; background:#f5f5f5; }
-button { padding:8px 15px; }
+body { font-family: Arial; margin:20px; }
+#map { height:400px; margin-top:15px; }
+.card { background:#f5f5f5; padding:10px; margin:10px 0; }
 </style>
 </head>
 
@@ -25,11 +24,10 @@ button { padding:8px 15px; }
 
 <hr>
 
-<h2>Add a Special</h2>
-
+<h2>Add Special</h2>
 <input id="name" placeholder="Bar Name"><br>
-<input id="deal" placeholder="Special Deal"><br>
-<input id="address" placeholder="Address"><br>
+<input id="deal" placeholder="Special"><br>
+<input id="address" placeholder="Address (optional)"><br>
 
 <select id="day">
 <option value="monday">Monday</option>
@@ -41,84 +39,72 @@ button { padding:8px 15px; }
 <option value="sunday">Sunday</option>
 </select><br>
 
-<button onclick="addSpecial()">Submit Special</button>
+<button onclick="addSpecial()">Submit</button>
 
 <script>
 let map;
+let markers = [];
 
-function findMe() {
-
-    if (!navigator.geolocation) {
-        alert("Geolocation not supported.");
-        return;
-    }
-
-    navigator.geolocation.getCurrentPosition(position => {
-
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-
-        if (!map) {
-            map = L.map('map').setView([lat, lng], 10);
-
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap'
-            }).addTo(map);
-        }
-
-        L.marker([lat, lng]).addTo(map)
-            .bindPopup("You are here")
-            .openPopup();
-
-        fetch(`/api/specials?lat=${lat}&lng=${lng}`)
-            .then(res => res.json())
-            .then(data => showResults(data, lat, lng));
-
-    }, () => alert("Location permission denied."));
+function clearMarkers(){
+    markers.forEach(m => map.removeLayer(m));
+    markers = [];
 }
 
-function showResults(data, lat, lng) {
+function findMe(){
+    navigator.geolocation.getCurrentPosition(pos => {
 
-    const container = document.getElementById("results");
-    container.innerHTML = "";
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
 
-    if (!data.length) {
-        container.innerHTML = "<p>No specials found today.</p>";
-        return;
-    }
+        if(!map){
+            map = L.map('map').setView([lat,lng],10);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        }
 
-    data.forEach(s => {
+        clearMarkers();
 
-        L.marker([s.lat, s.lng]).addTo(map)
-            .bindPopup(`${s.name}<br>${s.deal}<br>${s.distance} miles away`);
+        markers.push(
+            L.marker([lat,lng]).addTo(map).bindPopup("You are here")
+        );
 
-        container.innerHTML += `
-            <div class="card">
-                <strong>${s.name}</strong><br>
-                ${s.deal}<br>
-                ${s.address}<br>
-                Distance: ${s.distance} miles
-            </div>
-        `;
+        fetch(`/api/specials?lat=${lat}&lng=${lng}`)
+        .then(r=>r.json())
+        .then(data=>showResults(data));
+
     });
 }
 
-function addSpecial() {
+function showResults(data){
+    const div=document.getElementById("results");
+    div.innerHTML="";
 
-    const payload = {
-        name: document.getElementById("name").value,
-        deal: document.getElementById("deal").value,
-        address: document.getElementById("address").value,
-        day: document.getElementById("day").value
-    };
+    data.forEach(s=>{
+        markers.push(
+            L.marker([s.lat,s.lng]).addTo(map)
+            .bindPopup(`${s.name}<br>${s.deal}<br>${s.distance} miles`)
+        );
 
-    fetch("/api/add_special", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload)
-    })
-    .then(res => res.json())
-    .then(() => alert("Special added!"));
+        div.innerHTML+=`
+        <div class="card">
+        <b>${s.name}</b><br>
+        ${s.deal}<br>
+        ${s.address}<br>
+        ${s.distance} miles away
+        </div>`;
+    });
+}
+
+function addSpecial(){
+    fetch("/api/add_special",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+            name:document.getElementById("name").value,
+            deal:document.getElementById("deal").value,
+            address:document.getElementById("address").value,
+            day:document.getElementById("day").value
+        })
+    }).then(()=>alert("Saved"));
 }
 </script>
 
