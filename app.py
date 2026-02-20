@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from geopy.geocoders import Nominatim
 import json
 import os
@@ -47,7 +47,7 @@ def haversine(lat1, lon1, lat2, lon2):
 
 @app.route("/")
 def index():
-    return "Dollar Beer Night API Running"
+    return render_template("index.html")
 
 
 @app.route("/api/add_special", methods=["POST"])
@@ -62,14 +62,12 @@ def add_special():
     if not name or not address or not day:
         return jsonify({"error": "Missing required fields"}), 400
 
-    # Try geocoding
     try:
         location = geolocator.geocode(address)
     except Exception as e:
         print("Geocode error:", e)
         location = None
 
-    # Fallback coords (Youngstown area)
     lat = location.latitude if location else 41.1
     lng = location.longitude if location else -80.6
 
@@ -87,8 +85,6 @@ def add_special():
     })
 
     save_specials(specials)
-
-    print("Saved special:", specials[-1])
     return jsonify({"status": "saved"})
 
 
@@ -96,20 +92,15 @@ def add_special():
 def get_specials():
     specials = load_specials()
 
-    print("Loaded specials:", specials)
-
-    # User location
     user_lat = float(request.args.get("lat", 41.1))
     user_lng = float(request.args.get("lng", -80.6))
-
     today = datetime.datetime.now().strftime("%A").lower()
-    print("Today:", today)
 
     results = []
 
     for s in specials:
         try:
-            if s.get("day", "").strip().lower() != today:
+            if s.get("day", "").lower() != today:
                 continue
 
             dist = haversine(user_lat, user_lng, s["lat"], s["lng"])
@@ -121,12 +112,9 @@ def get_specials():
         except Exception as e:
             print("Special processing error:", e)
 
-    # Sort closest first
     results.sort(key=lambda x: x["distance"])
-
-    print("Returning:", results)
     return jsonify(results)
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)
