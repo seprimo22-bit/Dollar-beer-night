@@ -1,91 +1,75 @@
-from flask import Flask, request, jsonify, render_template
-import json, os, math
-from datetime import datetime
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dollar Beer Night</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-app = Flask(__name__)
-SPECIALS_FILE = "Specials.json"
+    <link rel="stylesheet"
+          href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-# ---------- Load JSON ----------
-def load_specials():
-    if not os.path.exists(SPECIALS_FILE):
-        return []
-    with open(SPECIALS_FILE) as f:
-        return json.load(f)
+    <style>
+        body { font-family: Arial; margin: 0; padding: 0; }
+        #map { height: 70vh; }
+        button { width: 100%; padding: 12px; margin-top: 10px; }
+    </style>
+</head>
+<body>
 
+<h2>🍺 Dollar Beer Night</h2>
 
-def save_specials(data):
-    with open(SPECIALS_FILE, "w") as f:
-        json.dump(data, f, indent=2)
+<button onclick="findSpecials()">Find Specials Near Me</button>
 
+<div id="map"></div>
 
-# ---------- Distance ----------
-def haversine(lat1, lon1, lat2, lon2):
-    R = 3958.8
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
+<script>
 
-    a = (
-        math.sin(dlat/2)**2 +
-        math.cos(math.radians(lat1)) *
-        math.cos(math.radians(lat2)) *
-        math.sin(dlon/2)**2
-    )
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-    return R * c
+let map = L.map('map').setView([41.02, -80.66], 12);
 
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
 
-# ---------- Routes ----------
-@app.route("/")
-def home():
-    return render_template("index.html")
+let userMarker;
 
+function findSpecials() {
+    navigator.geolocation.getCurrentPosition(pos => {
 
-# GET specials near user
-@app.route("/api/specials")
-def specials():
-    lat = float(request.args.get("lat"))
-    lng = float(request.args.get("lng"))
-    today = datetime.now().strftime("%A").lower()
+        let lat = pos.coords.latitude;
+        let lng = pos.coords.longitude;
 
-    specials = load_specials()
-    results = []
+        if (userMarker) {
+            map.removeLayer(userMarker);
+        }
 
-    for s in specials:
-        if s.get("day","").lower() != today:
-            continue
+        userMarker = L.marker([lat, lng]).addTo(map)
+            .bindPopup("You are here")
+            .openPopup();
 
-        dist = haversine(lat, lng, s["lat"], s["lng"])
+        map.setView([lat, lng], 13);
 
-        if dist <= 100:
-            s["distance"] = round(dist,1)
-            results.append(s)
+        fetch(`/api/specials?lat=${lat}&lng=${lng}`)
+            .then(res => res.json())
+            .then(data => {
 
-    return jsonify(results)
+                data.forEach(bar => {
+                    L.marker([bar.lat, bar.lng])
+                        .addTo(map)
+                        .bindPopup(`
+                            <b>${bar.name}</b><br>
+                            ${bar.deal}<br>
+                            ${bar.address}<br>
+                            ${bar.distance} miles away
+                        `);
+                });
 
+            });
 
-# Add special
-@app.route("/api/add_special", methods=["POST"])
-def add_special():
-    data = request.json
-    specials = load_specials()
+    });
+}
 
-    # crude geocode fallback
-    # (you already have lat/lng in JSON, so this keeps it simple)
-    new_special = {
-        "name": data["name"],
-        "deal": data["deal"],
-        "address": data["address"],
-        "day": data["day"].lower(),
-        "lat": 41.02,  # default if none
-        "lng": -80.66
-    }
+</script>
 
-    specials.append(new_special)
-    save_specials(specials)
-
-    return jsonify({"status":"saved"})
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
+</body>
+</html>
