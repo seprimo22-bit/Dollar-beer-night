@@ -11,19 +11,20 @@ app = Flask(__name__)
 DATA_DIR = "data"
 DATA_FILE = os.path.join(DATA_DIR, "specials.json")
 
-# Ensure data folder exists
+# Ensure data directory exists
 os.makedirs(DATA_DIR, exist_ok=True)
+
+# Ensure file exists
+if not os.path.exists(DATA_FILE):
+    with open(DATA_FILE, "w") as f:
+        json.dump([], f)
 
 
 # -------------------------
-# DATA UTILITIES
+# DATA FUNCTIONS
 # -------------------------
 
 def load_specials():
-    """Load specials safely."""
-    if not os.path.exists(DATA_FILE):
-        return []
-
     try:
         with open(DATA_FILE, "r") as f:
             return json.load(f)
@@ -31,10 +32,9 @@ def load_specials():
         return []
 
 
-def save_specials(data):
-    """Save specials safely."""
+def save_specials(specials):
     with open(DATA_FILE, "w") as f:
-        json.dump(data, f, indent=2)
+        json.dump(specials, f, indent=2)
 
 
 # -------------------------
@@ -58,11 +58,24 @@ def add_special():
     if not data:
         return jsonify({"error": "No data provided"}), 400
 
+    required_fields = ["barName", "deal", "location"]
+
+    for field in required_fields:
+        if field not in data or not data[field]:
+            return jsonify({"error": f"{field} is required"}), 400
+
     specials = load_specials()
-    specials.append(data)
+
+    specials.append({
+        "barName": data["barName"],
+        "deal": data["deal"],
+        "location": data["location"],
+        "day": data.get("day", "")
+    })
+
     save_specials(specials)
 
-    return jsonify({"status": "added", "data": data})
+    return jsonify({"status": "added"})
 
 
 @app.route("/api/specials/clear", methods=["POST"])
@@ -77,4 +90,4 @@ def clear_specials():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(host="0.0.0.0", port=port)
