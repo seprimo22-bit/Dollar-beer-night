@@ -1,4 +1,7 @@
-navigator.geolocation.getCurrentPosition()[
+[{
+  "barName": "Steel City",
+  "location": "Youngstown, Ohio"
+}
   {
     "barName": "Steel City",
     "deal": "$2 bottles",
@@ -42,3 +45,4 @@ navigator.geolocation.getCurrentPosition()[
     "day": "Friday"
   }
 ]
+navigator.geolocation.getCurrentPosition()
