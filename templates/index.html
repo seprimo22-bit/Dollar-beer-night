@@ -1,193 +1,37 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Dollar Beer Night</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beer Dollars</title>
 
-    <link rel="stylesheet"
-          href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 10px;
-        }
-
-        #map {
-            height: 60vh;
-            margin-bottom: 10px;
-        }
-
-        input, button {
-            width: 100%;
-            padding: 10px;
-            margin-top: 6px;
-            font-size: 16px;
-        }
-
-        hr {
-            margin: 20px 0;
-        }
-
-        /* NEW: specials list styling */
-        #specialsList div {
-            padding: 10px;
-            border-bottom: 1px solid #ccc;
-            cursor: pointer;
-        }
-
-        #specialsList div:hover {
-            background: #f5f5f5;
-        }
-    </style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<h2>🍺 Dollar Beer Night</h2>
+<header>
+  <h1>🍺 Beer Dollars</h1>
+  <p class="tagline">Get the most out of your beer money.</p>
+</header>
 
-<button onclick="findSpecials()">Find Specials Near Me</button>
+<section class="specials">
+  <h2>Specials Near You</h2>
+  <div id="specials-list">
+    <!-- Dynamic list will populate here -->
+  </div>
+</section>
 
-<div id="map"></div>
+<section class="map">
+  <h2>Map</h2>
+  <div id="map-placeholder">
+    Map will go here (Leaflet later)
+  </div>
+</section>
 
-<!-- NEW: LIST UNDER MAP -->
-<h3>Specials Near You</h3>
-<div id="specialsList"></div>
+<section class="add-special">
+  <h2>Add Drink Special</h2>
 
-<hr>
-
-<h3>Add Beer Special</h3>
-
-<input id="name" placeholder="Bar Name">
-<input id="deal" placeholder="Deal ($2 bottles etc)">
-<input id="address" placeholder="Address">
-<input id="day" placeholder="Day (monday, friday etc)">
-<button onclick="addSpecial()">Save Special</button>
-
-<script>
-
-let map = L.map('map').setView([41.02, -80.66], 12);
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-}).addTo(map);
-
-let userMarker;
-let barMarkers = [];
-
-
-// FIND SPECIALS
-function findSpecials() {
-
-    navigator.geolocation.getCurrentPosition(pos => {
-
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-
-        if (userMarker) map.removeLayer(userMarker);
-
-        userMarker = L.marker([lat, lng])
-            .addTo(map)
-            .bindPopup("You are here")
-            .openPopup();
-
-        map.setView([lat, lng], 13);
-
-        barMarkers.forEach(m => map.removeLayer(m));
-        barMarkers = [];
-
-        const listDiv = document.getElementById("specialsList");
-        listDiv.innerHTML = "";  // NEW: clear list
-
-        fetch(`/api/specials?lat=${lat}&lng=${lng}`)
-            .then(res => res.json())
-            .then(data => {
-
-                if (!data.length) {
-                    alert("No specials found for today nearby.");
-                    return;
-                }
-
-                data.forEach(bar => {
-
-                    // MAP MARKER (unchanged)
-                    const marker = L.marker([bar.lat, bar.lng])
-                        .addTo(map)
-                        .bindPopup(`
-                            <b>${bar.name}</b><br>
-                            ${bar.deal}<br>
-                            ${bar.address}<br>
-                            ${bar.distance} miles away
-                        `);
-
-                    barMarkers.push(marker);
-
-                    // NEW: LIST ENTRY UNDER MAP
-                    const item = document.createElement("div");
-                    item.innerHTML = `
-                        <strong>${bar.name}</strong><br>
-                        ${bar.deal}<br>
-                        ${bar.address}<br>
-                        ${bar.distance} miles away
-                    `;
-
-                    // OPEN GOOGLE MAPS ON CLICK
-                    item.onclick = () => {
-                        window.open(
-                          `https://www.google.com/maps/dir/?api=1&destination=${bar.lat},${bar.lng}`
-                        );
-                    };
-
-                    listDiv.appendChild(item);
-                });
-
-            });
-
-    }, () => {
-        alert("Location permission required.");
-    });
-}
-
-
-// ADD SPECIAL
-function addSpecial() {
-
-    const name = document.getElementById("name").value;
-    const deal = document.getElementById("deal").value;
-    const address = document.getElementById("address").value;
-    const day = document.getElementById("day").value;
-
-    if (!name || !deal || !address || !day) {
-        alert("Fill all fields.");
-        return;
-    }
-
-    navigator.geolocation.getCurrentPosition(pos => {
-
-        fetch("/api/add_special", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({
-                name,
-                deal,
-                address,
-                day,
-                lat: pos.coords.latitude,
-                lng: pos.coords.longitude
-            })
-        })
-        .then(res => res.json())
-        .then(() => {
-            alert("Saved.");
-            findSpecials();
-        });
-
-    });
-}
-
-</script>
-
-</body>
-</html>
+  <input id="barName" placeholder="Bar Name">
+  <input id="deal" placeholder="$2 bottles, $3 Tito's, etc">
+  <input id="location" placeholder="City / Address">
+  
