@@ -5,43 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Beer Dollars</title>
 
-    <!-- Flask static CSS -->
     <link rel="stylesheet" href="/static/style.css">
 </head>
-
 <body>
 
 <header>
     <h1>🍺 Beer Dollars</h1>
-    <p class="tagline">Get the most out of your night</p>
+    <p>Find the best drink specials near you.</p>
 </header>
 
-<section class="specials">
+<main>
+
+<section class="card">
     <h2>Specials Near You</h2>
-    <div id="specials-list">
-        <!-- JS will populate -->
-    </div>
+    <button onclick="loadSpecials()">Find Specials</button>
+    <div id="specials-list"></div>
 </section>
 
-<section class="map">
+<section class="card">
     <h2>Map</h2>
     <div id="map-placeholder">
-        Map will go here (Leaflet later)
+        Map integration coming next.
     </div>
 </section>
 
-<section class="add-special">
+<section class="card">
     <h2>Add Drink Special</h2>
 
     <input id="barName" placeholder="Bar Name">
-    <input id="deal" placeholder="$2 bottles">
-    <input id="location" placeholder="City">
+    <input id="deal" placeholder="$2 bottles, $3 Tito's, etc">
+    <input id="location" placeholder="City or Address">
 
-    <button onclick="submitSpecial()">Submit</button>
+    <button onclick="submitSpecial()">Submit Special</button>
 </section>
 
-<!-- Flask static JS -->
-<script src="/static/script.js"></script>
+</main>
 
+<script src="/static/script.js"></script>
 </body>
 </html>
