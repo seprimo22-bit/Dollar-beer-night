@@ -31,6 +31,17 @@
         hr {
             margin: 20px 0;
         }
+
+        /* NEW: specials list styling */
+        #specialsList div {
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+            cursor: pointer;
+        }
+
+        #specialsList div:hover {
+            background: #f5f5f5;
+        }
     </style>
 </head>
 <body>
@@ -40,6 +51,10 @@
 <button onclick="findSpecials()">Find Specials Near Me</button>
 
 <div id="map"></div>
+
+<!-- NEW: LIST UNDER MAP -->
+<h3>Specials Near You</h3>
+<div id="specialsList"></div>
 
 <hr>
 
@@ -83,6 +98,9 @@ function findSpecials() {
         barMarkers.forEach(m => map.removeLayer(m));
         barMarkers = [];
 
+        const listDiv = document.getElementById("specialsList");
+        listDiv.innerHTML = "";  // NEW: clear list
+
         fetch(`/api/specials?lat=${lat}&lng=${lng}`)
             .then(res => res.json())
             .then(data => {
@@ -93,6 +111,8 @@ function findSpecials() {
                 }
 
                 data.forEach(bar => {
+
+                    // MAP MARKER (unchanged)
                     const marker = L.marker([bar.lat, bar.lng])
                         .addTo(map)
                         .bindPopup(`
@@ -103,6 +123,24 @@ function findSpecials() {
                         `);
 
                     barMarkers.push(marker);
+
+                    // NEW: LIST ENTRY UNDER MAP
+                    const item = document.createElement("div");
+                    item.innerHTML = `
+                        <strong>${bar.name}</strong><br>
+                        ${bar.deal}<br>
+                        ${bar.address}<br>
+                        ${bar.distance} miles away
+                    `;
+
+                    // OPEN GOOGLE MAPS ON CLICK
+                    item.onclick = () => {
+                        window.open(
+                          `https://www.google.com/maps/dir/?api=1&destination=${bar.lat},${bar.lng}`
+                        );
+                    };
+
+                    listDiv.appendChild(item);
                 });
 
             });
