@@ -1,1 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beer Dollars</title>
 
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>🍺 Beer Dollars</h1>
+  <p class="tagline">Get the most out of your beer money.</p>
+</header>
+
+<section class="specials">
+  <h2>Specials Near You</h2>
+  <div id="specials-list">
+    <!-- Dynamic list will populate here -->
+  </div>
+</section>
+
+<section class="map">
+  <h2>Map</h2>
+  <div id="map-placeholder">
+    Map will go here (Leaflet later)
+  </div>
+</section>
+
+<section class="add-special">
+  <h2>Add Drink Special</h2>
+
+  <input id="barName" placeholder="Bar Name">
+  <input id="deal" placeholder="$2 bottles, $3 Tito's, etc">
+  <input id="location" placeholder="City / Address">
+
+  <button id="saveBtn">Save Special</button>
+  <p id="saveMsg"></p>
+</section>
+
+<script src="app.js"></script>
+</body>
+</html>
