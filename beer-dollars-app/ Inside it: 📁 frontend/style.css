@@ -1,1 +1,58 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  background: #0b3d5c;
+  color: white;
+}
 
+header {
+  background: #072b42;
+  padding: 20px;
+  text-align: center;
+}
+
+.tagline {
+  opacity: 0.8;
+}
+
+section {
+  padding: 20px;
+}
+
+.specials, .add-special, .map {
+  background: #124c70;
+  margin: 15px;
+  border-radius: 12px;
+  padding: 15px;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+  border-radius: 6px;
+  border: none;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  background: #ffd54a;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #ffca2c;
+}
+
+#map-placeholder {
+  height: 250px;
+  background: #06314c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+}
