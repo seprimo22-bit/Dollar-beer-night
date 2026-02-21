@@ -157,3 +157,10 @@ def add_special():
 
 if __name__ == "__main__":
     app.run(debug=True)
+@app.route("/debug-specials")
+def debug_specials():
+    import os, json
+    if not os.path.exists("Specials.json"):
+        return {"error": "Specials.json not found"}
+    with open("Specials.json") as f:
+        return json.load(f)
