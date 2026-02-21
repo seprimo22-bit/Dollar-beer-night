@@ -1,9 +1,64 @@
 [
   {
+    "bar": "Corner Tavern",
+    "deal": "$1.75 cans",
+    "day": "Monday",
+    "time": "Evening",
+    "address": "250 Front Street",
+    "city": "Latonia",
+    "state": "Ohio",
+    "verified": false
+  },
+  {
+    "bar": "Lanai Lounge",
+    "deal": "$1.50 cans",
+    "day": "Sunday",
+    "time": "Evening",
+    "city": "Boardman",
+    "state": "Ohio",
+    "verified": false
+  },
+  {
+    "bar": "Bulldogs Bar & Grill",
+    "deal": "$2 bottles",
+    "day": "Tuesday",
+    "city": "Poland",
+    "state": "Ohio",
+    "verified": false
+  },
+  {
+    "bar": "The Foundry",
+    "deal": "$2.50 drafts",
+    "day": "Wednesday",
+    "city": "Salem",
+    "state": "Ohio",
+    "verified": false
+  },
+  {
+    "bar": "Brick House Tavern",
+    "deal": "$2 bottles",
+    "day": "Thursday",
+    "address": "Midlothian Avenue",
+    "city": "Youngstown",
+    "state": "Ohio",
+    "verified": false
+  },
+  {
+    "bar": "Quench Bar & Grill",
+    "deal": "$2.50 Tito’s shots",
+    "day": "Friday",
+    "city": "Boardman",
+    "state": "Ohio",
+    "verified": false
+  },
+  {
     "bar": "Steel City",
     "deal": "$2 bottles",
-    "location": "Youngstown",
-    "verified": true,
-    "timestamp": 1710000000
+    "day": "Saturday",
+    "time": "2pm–8pm",
+    "address": "Midlothian Avenue",
+    "city": "Youngstown",
+    "state": "Ohio",
+    "verified": false
   }
 ]
