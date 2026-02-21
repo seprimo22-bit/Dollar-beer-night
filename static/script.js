@@ -3,15 +3,23 @@ async function loadSpecials() {
         const res = await fetch('/api/specials');
         const specials = await res.json();
 
+        const today = new Date().toLocaleString('en-US', {
+            weekday: 'long'
+        });
+
+        const filtered = specials.filter(s => 
+            s.day && s.day.toLowerCase() === today.toLowerCase()
+        );
+
         const list = document.getElementById('specials-list');
         list.innerHTML = '';
 
-        if (!specials.length) {
-            list.innerHTML = "<p>No specials yet.</p>";
+        if (!filtered.length) {
+            list.innerHTML = `<p>No specials listed for ${today}.</p>`;
             return;
         }
 
-        specials.forEach(s => {
+        filtered.forEach(s => {
             const div = document.createElement('div');
             div.innerHTML = `
                 <strong>${s.barName}</strong><br>
@@ -22,29 +30,6 @@ async function loadSpecials() {
         });
 
     } catch (err) {
-        console.error(err);
+        console.error("Error loading specials:", err);
     }
-}
-
-async function submitSpecial() {
-    const barName = document.getElementById('barName').value;
-    const deal = document.getElementById('deal').value;
-    const location = document.getElementById('location').value;
-
-    if (!barName || !deal || !location) {
-        alert("Fill all fields.");
-        return;
-    }
-
-    await fetch('/api/specials', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ barName, deal, location })
-    });
-
-    loadSpecials();
-
-    document.getElementById('barName').value = '';
-    document.getElementById('deal').value = '';
-    document.getElementById('location').value = '';
 }
