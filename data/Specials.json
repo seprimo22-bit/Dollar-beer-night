@@ -1,4 +1,4 @@
-[
+navigator.geolocation.getCurrentPosition()[
   {
     "barName": "Steel City",
     "deal": "$2 bottles",
