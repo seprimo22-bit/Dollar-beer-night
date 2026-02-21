@@ -67,6 +67,3 @@ window.onload = () => {
     loadSpecials();
     initMap();
 };
-document.addEventListener("DOMContentLoaded", () => {
-    initMap();
-});
