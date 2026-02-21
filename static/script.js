@@ -29,7 +29,15 @@ async function loadSpecials() {
             list.appendChild(div);
         });
 
-    } catch (err) {
-        console.error("Error loading specials:", err);
-    }
+    } function initMap() {
+    const map = L.map('map').setView([41.0998, -80.6495], 11); // Youngstown area
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
 }
+
+window.onload = () => {
+    loadSpecials();
+    initMap();
+};
