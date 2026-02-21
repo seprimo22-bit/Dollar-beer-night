@@ -7,7 +7,7 @@ async function loadSpecials() {
             weekday: 'long'
         });
 
-        const filtered = specials.filter(s => 
+        const filtered = specials.filter(s =>
             s.day && s.day.toLowerCase() === today.toLowerCase()
         );
 
@@ -29,8 +29,14 @@ async function loadSpecials() {
             list.appendChild(div);
         });
 
-    } function initMap() {
-    const map = L.map('map').setView([41.0998, -80.6495], 11); // fallback center
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+
+function initMap() {
+    const map = L.map('map').setView([41.0998, -80.6495], 11);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
@@ -50,8 +56,14 @@ async function loadSpecials() {
                     .openPopup();
             },
             function(error) {
-                console.log("Geolocation denied or failed:", error);
+                console.log("Geolocation denied:", error);
             }
         );
     }
-    }
+}
+
+
+window.onload = () => {
+    loadSpecials();
+    initMap();
+};
