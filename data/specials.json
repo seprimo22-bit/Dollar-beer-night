@@ -1,9 +1,47 @@
-[
-  {"barName":"Steel City","deal":"$2 bottles","location":"Youngstown, Ohio","day":"Saturday"},
-  {"barName":"Lanai Lounge","deal":"$1.50 cans","location":"Boardman, Ohio","day":"Sunday"},
-  {"barName":"Corner Tavern","deal":"$1.75 cans","location":"Latonia, Ohio","day":"Monday"},
-  {"barName":"La Villa","deal":"$2 bottles","location":"Struthers, Ohio","day":"Tuesday"},
-  {"barName":"Quench Bar & Grill","deal":"$2.50 Tito's shots","location":"Youngstown, Ohio","day":"Wednesday"},
-  {"barName":"Brickhouse Tavern","deal":"$2 bottles","location":"Youngstown, Ohio","day":"Thursday"},
-  {"barName":"Ray's","deal":"$2.50 bottles","location":"Alliance, Ohio","day":"Friday"}
+[{
+  "barName": "Steel City",
+  "location": "Youngstown, Ohio"
+}
+  {
+    "barName": "Steel City",
+    "deal": "$2 bottles",
+    "location": "Youngstown, Ohio",
+    "day": "Saturday"
+  },
+  {
+    "barName": "Lanai Lounge",
+    "deal": "$1.50 cans",
+    "location": "Boardman, Ohio",
+    "day": "Sunday"
+  },
+  {
+    "barName": "Corner Tavern",
+    "deal": "$1.75 cans",
+    "location": "Latonia, Ohio",
+    "day": "Monday"
+  },
+  {
+    "barName": "La Villa",
+    "deal": "$2 bottles",
+    "location": "Struthers, Ohio",
+    "day": "Tuesday"
+  },
+  {
+    "barName": "Quench Bar & Grill",
+    "deal": "$2.50 Tito's shots",
+    "location": "Youngstown, Ohio",
+    "day": "Wednesday"
+  },
+  {
+    "barName": "Brickhouse Tavern",
+    "deal": "$2 bottles",
+    "location": "Youngstown, Ohio",
+    "day": "Thursday"
+  },
+  {
+    "barName": "Ray's",
+    "deal": "$2.50 bottles",
+    "location": "Alliance, Ohio",
+    "day": "Friday"
+  }
 ]

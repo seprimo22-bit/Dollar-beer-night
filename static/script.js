@@ -1,107 +1,57 @@
 async function loadSpecials() {
-
     try {
-
         const res = await fetch('/api/specials');
-
         const specials = await res.json();
 
-        const today = new Date()
+        const today = new Date().toLocaleString('en-US', {
+            weekday: 'long'
+        });
 
-            .toLocaleDateString('en-US', { weekday: 'long' })
-
-            .trim()
-
-            .toLowerCase();
-
-        const list = document.getElementById('specials-list');
-
-        list.innerHTML = '';
-
-        const filtered = specials.filter(s =>
-
-            s.day && s.day.trim().toLowerCase() === today
-
+        const filtered = specials.filter(s => 
+            s.day && s.day.toLowerCase() === today.toLowerCase()
         );
 
+        const list = document.getElementById('specials-list');
+        list.innerHTML = '';
+
         if (!filtered.length) {
-
             list.innerHTML = `<p>No specials listed for ${today}.</p>`;
-
             return;
-
         }
 
         filtered.forEach(s => {
-
             const div = document.createElement('div');
-
             div.innerHTML = `
-
                 <strong>${s.barName}</strong><br>
-
                 ${s.deal}<br>
-
                 <small>${s.location}</small>
-
             `;
-
             list.appendChild(div);
-
         });
 
-    } catch (err) {
+    } function initMap() {
+    const map = L.map('map').setView([41.0998, -80.6495], 11); // fallback center
 
-        console.error(err);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
 
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const userLat = position.coords.latitude;
+                const userLng = position.coords.longitude;
+
+                map.setView([userLat, userLng], 13);
+
+                L.marker([userLat, userLng])
+                    .addTo(map)
+                    .bindPopup("You are here")
+                    .openPopup();
+            },
+            function(error) {
+                console.log("Geolocation denied or failed:", error);
+            }
+        );
     }
-
-}
-
-async function submitSpecial() {
-
-    const barName = document.getElementById('barName').value;
-
-    const deal = document.getElementById('deal').value;
-
-    const location = document.getElementById('location').value;
-
-    if (!barName || !deal || !location) {
-
-        alert("Fill all fields.");
-
-        return;
-
     }
-
-    await fetch('/api/specials', {
-
-        method: 'POST',
-
-        headers: { 'Content-Type': 'application/json' },
-
-        body: JSON.stringify({
-
-            barName,
-
-            deal,
-
-            location,
-
-            day: new Date().toLocaleDateString('en-US', { weekday: 'long' })
-
-        })
-
-    });
-
-    loadSpecials();
-
-    document.getElementById('barName').value = '';
-
-    document.getElementById('deal').value = '';
-
-    document.getElementById('location').value = '';
-
-}
-
-window.onload = loadSpecials;
