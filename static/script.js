@@ -30,14 +30,28 @@ async function loadSpecials() {
         });
 
     } function initMap() {
-    const map = L.map('map').setView([41.0998, -80.6495], 11); // Youngstown area
+    const map = L.map('map').setView([41.0998, -80.6495], 11); // fallback center
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
-}
 
-window.onload = () => {
-    loadSpecials();
-    initMap();
-};
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const userLat = position.coords.latitude;
+                const userLng = position.coords.longitude;
+
+                map.setView([userLat, userLng], 13);
+
+                L.marker([userLat, userLng])
+                    .addTo(map)
+                    .bindPopup("You are here")
+                    .openPopup();
+            },
+            function(error) {
+                console.log("Geolocation denied or failed:", error);
+            }
+        );
+    }
+    }
