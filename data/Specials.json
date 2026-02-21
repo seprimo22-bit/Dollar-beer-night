@@ -45,4 +45,4 @@
     "day": "Friday"
   }
 ]
-navigator.geolocation.getCurrentPosition()
+
