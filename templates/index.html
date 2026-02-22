@@ -1,32 +1,35 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Dollar Beer Night</title>
+    <title>Beer Night Dollars</title>
+
     <link rel="stylesheet" href="/static/style.css">
+
+    <!-- Leaflet -->
+    <link rel="stylesheet"
+          href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 </head>
+
 <body>
 
-<h1>Add Special</h1>
+<h1>🍺 Beer Night Dollars</h1>
 
-<input id="bar" placeholder="Bar name">
+<h2>Add Special</h2>
+<input id="bar" placeholder="Bar Name">
 <input id="deal" placeholder="$ Deal">
 <input id="location" placeholder="City">
 <input id="day" placeholder="Day">
-
-<button id="addBtn">Add Special</button>
+<button onclick="addSpecial()">Add Special</button>
 
 <hr>
 
 <h2>Specials Near You</h2>
-<button id="findBtn">Find Specials</button>
+<button onclick="loadSpecials()">Find Specials</button>
 
+<div id="map"></div>
 <div id="specialsList"></div>
 
-<hr>
-<div id="map" style="height:300px;"></div>
-
-  
 <script src="/static/script.js"></script>
-
 </body>
 </html>
