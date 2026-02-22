@@ -1,107 +1,55 @@
-async function loadSpecials() {
+const API = "/api/specials";
 
-    try {
+async function addSpecial() {
+    const bar = document.getElementById("bar").value;
+    const deal = document.getElementById("deal").value;
+    const location = document.getElementById("location").value;
+    const day = document.getElementById("day").value;
 
-        const res = await fetch('/api/specials');
-
-        const specials = await res.json();
-
-        const today = new Date()
-
-            .toLocaleDateString('en-US', { weekday: 'long' })
-
-            .trim()
-
-            .toLowerCase();
-
-        const list = document.getElementById('specials-list');
-
-        list.innerHTML = '';
-
-        const filtered = specials.filter(s =>
-
-            s.day && s.day.trim().toLowerCase() === today
-
-        );
-
-        if (!filtered.length) {
-
-            list.innerHTML = `<p>No specials listed for ${today}.</p>`;
-
-            return;
-
-        }
-
-        filtered.forEach(s => {
-
-            const div = document.createElement('div');
-
-            div.innerHTML = `
-
-                <strong>${s.barName}</strong><br>
-
-                ${s.deal}<br>
-
-                <small>${s.location}</small>
-
-            `;
-
-            list.appendChild(div);
-
-        });
-
-    } catch (err) {
-
-        console.error(err);
-
-    }
-
-}
-
-async function submitSpecial() {
-
-    const barName = document.getElementById('barName').value;
-
-    const deal = document.getElementById('deal').value;
-
-    const location = document.getElementById('location').value;
-
-    if (!barName || !deal || !location) {
-
-        alert("Fill all fields.");
-
+    if (!bar || !deal || !location || !day) {
+        alert("Fill everything out.");
         return;
-
     }
 
-    await fetch('/api/specials', {
-
-        method: 'POST',
-
-        headers: { 'Content-Type': 'application/json' },
-
-        body: JSON.stringify({
-
-            barName,
-
-            deal,
-
-            location,
-
-            day: new Date().toLocaleDateString('en-US', { weekday: 'long' })
-
-        })
-
+    const res = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bar, deal, location, day })
     });
 
-    loadSpecials();
+    const result = await res.json();
 
-    document.getElementById('barName').value = '';
-
-    document.getElementById('deal').value = '';
-
-    document.getElementById('location').value = '';
-
+    if (result.status === "duplicate") {
+        alert("Already listed.");
+    } else {
+        alert("Special added.");
+        loadSpecials();
+    }
 }
 
-window.onload = loadSpecials;
+async function loadSpecials() {
+    const day = document.getElementById("day").value;
+
+    const res = await fetch(`${API}?day=${day}`);
+    const specials = await res.json();
+
+    const box = document.getElementById("specialsList");
+
+    if (!specials.length) {
+        box.innerHTML = `No specials listed for ${day}.`;
+        return;
+    }
+
+    box.innerHTML = specials
+        .map(s => `
+            <div>
+                <strong>${s.bar}</strong><br>
+                ${s.deal}<br>
+                ${s.location}<br><br>
+            </div>
+        `)
+        .join("");
+}
+
+document.getElementById("addBtn").onclick = addSpecial;
+document.getElementById("findBtn").onclick = loadSpecials;
