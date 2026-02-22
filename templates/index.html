@@ -1,93 +1,67 @@
-from flask import Flask, request, jsonify, render_template
-import os
-import json
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dollar Beer Night</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
 
-app = Flask(__name__)
+<h1>Dollar Beer Night</h1>
 
-# -------------------------
-# CONFIG
-# -------------------------
+<h2>Add Special</h2>
 
-DATA_DIR = "data"
-DATA_FILE = os.path.join(DATA_DIR, "specials.json")
+<input id="barName" placeholder="Bar Name"><br><br>
+<input id="deal" placeholder="Deal ($1.50 cans, etc)"><br><br>
+<input id="location" placeholder="Location"><br><br>
+<input id="day" placeholder="Day (optional)"><br><br>
 
-# Ensure data directory exists
-os.makedirs(DATA_DIR, exist_ok=True)
+<button type="button" onclick="addSpecial()">Add Special</button>
 
-# Ensure file exists
-if not os.path.exists(DATA_FILE):
-    with open(DATA_FILE, "w") as f:
-        json.dump([], f)
+<hr>
 
+<h2>Find Specials</h2>
+<button type="button" onclick="loadSpecials()">Find Specials</button>
 
-# -------------------------
-# DATA FUNCTIONS
-# -------------------------
+<ul id="results"></ul>
 
-def load_specials():
-    try:
-        with open(DATA_FILE, "r") as f:
-            return json.load(f)
-    except Exception:
-        return []
+<script>
+async function addSpecial() {
+    const barName = document.getElementById("barName").value;
+    const deal = document.getElementById("deal").value;
+    const location = document.getElementById("location").value;
+    const day = document.getElementById("day").value;
 
+    const response = await fetch("/api/specials", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            barName: barName,
+            deal: deal,
+            location: location,
+            day: day
+        })
+    });
 
-def save_specials(specials):
-    with open(DATA_FILE, "w") as f:
-        json.dump(specials, f, indent=2)
+    const result = await response.json();
+    alert(JSON.stringify(result));
+}
 
+async function loadSpecials() {
+    const response = await fetch("/api/specials");
+    const specials = await response.json();
 
-# -------------------------
-# ROUTES
-# -------------------------
+    const resultsList = document.getElementById("results");
+    resultsList.innerHTML = "";
 
-@app.route("/")
-def home():
-    return render_template("index.html")
+    specials.forEach(s => {
+        const li = document.createElement("li");
+        li.textContent = `${s.barName} - ${s.deal} - ${s.location} ${s.day ? "(" + s.day + ")" : ""}`;
+        resultsList.appendChild(li);
+    });
+}
+</script>
 
-
-@app.route("/api/specials", methods=["GET"])
-def get_specials():
-    return jsonify(load_specials())
-
-
-@app.route("/api/specials", methods=["POST"])
-def add_special():
-    data = request.json
-
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
-
-    required_fields = ["barName", "deal", "location"]
-
-    for field in required_fields:
-        if field not in data or not data[field]:
-            return jsonify({"error": f"{field} is required"}), 400
-
-    specials = load_specials()
-
-    specials.append({
-        "barName": data["barName"],
-        "deal": data["deal"],
-        "location": data["location"],
-        "day": data.get("day", "")  # Optional day support
-    })
-
-    save_specials(specials)
-
-    return jsonify({"status": "added"})
-
-
-@app.route("/api/specials/clear", methods=["POST"])
-def clear_specials():
-    save_specials([])
-    return jsonify({"status": "cleared"})
-
-
-# -------------------------
-# ENTRY POINT
-# -------------------------
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+</body>
+</html>
