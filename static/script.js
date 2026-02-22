@@ -1,7 +1,6 @@
 async function loadSpecials() {
-    try {
-        const res = await fetch('/api/specials');
-        const specials = await res.json();
+    try fetch("/api/add-special")
+fetch("/api/specials?day=" + day)
 
         const today = new Date().toLocaleString('en-US', {
             weekday: 'long'
