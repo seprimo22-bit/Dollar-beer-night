@@ -1,17 +1,26 @@
 from flask import Flask, render_template, request, jsonify
-import os, json
+import os
+import json
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static", template_folder="templates")
 
 DATA_DIR = "data"
 SPECIALS_FILE = os.path.join(DATA_DIR, "specials.json")
 
+os.makedirs(DATA_DIR, exist_ok=True)
+
+# Ensure file exists but DON'T overwrite
+if not os.path.exists(SPECIALS_FILE):
+    with open(SPECIALS_FILE, "w") as f:
+        json.dump([], f)
+
 
 def load_specials():
-    if not os.path.exists(SPECIALS_FILE):
+    try:
+        with open(SPECIALS_FILE, "r") as f:
+            return json.load(f)
+    except:
         return []
-    with open(SPECIALS_FILE, "r") as f:
-        return json.load(f)
 
 
 def save_specials(data):
@@ -24,31 +33,34 @@ def home():
     return render_template("index.html")
 
 
-@app.route("/api/specials", methods=["GET"])
+@app.route("/api/specials")
 def get_specials():
-    day = request.args.get("day", "").lower()
+    day = request.args.get("day")
     specials = load_specials()
 
     if day:
-        specials = [s for s in specials if s.get("day", "").lower() == day]
+        specials = [
+            s for s in specials
+            if s.get("day", "").lower() == day.lower()
+        ]
 
     return jsonify(specials)
 
 
 @app.route("/api/add-special", methods=["POST"])
 def add_special():
-    new_special = request.json
+    data = request.json
     specials = load_specials()
 
-    # Duplicate prevention
+    # duplicate prevention
     for s in specials:
         if (
-            s["bar"].lower() == new_special["bar"].lower()
-            and s["day"].lower() == new_special["day"].lower()
+            s["bar"].lower() == data["bar"].lower()
+            and s["day"].lower() == data["day"].lower()
         ):
-            return jsonify({"error": "Duplicate special"}), 400
+            return jsonify({"error": "Already exists"}), 400
 
-    specials.append(new_special)
+    specials.append(data)
     save_specials(specials)
 
     return jsonify({"status": "saved"})
