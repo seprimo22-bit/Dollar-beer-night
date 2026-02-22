@@ -1,80 +1,62 @@
 from flask import Flask, request, jsonify, render_template
-import os
 import json
+import os
 
-app = Flask(__name__)
-
-# -------------------------
-# CONFIG
-# -------------------------
+app = Flask(__name__, static_folder="static", template_folder="templates")
 
 DATA_DIR = "data"
 DATA_FILE = os.path.join(DATA_DIR, "specials.json")
 
-# Ensure data folder exists
 os.makedirs(DATA_DIR, exist_ok=True)
 
+if not os.path.exists(DATA_FILE):
+    with open(DATA_FILE, "w") as f:
+        json.dump([], f)
 
-# -------------------------
-# DATA UTILITIES
-# -------------------------
 
 def load_specials():
-    """Load specials safely."""
-    if not os.path.exists(DATA_FILE):
-        return []
-
-    try:
-        with open(DATA_FILE, "r") as f:
-            return json.load(f)
-    except Exception:
-        return []
+    with open(DATA_FILE, "r") as f:
+        return json.load(f)
 
 
 def save_specials(data):
-    """Save specials safely."""
     with open(DATA_FILE, "w") as f:
         json.dump(data, f, indent=2)
 
-
-# -------------------------
-# ROUTES
-# -------------------------
 
 @app.route("/")
 def home():
     return render_template("index.html")
 
 
-@app.route("/api/specials", methods=["GET"])
-def get_specials():
-    return jsonify(load_specials())
+@app.route("/api/specials", methods=["GET", "POST"])
+def specials():
 
+    if request.method == "POST":
+        new_special = request.json
+        specials = load_specials()
 
-@app.route("/api/specials", methods=["POST"])
-def add_special():
-    data = request.json
+        # Duplicate prevention
+        for s in specials:
+            if (
+                s["bar"].lower() == new_special["bar"].lower()
+                and s["day"].lower() == new_special["day"].lower()
+            ):
+                return jsonify({"status": "duplicate"}), 400
 
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
+        specials.append(new_special)
+        save_specials(specials)
+        return jsonify({"status": "saved"})
 
+    # GET
+    day = request.args.get("day")
     specials = load_specials()
-    specials.append(data)
-    save_specials(specials)
 
-    return jsonify({"status": "added", "data": data})
+    if day:
+        specials = [s for s in specials if s["day"].lower() == day.lower()]
 
+    return jsonify(specials)
 
-@app.route("/api/specials/clear", methods=["POST"])
-def clear_specials():
-    save_specials([])
-    return jsonify({"status": "cleared"})
-
-
-# -------------------------
-# ENTRY POINT
-# -------------------------
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(host="0.0.0.0", port=5000)
