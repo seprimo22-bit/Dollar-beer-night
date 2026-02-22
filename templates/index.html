@@ -1,93 +1,160 @@
-from flask import Flask, request, jsonify, render_template
-import os
-import json
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Beer Dollars</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-app = Flask(__name__)
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+        }
 
-# -------------------------
-# CONFIG
-# -------------------------
+        header {
+            background: #1e1e1e;
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
 
-DATA_DIR = "data"
-DATA_FILE = os.path.join(DATA_DIR, "specials.json")
+        header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
 
-# Ensure data directory exists
-os.makedirs(DATA_DIR, exist_ok=True)
+        header p {
+            margin-top: 8px;
+            color: #ccc;
+        }
 
-# Ensure file exists
-if not os.path.exists(DATA_FILE):
-    with open(DATA_FILE, "w") as f:
-        json.dump([], f)
+        .container {
+            padding: 20px;
+        }
 
+        .card {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
 
-# -------------------------
-# DATA FUNCTIONS
-# -------------------------
+        button {
+            background: #f4a100;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
 
-def load_specials():
-    try:
-        with open(DATA_FILE, "r") as f:
-            return json.load(f)
-    except Exception:
-        return []
+        button:hover {
+            background: #d98f00;
+        }
 
+        input {
+            padding: 10px;
+            margin: 5px 0;
+            width: 100%;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
 
-def save_specials(specials):
-    with open(DATA_FILE, "w") as f:
-        json.dump(specials, f, indent=2)
+        #map {
+            height: 300px;
+            background: #ddd;
+            border-radius: 10px;
+        }
 
+        ul {
+            padding-left: 20px;
+        }
+    </style>
+</head>
+<body>
 
-# -------------------------
-# ROUTES
-# -------------------------
+<header>
+    <h1>🍺 Beer Dollars</h1>
+    <p>Find the best drink specials near you.</p>
+</header>
 
-@app.route("/")
-def home():
-    return render_template("index.html")
+<div class="container">
 
+    <div class="card">
+        <h2>Add Special</h2>
 
-@app.route("/api/specials", methods=["GET"])
-def get_specials():
-    return jsonify(load_specials())
+        <input id="barName" placeholder="Bar name">
+        <input id="deal" placeholder="Deal ($1.50 cans etc)">
+        <input id="location" placeholder="Location">
+        <input id="day" placeholder="Day">
 
+        <button onclick="addSpecial()">Add Special</button>
+    </div>
 
-@app.route("/api/specials", methods=["POST"])
-def add_special():
-    data = request.json
+    <div class="card">
+        <h2>Specials Near You</h2>
 
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
+        <button onclick="loadSpecials()">Find Specials</button>
+        <p id="status"></p>
 
-    required_fields = ["barName", "deal", "location"]
+        <ul id="results"></ul>
+    </div>
 
-    for field in required_fields:
-        if field not in data or not data[field]:
-            return jsonify({"error": f"{field} is required"}), 400
+    <div class="card">
+        <h2>Map</h2>
+        <div id="map">Map coming soon</div>
+    </div>
 
-    specials = load_specials()
+</div>
 
-    specials.append({
-        "barName": data["barName"],
-        "deal": data["deal"],
-        "location": data["location"],
-        "day": data.get("day", "")  # Optional day support
-    })
+<script>
+async function addSpecial() {
+    const barName = document.getElementById("barName").value;
+    const deal = document.getElementById("deal").value;
+    const location = document.getElementById("location").value;
+    const day = document.getElementById("day").value;
 
-    save_specials(specials)
+    const response = await fetch("/api/specials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ barName, deal, location, day })
+    });
 
-    return jsonify({"status": "added"})
+    alert("Special added!");
+}
 
+async function loadSpecials() {
+    const res = await fetch("/api/specials");
+    const specials = await res.json();
 
-@app.route("/api/specials/clear", methods=["POST"])
-def clear_specials():
-    save_specials([])
-    return jsonify({"status": "cleared"})
+    const today = new Date().toLocaleString('en-US', { weekday: 'long' });
 
+    const results = document.getElementById("results");
+    const status = document.getElementById("status");
 
-# -------------------------
-# ENTRY POINT
-# -------------------------
+    results.innerHTML = "";
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    const filtered = specials.filter(s =>
+        !s.day || s.day.toLowerCase() === today.toLowerCase()
+    );
+
+    if (!filtered.length) {
+        status.innerText = "No specials listed for " + today + ".";
+        return;
+    }
+
+    status.innerText = "";
+
+    filtered.forEach(s => {
+        const li = document.createElement("li");
+        li.textContent =
+            `${s.barName} — ${s.deal} — ${s.location} (${s.day})`;
+        results.appendChild(li);
+    });
+}
+</script>
+
+</body>
+</html>
