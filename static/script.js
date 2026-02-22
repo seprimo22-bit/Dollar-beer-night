@@ -65,4 +65,34 @@ function initMap() {
 window.onload = () => {
     loadSpecials();
     initMap();
-};
+};function initMap() {
+  if (!navigator.geolocation) return;
+
+  navigator.geolocation.getCurrentPosition(pos => {
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+
+    const map = L.map('map').setView([lat, lon], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    L.marker([lat, lon])
+      .addTo(map)
+      .bindPopup("You are here")
+      .openPopup();
+
+    fetch('/api/specials')
+      .then(r => r.json())
+      .then(data => {
+        data.forEach(s => {
+          if (s.lat && s.lon) {
+            L.marker([s.lat, s.lon])
+              .addTo(map)
+              .bindPopup(`${s.bar}<br>${s.deal}`);
+          }
+        });
+      });
+  });
+}
+
+window.onload = initMap;
