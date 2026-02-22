@@ -1,31 +1,26 @@
 from flask import Flask, request, jsonify, render_template
-from flask import Flask, render_template, request, jsonify
 import os
 import json
-import os
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
-DATA_DIR = "data"
+# -------------------------
+# DATA SETUP (Render safe)
+# -------------------------
+DATA_DIR = os.path.join(os.getcwd(), "data")
 SPECIALS_FILE = os.path.join(DATA_DIR, "specials.json")
 
 os.makedirs(DATA_DIR, exist_ok=True)
 
-if not os.path.exists(DATA_FILE):
-    with open(DATA_FILE, "w") as f:
-# Ensure file exists but DON'T overwrite
 if not os.path.exists(SPECIALS_FILE):
     with open(SPECIALS_FILE, "w") as f:
         json.dump([], f)
 
 
+# -------------------------
+# HELPERS
+# -------------------------
 def load_specials():
-    with open(DATA_FILE, "r") as f:
-        return json.load(f)
-
-
-def save_specials(data):
-    with open(DATA_FILE, "w") as f:
     try:
         with open(SPECIALS_FILE, "r") as f:
             return json.load(f)
@@ -38,70 +33,52 @@ def save_specials(data):
         json.dump(data, f, indent=2)
 
 
+# -------------------------
+# ROUTES
+# -------------------------
+
 @app.route("/")
 def home():
     return render_template("index.html")
 
 
-@app.route("/api/specials", methods=["GET", "POST"])
-def specials():
-
-    if request.method == "POST":
-        new_special = request.json
-        specials = load_specials()
-
-        # Duplicate prevention
-        for s in specials:
-            if (
-                s["bar"].lower() == new_special["bar"].lower()
-                and s["day"].lower() == new_special["day"].lower()
-            ):
-                return jsonify({"status": "duplicate"}), 400
-
-        specials.append(new_special)
-        save_specials(specials)
-        return jsonify({"status": "saved"})
-
-    # GET
-    day = request.args.get("day")
-    specials = load_specials()
-
-    if day:
-        specials = [s for s in specials if s["day"].lower() == day.lower()]
-
-    return jsonify(specials)
-@app.route("/api/specials")
+@app.route("/api/specials", methods=["GET"])
 def get_specials():
-    day = request.args.get("day")
-    specials = load_specials()
-
-    if day:
-        specials = [
-            s for s in specials
-            if s.get("day", "").lower() == day.lower()
-        ]
-
-    return jsonify(specials)
+    return jsonify(load_specials())
 
 
-@app.route("/api/add-special", methods=["POST"])
+@app.route("/api/specials", methods=["POST"])
 def add_special():
     data = request.json
+
+    bar = data.get("bar")
+    deal = data.get("deal")
+    location = data.get("location")
+    day = data.get("day")
+
     specials = load_specials()
 
-    # duplicate prevention
+    # Duplicate prevention
     for s in specials:
         if (
-            s["bar"].lower() == data["bar"].lower()
-            and s["day"].lower() == data["day"].lower()
+            s["bar"] == bar
+            and s["deal"] == deal
+            and s["location"] == location
+            and s["day"] == day
         ):
-            return jsonify({"error": "Already exists"}), 400
+            return jsonify({"status": "duplicate"})
 
-    specials.append(data)
+    specials.append({
+        "bar": bar,
+        "deal": deal,
+        "location": location,
+        "day": day
+    })
+
     save_specials(specials)
 
-    return jsonify({"status": "saved"})
+    return jsonify({"status": "added"})
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(debug=True)
