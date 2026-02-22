@@ -1,46 +1,32 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Beer Dollars</title>
-
+    <title>Dollar Beer Night</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
-<header>
-    <h1>🍺 Beer Dollars</h1>
-    <p>Find the best drink specials near you.</p>
-</header>
+<h1>Add Special</h1>
 
-<main>
+<input id="bar" placeholder="Bar name">
+<input id="deal" placeholder="$ Deal">
+<input id="location" placeholder="City">
+<input id="day" placeholder="Day">
 
-<section class="card">
-    <h2>Specials Near You</h2>
-    <button onclick="loadSpecials()">Find Specials</button>
-    <div id="specials-list"></div>
-</section>
+<button id="addBtn">Add Special</button>
 
-<section class="card">
-    <h2>Map</h2>
-    <div id="map-placeholder">
-        Map integration coming next.
-    </div>
-</section>
+<hr>
 
-<section class="card">
-    <h2>Add Drink Special</h2>
+<h2>Specials Near You</h2>
+<button id="findBtn">Find Specials</button>
 
-    <input id="barName" placeholder="Bar Name">
-    <input id="deal" placeholder="$2 bottles, $3 Tito's, etc">
-    <input id="location" placeholder="City or Address">
+<div id="specialsList"></div>
 
-    <button onclick="submitSpecial()">Submit Special</button>
-</section>
+<hr>
+<div id="map" style="height:300px;"></div>
 
-</main>
-
+  
 <script src="/static/script.js"></script>
+
 </body>
 </html>
