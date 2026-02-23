@@ -2,10 +2,25 @@ from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import requests
+import os
 
 app = Flask(__name__)
 
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///beer.db"
+# --------------------------------
+# DATABASE CONFIG (Render + Local)
+# --------------------------------
+database_url = os.environ.get("DATABASE_URL")
+
+if database_url:
+    # Render gives postgres:// but SQLAlchemy expects postgresql://
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+else:
+    # Local fallback
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///beer.db"
+
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
@@ -36,17 +51,16 @@ def geocode_location(query):
             "format": "json",
             "limit": 1
         }
-        headers = {
-            "User-Agent": "BeerDollarsApp"
-        }
+        headers = {"User-Agent": "BeerDollarsApp"}
 
         response = requests.get(url, params=params, headers=headers)
         data = response.json()
 
         if len(data) > 0:
             return float(data[0]["lat"]), float(data[0]["lon"])
-    except:
-        pass
+
+    except Exception as e:
+        print("Geocode error:", e)
 
     return None, None
 
