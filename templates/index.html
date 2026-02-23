@@ -2,34 +2,81 @@
 <html>
 <head>
     <title>Beer Dollars</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial; text-align: center; }
+        button { margin: 5px; padding: 10px; }
+        input { padding: 8px; margin: 5px; }
+    </style>
 </head>
+
 <body>
 
 <h1>🍺 Beer Dollars</h1>
-<p><strong>Stretch Your Beer Money</strong></p>
+<p><b>Stretch Your Beer Money</b></p>
 
 <div>
-<button onclick="loadSpecials('Monday')">Mon</button>
-<button onclick="loadSpecials('Tuesday')">Tue</button>
-<button onclick="loadSpecials('Wednesday')">Wed</button>
-<button onclick="loadSpecials('Thursday')">Thu</button>
-<button onclick="loadSpecials('Friday')">Fri</button>
-<button onclick="loadSpecials('Saturday')">Sat</button>
-<button onclick="loadSpecials('Sunday')">Sun</button>
+    <button onclick="loadDay('Monday')">Mon</button>
+    <button onclick="loadDay('Tuesday')">Tue</button>
+    <button onclick="loadDay('Wednesday')">Wed</button>
+    <button onclick="loadDay('Thursday')">Thu</button>
+    <button onclick="loadDay('Friday')">Fri</button>
+    <button onclick="loadDay('Saturday')">Sat</button>
+    <button onclick="loadDay('Sunday')">Sun</button>
 </div>
 
 <h2>Deals Near You</h2>
-<ul id="results"></ul>
+<div id="results"></div>
 
 <hr>
 
-<h2>Add Special</h2>
-<input id="bar_name" placeholder="Bar name">
+<h3>Add Special</h3>
+
+<input id="bar" placeholder="Bar name">
 <input id="deal" placeholder="Deal">
 <input id="day" placeholder="Day">
+
 <button onclick="addSpecial()">Submit</button>
 
-<script src="/static/app.js"></script>
+<script>
+function loadDay(day) {
+    fetch(`/get_specials/${day}`)
+        .then(r => r.json())
+        .then(data => {
+
+            let html = "";
+
+            data.forEach(s => {
+                const badge = s.verified
+                    ? "✔ Verified"
+                    : "⏳ Pending Verification";
+
+                html += `<p>
+                    ${s.bar_name} — ${s.deal}
+                    <b>${badge}</b>
+                </p>`;
+            });
+
+            document.getElementById("results").innerHTML =
+                html || "No deals yet.";
+        });
+}
+
+function addSpecial() {
+
+    fetch("/add_special", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+            bar_name: bar.value,
+            deal: deal.value,
+            day: day.value
+        })
+    })
+    .then(r => r.json())
+    .then(res => alert(res.status));
+}
+</script>
+
 </body>
 </html>
