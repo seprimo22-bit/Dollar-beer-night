@@ -3,10 +3,16 @@
 <head>
     <title>Beer Dollars</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet"
+     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
     <style>
         body { font-family: Arial; text-align: center; }
         button { margin: 5px; padding: 10px; }
         input { padding: 8px; margin: 5px; }
+        #map { height: 400px; margin: 20px; }
     </style>
 </head>
 
@@ -28,55 +34,19 @@
 <h2>Deals Near You</h2>
 <div id="results"></div>
 
+<div id="map"></div>
+
 <hr>
 
 <h3>Add Special</h3>
-
 <input id="bar" placeholder="Bar name">
 <input id="deal" placeholder="Deal">
 <input id="day" placeholder="Day">
-
 <button onclick="addSpecial()">Submit</button>
 
-<script>
-function loadDay(day) {
-    fetch(`/get_specials/${day}`)
-        .then(r => r.json())
-        .then(data => {
-
-            let html = "";
-
-            data.forEach(s => {
-                const badge = s.verified
-                    ? "✔ Verified"
-                    : "⏳ Pending Verification";
-
-                html += `<p>
-                    ${s.bar_name} — ${s.deal}
-                    <b>${badge}</b>
-                </p>`;
-            });
-
-            document.getElementById("results").innerHTML =
-                html || "No deals yet.";
-        });
-}
-
-function addSpecial() {
-
-    fetch("/add_special", {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({
-            bar_name: bar.value,
-            deal: deal.value,
-            day: day.value
-        })
-    })
-    .then(r => r.json())
-    .then(res => alert(res.status));
-}
-</script>
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/static/map.js"></script>
 
 </body>
 </html>
