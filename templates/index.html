@@ -1,16 +1,34 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Beer Night Dollars</title>
+    <title>Beer Dollars</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
-<h1>Beer Night Dollars</h1>
+<h1>🍺 Beer Dollars</h1>
+<p><strong>Stretch Your Beer Money</strong></p>
 
-<button onclick="loadSpecials('Tue')">Load Tuesday Specials</button>
+<div>
+<button onclick="loadSpecials('Monday')">Mon</button>
+<button onclick="loadSpecials('Tuesday')">Tue</button>
+<button onclick="loadSpecials('Wednesday')">Wed</button>
+<button onclick="loadSpecials('Thursday')">Thu</button>
+<button onclick="loadSpecials('Friday')">Fri</button>
+<button onclick="loadSpecials('Saturday')">Sat</button>
+<button onclick="loadSpecials('Sunday')">Sun</button>
+</div>
 
+<h2>Deals Near You</h2>
 <ul id="results"></ul>
+
+<hr>
+
+<h2>Add Special</h2>
+<input id="bar_name" placeholder="Bar name">
+<input id="deal" placeholder="Deal">
+<input id="day" placeholder="Day">
+<button onclick="addSpecial()">Submit</button>
 
 <script src="/static/app.js"></script>
 </body>
