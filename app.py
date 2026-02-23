@@ -2,25 +2,10 @@ from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import requests
-import os
 
 app = Flask(__name__)
 
-# --------------------------------
-# DATABASE CONFIG (Render + Local)
-# --------------------------------
-database_url = os.environ.get("DATABASE_URL")
-
-if database_url:
-    # Render gives postgres:// but SQLAlchemy expects postgresql://
-    if database_url.startswith("postgres://"):
-        database_url = database_url.replace("postgres://", "postgresql://", 1)
-
-    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
-else:
-    # Local fallback
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///beer.db"
-
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///beer.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
@@ -51,14 +36,15 @@ def geocode_location(query):
             "format": "json",
             "limit": 1
         }
-        headers = {"User-Agent": "BeerDollarsApp"}
+        headers = {
+            "User-Agent": "BeerDollarsApp"
+        }
 
-        response = requests.get(url, params=params, headers=headers)
+        response = requests.get(url, params=params, headers=headers, timeout=5)
         data = response.json()
 
         if len(data) > 0:
             return float(data[0]["lat"]), float(data[0]["lon"])
-
     except Exception as e:
         print("Geocode error:", e)
 
@@ -69,48 +55,44 @@ def geocode_location(query):
 # SEED DATA
 # ----------------------
 def seed_data():
-    if Special.query.count() > 0:
+
+    existing = Special.query.all()
+    if len(existing) > 0:
         return
 
-    seed = [
-        Special(
-            bar_name="Lanai Lounge, Boardman Ohio",
-            deal="$1.50 cans",
-            day="Sunday",
-            verified=True
-        ),
-        Special(
-            bar_name="Steel City Bar & Grill, Youngstown Ohio",
-            deal="$2 bottles (2–8 PM)",
-            day="Saturday",
-            verified=True
-        ),
-        Special(
-            bar_name="John & Helen’s Tavern, Kensington Ohio",
-            deal="$2.50 bottles",
-            day="Wednesday",
-            verified=True
-        ),
-        Special(
-            bar_name="Quench Bar & Grill, Boardman Ohio",
-            deal="$2.50 Tito shots",
-            day="Tuesday",
-            verified=True
-        ),
-        Special(
-            bar_name="La Villa Tavern, Struthers Ohio",
-            deal="$2 bottles",
-            day="Monday",
-            verified=True
-        )
+    seed_list = [
+
+        # Existing verified bars
+        ("Lanai Lounge, Boardman Ohio", "$1.50 cans", "Sunday"),
+        ("Steel City Bar & Grill, Youngstown Ohio", "$2 bottles (2–8 PM)", "Saturday"),
+        ("John & Helen’s Tavern, Kensington Ohio", "$2.50 bottles", "Wednesday"),
+        ("Quench Bar & Grill, Boardman Ohio", "$2.50 Tito shots", "Tuesday"),
+        ("La Villa Tavern, Struthers Ohio", "$2 bottles", "Monday"),
+
+        # NEW — LOS GALLOS
+        ("Los Gallos, Boardman Ohio", "$2 bottles", "Monday"),
+        ("Los Gallos, Boardman Ohio", "$2 bottles", "Tuesday"),
+        ("Los Gallos, Boardman Ohio", "$2 bottles", "Wednesday"),
+        ("Los Gallos, Boardman Ohio", "$2 bottles", "Thursday"),
     ]
 
-    for s in seed:
-        lat, lon = geocode_location(s.bar_name)
-        s.latitude = lat
-        s.longitude = lon
+    specials = []
 
-    db.session.add_all(seed)
+    for bar_name, deal, day in seed_list:
+        lat, lon = geocode_location(bar_name)
+
+        specials.append(
+            Special(
+                bar_name=bar_name,
+                deal=deal,
+                day=day,
+                latitude=lat,
+                longitude=lon,
+                verified=True
+            )
+        )
+
+    db.session.add_all(specials)
     db.session.commit()
 
 
@@ -129,6 +111,7 @@ def home():
 
 @app.route("/add_special", methods=["POST"])
 def add_special():
+
     data = request.json
 
     lat, lon = geocode_location(data["bar_name"])
@@ -150,12 +133,14 @@ def add_special():
 
 @app.route("/get_specials/<day>")
 def get_specials(day):
+
     day = day.capitalize()
 
     specials = Special.query.filter_by(day=day).all()
 
     return jsonify([
         {
+            "id": s.id,
             "bar_name": s.bar_name,
             "deal": s.deal,
             "verified": s.verified,
