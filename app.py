@@ -6,8 +6,8 @@ import os
 
 app = Flask(__name__)
 
-# DATABASE CONFIG
-DATABASE_URL = os.environ.get("DATABASE_URL")
+# ---------- DATABASE ----------
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
     if DATABASE_URL.startswith("postgres://"):
@@ -17,11 +17,10 @@ else:
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///beer.db"
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
 db = SQLAlchemy(app)
 
 
-# MODEL
+# ---------- MODEL ----------
 class Special(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     bar_name = db.Column(db.String(120), nullable=False)
@@ -34,14 +33,13 @@ class Special(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
-# GEOCODING
-def geocode_location(bar, address=None):
+# ---------- GEOCODE ----------
+def geocode(bar, address=None):
     try:
         query = f"{bar}, {address}" if address else bar
-
         url = "https://nominatim.openstreetmap.org/search"
         params = {"q": query, "format": "json", "limit": 1}
-        headers = {"User-Agent": "BeerDollarsApp"}
+        headers = {"User-Agent": "BeerDollars"}
 
         r = requests.get(url, params=params, headers=headers, timeout=5)
         data = r.json()
@@ -54,29 +52,28 @@ def geocode_location(bar, address=None):
     return None, None
 
 
-# SEED STARTER DATA
+# ---------- SEED DATA ----------
 def seed_data():
     if Special.query.count() > 0:
         return
 
-    bars = [
+    starters = [
         ("La Villa Tavern", "Struthers Ohio", "$2 bottles", "Monday"),
         ("Los Gallos", "Boardman Ohio", "$2 bottles", "Monday"),
         ("John & Helen’s Tavern", "Kensington Ohio", "$2.50 bottles", "Wednesday"),
     ]
 
-    for name, address, deal, day in bars:
-        lat, lon = geocode_location(name, address)
-
+    for bar, addr, deal, day in starters:
+        lat, lon = geocode(bar, addr)
         db.session.add(
             Special(
-                bar_name=name,
-                address=address,
+                bar_name=bar,
+                address=addr,
                 deal=deal,
                 day=day,
                 latitude=lat,
                 longitude=lon,
-                verified=True
+                verified=True,
             )
         )
 
@@ -88,7 +85,7 @@ with app.app_context():
     seed_data()
 
 
-# ROUTES
+# ---------- ROUTES ----------
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -98,25 +95,21 @@ def home():
 def add_special():
     data = request.json
 
-    lat, lon = geocode_location(
-        data["bar_name"],
-        data.get("address")
-    )
+    lat, lon = geocode(data["bar_name"], data.get("address"))
 
-    special = Special(
+    new_special = Special(
         bar_name=data["bar_name"],
         address=data.get("address"),
         deal=data["deal"],
         day=data["day"].capitalize(),
         latitude=lat,
         longitude=lon,
-        verified=False
     )
 
-    db.session.add(special)
+    db.session.add(new_special)
     db.session.commit()
 
-    return jsonify({"status": "Saved — Pending Verification"})
+    return jsonify({"status": "Saved"})
 
 
 @app.route("/get_specials/<day>")
@@ -130,7 +123,7 @@ def get_specials(day):
             "deal": s.deal,
             "verified": s.verified,
             "latitude": s.latitude,
-            "longitude": s.longitude
+            "longitude": s.longitude,
         }
         for s in specials
     ])
