@@ -35,7 +35,7 @@ function loadDay(day) {
             const results = document.getElementById("results");
             results.innerHTML = "";
 
-            if (data.length === 0) {
+            if (!data.length) {
                 results.innerHTML = "<p>No deals yet.</p>";
                 return;
             }
@@ -46,7 +46,6 @@ function loadDay(day) {
                     ? `<span class="badge">✔ Verified</span>`
                     : `<span class="badge">⏳ Pending</span>`;
 
-                // Card UI
                 const card = `
                     <div class="deal-card">
                         <div class="bar-name">${s.bar_name} ${badge}</div>
@@ -56,7 +55,7 @@ function loadDay(day) {
 
                 results.innerHTML += card;
 
-                // Map marker
+                // Add map marker if coordinates exist
                 if (s.latitude && s.longitude) {
                     let marker = L.marker([s.latitude, s.longitude])
                         .addTo(map)
@@ -65,6 +64,12 @@ function loadDay(day) {
                     markers.push(marker);
                 }
             });
+
+            // ⭐ Auto-center map on markers
+            if (markers.length > 0) {
+                let group = new L.featureGroup(markers);
+                map.fitBounds(group.getBounds(), { padding: [40, 40] });
+            }
         });
 }
 
@@ -80,7 +85,7 @@ function addSpecial() {
 
     fetch("/add_special", {
         method: "POST",
-        headers: {"Content-Type":"application/json"},
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             bar_name: barName,
             deal: dealText,
