@@ -2,14 +2,26 @@ from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import requests
+import os
 
 app = Flask(__name__)
 
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///beer.db"
+# ----------------------
+# DATABASE CONFIG
+# ----------------------
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+if DATABASE_URL:
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+    app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
+else:
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///beer.db"
+
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
-
 
 # ----------------------
 # DATABASE MODEL
@@ -25,33 +37,26 @@ class Special(db.Model):
     verified = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-
 # ----------------------
-# GEOCODING FUNCTION
+# GEOCODING
 # ----------------------
 def geocode_location(bar, address=None):
     try:
         query = f"{bar}, {address}" if address else bar
 
         url = "https://nominatim.openstreetmap.org/search"
-        params = {
-            "q": query,
-            "format": "json",
-            "limit": 1
-        }
-
+        params = {"q": query, "format": "json", "limit": 1}
         headers = {"User-Agent": "BeerDollarsApp"}
 
-        response = requests.get(url, params=params, headers=headers)
-        data = response.json()
+        r = requests.get(url, params=params, headers=headers, timeout=5)
+        data = r.json()
 
-        if len(data) > 0:
+        if data:
             return float(data[0]["lat"]), float(data[0]["lon"])
-    except:
-        pass
+    except Exception as e:
+        print("Geocode error:", e)
 
     return None, None
-
 
 # ----------------------
 # SEED DATA
@@ -60,36 +65,35 @@ def seed_data():
     if Special.query.count() > 0:
         return
 
-    seed = [
-        Special(
-            bar_name="La Villa Tavern",
-            address="Struthers Ohio",
-            deal="$2 bottles",
-            day="Monday",
-            verified=True
-        ),
-        Special(
-            bar_name="Los Gallos",
-            address="Boardman Ohio",
-            deal="$2 bottles",
-            day="Monday",
-            verified=True
-        )
+    bars = [
+        ("La Villa Tavern", "Struthers Ohio", "$2 bottles", "Monday"),
+        ("Los Gallos", "Boardman Ohio", "$2 bottles", "Monday"),
+        ("John & Helen’s Tavern", "Kensington Ohio", "$2.50 bottles", "Wednesday"),
     ]
 
-    for s in seed:
-        lat, lon = geocode_location(s.bar_name, s.address)
-        s.latitude = lat
-        s.longitude = lon
+    for name, address, deal, day in bars:
+        lat, lon = geocode_location(name, address)
 
-    db.session.add_all(seed)
+        db.session.add(
+            Special(
+                bar_name=name,
+                address=address,
+                deal=deal,
+                day=day,
+                latitude=lat,
+                longitude=lon,
+                verified=True
+            )
+        )
+
     db.session.commit()
 
-
+# ----------------------
+# INITIALIZE DB
+# ----------------------
 with app.app_context():
     db.create_all()
     seed_data()
-
 
 # ----------------------
 # ROUTES
@@ -97,7 +101,6 @@ with app.app_context():
 @app.route("/")
 def home():
     return render_template("index.html")
-
 
 @app.route("/add_special", methods=["POST"])
 def add_special():
@@ -108,7 +111,7 @@ def add_special():
         data.get("address")
     )
 
-    special = Special(
+    new_special = Special(
         bar_name=data["bar_name"],
         address=data.get("address"),
         deal=data["deal"],
@@ -118,17 +121,14 @@ def add_special():
         verified=False
     )
 
-    db.session.add(special)
+    db.session.add(new_special)
     db.session.commit()
 
     return jsonify({"status": "Saved — Pending Verification"})
 
-
 @app.route("/get_specials/<day>")
 def get_specials(day):
-    day = day.capitalize()
-
-    specials = Special.query.filter_by(day=day).all()
+    specials = Special.query.filter_by(day=day.capitalize()).all()
 
     return jsonify([
         {
@@ -141,7 +141,6 @@ def get_specials(day):
         }
         for s in specials
     ])
-
 
 if __name__ == "__main__":
     app.run(debug=True)
