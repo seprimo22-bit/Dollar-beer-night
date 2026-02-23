@@ -68,16 +68,6 @@
             margin-bottom: 12px;
         }
 
-        .deal-title {
-            font-weight: bold;
-            font-size: 16px;
-        }
-
-        .deal-sub {
-            font-size: 14px;
-            margin-top: 4px;
-        }
-
         #map {
             height: 300px;
             border-radius: 16px;
@@ -108,6 +98,7 @@
             background: #2f80ed;
             color: white;
             font-weight: bold;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -136,7 +127,12 @@
 
 <div class="add-section">
     <h3>Add Special</h3>
+
     <input id="bar" placeholder="Bar name">
+
+    <!-- NEW ADDRESS FIELD -->
+    <input id="address" placeholder="Address or City (ex: Boardman Ohio)">
+
     <input id="deal" placeholder="Deal">
     <input id="day" placeholder="Day (ex: Thursday)">
     <button class="submit-btn" onclick="addSpecial()">Submit</button>
