@@ -17,3 +17,25 @@ input {
     margin: 5px;
     padding: 8px;
 }
+.deal-card {
+    background: white;
+    padding: 16px;
+    border-radius: 16px;
+    margin: 12px 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.bar-name {
+    font-weight: 600;
+    font-size: 18px;
+}
+
+.deal-text {
+    color: #444;
+    margin-top: 4px;
+}
+
+.badge {
+    float: right;
+    font-size: 14px;
+}
