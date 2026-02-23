@@ -24,6 +24,7 @@ function loadDay(day) {
         .then(data => {
 
             clearMarkers();
+
             const results = document.getElementById("results");
             results.innerHTML = "";
 
@@ -42,27 +43,35 @@ function loadDay(day) {
                     <div class="deal-card">
                         <div class="bar-name">${s.bar_name} ${badge}</div>
                         <div class="deal-text">${s.deal}</div>
+                        <div style="font-size:12px;color:#777;">
+                            ${s.address || ""}
+                        </div>
                     </div>
                 `;
 
                 results.innerHTML += card;
 
                 if (s.latitude && s.longitude) {
-
                     let marker = L.marker([s.latitude, s.longitude])
                         .addTo(map)
                         .bindPopup(`
-                            <b>${s.bar_name}</b><br>${s.deal}<br>
-                            <a target="_blank"
-                            href="https://www.google.com/maps?q=${s.latitude},${s.longitude}">
-                            Navigate</a>
+                            <b>${s.bar_name}</b><br>
+                            ${s.deal}<br>
+                            ${s.address || ""}
                         `);
+
+                    marker.on("click", () => {
+                        window.open(
+                            `https://www.google.com/maps?q=${s.latitude},${s.longitude}`,
+                            "_blank"
+                        );
+                    });
 
                     markers.push(marker);
                 }
             });
 
-            // AUTO ZOOM TO MARKERS
+            // Auto zoom
             if (markers.length > 0) {
                 let group = new L.featureGroup(markers);
                 map.fitBounds(group.getBounds(), { padding: [40, 40] });
@@ -75,6 +84,7 @@ function loadDay(day) {
 function addSpecial() {
 
     const barName = document.getElementById("bar").value;
+    const address = document.getElementById("address").value;
     const dealText = document.getElementById("deal").value;
     const dayText = document.getElementById("day").value;
 
@@ -83,6 +93,7 @@ function addSpecial() {
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({
             bar_name: barName,
+            address: address,
             deal: dealText,
             day: dayText
         })
@@ -93,6 +104,7 @@ function addSpecial() {
         alert(res.status);
 
         document.getElementById("bar").value = "";
+        document.getElementById("address").value = "";
         document.getElementById("deal").value = "";
         document.getElementById("day").value = "";
 
