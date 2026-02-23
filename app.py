@@ -5,19 +5,20 @@ from datetime import datetime
 app = Flask(__name__)
 
 # ----------------------
-# Database Configuration
+# DATABASE CONFIG
 # ----------------------
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///beer.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
 
+
 # ----------------------
-# Database Model
+# DATABASE MODEL
 # ----------------------
 class Special(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    bar_name = db.Column(db.String(100), nullable=False)
+    bar_name = db.Column(db.String(120), nullable=False)
     deal = db.Column(db.String(200), nullable=False)
     day = db.Column(db.String(20), nullable=False)
     latitude = db.Column(db.Float)
@@ -27,13 +28,14 @@ class Special(db.Model):
 
 
 # ----------------------
-# Seed Verified Bars (REAL DATA)
+# SEED VERIFIED REAL BARS
+# (Runs only if DB empty)
 # ----------------------
 def seed_data():
     if Special.query.count() > 0:
         return
 
-    seed_bars = [
+    seed = [
         Special(
             bar_name="Lanai Lounge — Boardman, Ohio",
             deal="$1.50 cans",
@@ -41,46 +43,42 @@ def seed_data():
             verified=True
         ),
         Special(
-            bar_name="Steel City Bar & Grill — Midlothian Ave, Youngstown",
+            bar_name="Steel City Bar & Grill — Youngstown",
             deal="$2 bottles (2–8 PM)",
             day="Saturday",
             verified=True
         ),
         Special(
-            bar_name="John & Helen’s Tavern — Kensington, Ohio",
+            bar_name="John & Helen’s Tavern — Kensington",
             deal="$2.50 bottles",
             day="Wednesday",
             verified=True
         ),
         Special(
-            bar_name="Quench Bar & Grill — Boardman, Ohio",
+            bar_name="Quench Bar & Grill — Boardman",
             deal="$2.50 Tito shots",
             day="Tuesday",
             verified=True
         ),
         Special(
-            bar_name="La Villa Tavern — Struthers, Ohio",
+            bar_name="La Villa Tavern — Struthers",
             deal="$2 bottles",
             day="Monday",
             verified=True
         )
     ]
 
-    db.session.add_all(seed_bars)
+    db.session.add_all(seed)
     db.session.commit()
 
 
-# ----------------------
-# IMPORTANT FOR RENDER
-# Creates DB + seeds on startup
-# ----------------------
 with app.app_context():
     db.create_all()
     seed_data()
 
 
 # ----------------------
-# Routes
+# ROUTES
 # ----------------------
 
 @app.route("/")
@@ -96,13 +94,13 @@ def add_special():
         bar_name=data["bar_name"],
         deal=data["deal"],
         day=data["day"].capitalize(),
-        verified=False
+        verified=False  # user submissions start unverified
     )
 
     db.session.add(special)
     db.session.commit()
 
-    return jsonify({"status": "added"})
+    return jsonify({"status": "Saved — Pending Verification"})
 
 
 @app.route("/get_specials/<day>")
@@ -111,19 +109,15 @@ def get_specials(day):
 
     specials = Special.query.filter_by(day=day).all()
 
-    results = []
-    for s in specials:
-        results.append({
+    return jsonify([
+        {
             "bar_name": s.bar_name,
             "deal": s.deal,
             "verified": s.verified
-        })
+        }
+        for s in specials
+    ])
 
-    return jsonify(results)
 
-
-# ----------------------
-# Local Development Only
-# ----------------------
 if __name__ == "__main__":
     app.run(debug=True)
