@@ -2,10 +2,17 @@ from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import requests
+import os
 
 app = Flask(__name__)
 
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///beer.db"
+# ----------------------
+# DATABASE CONFIG
+# IMPORTANT:
+# Uses persistent disk on Render if available
+# ----------------------
+db_path = os.getenv("RENDER_DISK_PATH", ".")
+app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}/beer.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
@@ -31,68 +38,48 @@ class Special(db.Model):
 def geocode_location(query):
     try:
         url = "https://nominatim.openstreetmap.org/search"
-        params = {
-            "q": query,
-            "format": "json",
-            "limit": 1
-        }
-        headers = {
-            "User-Agent": "BeerDollarsApp"
-        }
+        params = {"q": query, "format": "json", "limit": 1}
+        headers = {"User-Agent": "BeerDollarsApp"}
 
-        response = requests.get(url, params=params, headers=headers, timeout=5)
+        response = requests.get(url, params=params, headers=headers)
         data = response.json()
 
-        if len(data) > 0:
+        if data:
             return float(data[0]["lat"]), float(data[0]["lon"])
-    except Exception as e:
-        print("Geocode error:", e)
+    except:
+        pass
 
     return None, None
 
 
 # ----------------------
-# SEED DATA
+# INITIAL VERIFIED SEED DATA
+# Only runs if DB empty
 # ----------------------
 def seed_data():
-
-    existing = Special.query.all()
-    if len(existing) > 0:
+    if Special.query.count() > 0:
         return
 
-    seed_list = [
-
-        # Existing verified bars
+    seed = [
         ("Lanai Lounge, Boardman Ohio", "$1.50 cans", "Sunday"),
         ("Steel City Bar & Grill, Youngstown Ohio", "$2 bottles (2–8 PM)", "Saturday"),
         ("John & Helen’s Tavern, Kensington Ohio", "$2.50 bottles", "Wednesday"),
         ("Quench Bar & Grill, Boardman Ohio", "$2.50 Tito shots", "Tuesday"),
         ("La Villa Tavern, Struthers Ohio", "$2 bottles", "Monday"),
-
-        # NEW — LOS GALLOS
         ("Los Gallos, Boardman Ohio", "$2 bottles", "Monday"),
-        ("Los Gallos, Boardman Ohio", "$2 bottles", "Tuesday"),
-        ("Los Gallos, Boardman Ohio", "$2 bottles", "Wednesday"),
-        ("Los Gallos, Boardman Ohio", "$2 bottles", "Thursday"),
     ]
 
-    specials = []
+    for name, deal, day in seed:
+        lat, lon = geocode_location(name)
+        db.session.add(Special(
+            bar_name=name,
+            deal=deal,
+            day=day,
+            latitude=lat,
+            longitude=lon,
+            verified=True
+        ))
 
-    for bar_name, deal, day in seed_list:
-        lat, lon = geocode_location(bar_name)
-
-        specials.append(
-            Special(
-                bar_name=bar_name,
-                deal=deal,
-                day=day,
-                latitude=lat,
-                longitude=lon,
-                verified=True
-            )
-        )
-
-    db.session.add_all(specials)
     db.session.commit()
 
 
@@ -111,12 +98,11 @@ def home():
 
 @app.route("/add_special", methods=["POST"])
 def add_special():
-
     data = request.json
 
     lat, lon = geocode_location(data["bar_name"])
 
-    special = Special(
+    new_special = Special(
         bar_name=data["bar_name"],
         deal=data["deal"],
         day=data["day"].capitalize(),
@@ -125,7 +111,7 @@ def add_special():
         verified=False
     )
 
-    db.session.add(special)
+    db.session.add(new_special)
     db.session.commit()
 
     return jsonify({"status": "Saved — Pending Verification"})
@@ -133,14 +119,12 @@ def add_special():
 
 @app.route("/get_specials/<day>")
 def get_specials(day):
-
     day = day.capitalize()
 
     specials = Special.query.filter_by(day=day).all()
 
     return jsonify([
         {
-            "id": s.id,
             "bar_name": s.bar_name,
             "deal": s.deal,
             "verified": s.verified,
