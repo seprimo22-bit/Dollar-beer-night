@@ -1,12 +1,10 @@
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+import requests
 
 app = Flask(__name__)
 
-# ----------------------
-# DATABASE CONFIG
-# ----------------------
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///beer.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -28,8 +26,33 @@ class Special(db.Model):
 
 
 # ----------------------
-# SEED VERIFIED REAL BARS
-# (Runs only if DB empty)
+# GEOCODING FUNCTION
+# ----------------------
+def geocode_location(query):
+    try:
+        url = "https://nominatim.openstreetmap.org/search"
+        params = {
+            "q": query,
+            "format": "json",
+            "limit": 1
+        }
+        headers = {
+            "User-Agent": "BeerDollarsApp"
+        }
+
+        response = requests.get(url, params=params, headers=headers)
+        data = response.json()
+
+        if len(data) > 0:
+            return float(data[0]["lat"]), float(data[0]["lon"])
+    except:
+        pass
+
+    return None, None
+
+
+# ----------------------
+# SEED DATA
 # ----------------------
 def seed_data():
     if Special.query.count() > 0:
@@ -37,36 +60,41 @@ def seed_data():
 
     seed = [
         Special(
-            bar_name="Lanai Lounge — Boardman, Ohio",
+            bar_name="Lanai Lounge, Boardman Ohio",
             deal="$1.50 cans",
             day="Sunday",
             verified=True
         ),
         Special(
-            bar_name="Steel City Bar & Grill — Youngstown",
+            bar_name="Steel City Bar & Grill, Youngstown Ohio",
             deal="$2 bottles (2–8 PM)",
             day="Saturday",
             verified=True
         ),
         Special(
-            bar_name="John & Helen’s Tavern — Kensington",
+            bar_name="John & Helen’s Tavern, Kensington Ohio",
             deal="$2.50 bottles",
             day="Wednesday",
             verified=True
         ),
         Special(
-            bar_name="Quench Bar & Grill — Boardman",
+            bar_name="Quench Bar & Grill, Boardman Ohio",
             deal="$2.50 Tito shots",
             day="Tuesday",
             verified=True
         ),
         Special(
-            bar_name="La Villa Tavern — Struthers",
+            bar_name="La Villa Tavern, Struthers Ohio",
             deal="$2 bottles",
             day="Monday",
             verified=True
         )
     ]
+
+    for s in seed:
+        lat, lon = geocode_location(s.bar_name)
+        s.latitude = lat
+        s.longitude = lon
 
     db.session.add_all(seed)
     db.session.commit()
@@ -80,7 +108,6 @@ with app.app_context():
 # ----------------------
 # ROUTES
 # ----------------------
-
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -90,11 +117,15 @@ def home():
 def add_special():
     data = request.json
 
+    lat, lon = geocode_location(data["bar_name"])
+
     special = Special(
         bar_name=data["bar_name"],
         deal=data["deal"],
         day=data["day"].capitalize(),
-        verified=False  # user submissions start unverified
+        latitude=lat,
+        longitude=lon,
+        verified=False
     )
 
     db.session.add(special)
@@ -113,7 +144,9 @@ def get_specials(day):
         {
             "bar_name": s.bar_name,
             "deal": s.deal,
-            "verified": s.verified
+            "verified": s.verified,
+            "latitude": s.latitude,
+            "longitude": s.longitude
         }
         for s in specials
     ])
