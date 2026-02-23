@@ -4,6 +4,9 @@ from datetime import datetime
 
 app = Flask(__name__)
 
+# ----------------------
+# Database Configuration
+# ----------------------
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///beer.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -24,7 +27,7 @@ class Special(db.Model):
 
 
 # ----------------------
-# Initial Seed Data (REAL VERIFIED BARS)
+# Seed Verified Bars (REAL DATA)
 # ----------------------
 def seed_data():
     if Special.query.count() > 0:
@@ -67,6 +70,10 @@ def seed_data():
     db.session.commit()
 
 
+# ----------------------
+# IMPORTANT FOR RENDER
+# Creates DB + seeds on startup
+# ----------------------
 with app.app_context():
     db.create_all()
     seed_data()
@@ -115,5 +122,8 @@ def get_specials(day):
     return jsonify(results)
 
 
+# ----------------------
+# Local Development Only
+# ----------------------
 if __name__ == "__main__":
     app.run(debug=True)
