@@ -6,7 +6,9 @@ import os
 
 app = Flask(__name__)
 
-# ---------- DATABASE ----------
+# -------------------------
+# DATABASE SETUP
+# -------------------------
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
@@ -20,7 +22,9 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
 
-# ---------- MODEL ----------
+# -------------------------
+# MODEL
+# -------------------------
 class Special(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     bar_name = db.Column(db.String(120), nullable=False)
@@ -33,26 +37,37 @@ class Special(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
-# ---------- GEOCODE ----------
+# -------------------------
+# GEOCODING
+# -------------------------
 def geocode(bar, address=None):
     try:
         query = f"{bar}, {address}" if address else bar
         url = "https://nominatim.openstreetmap.org/search"
-        params = {"q": query, "format": "json", "limit": 1}
-        headers = {"User-Agent": "BeerDollars"}
 
-        r = requests.get(url, params=params, headers=headers, timeout=5)
+        params = {
+            "q": query,
+            "format": "json",
+            "limit": 1
+        }
+
+        headers = {"User-Agent": "BeerDollarsApp"}
+
+        r = requests.get(url, params=params, headers=headers, timeout=6)
         data = r.json()
 
         if data:
             return float(data[0]["lat"]), float(data[0]["lon"])
+
     except Exception as e:
         print("Geocode error:", e)
 
     return None, None
 
 
-# ---------- SEED DATA ----------
+# -------------------------
+# SEED BARS (ONLY FIRST RUN)
+# -------------------------
 def seed_data():
     if Special.query.count() > 0:
         return
@@ -65,17 +80,16 @@ def seed_data():
 
     for bar, addr, deal, day in starters:
         lat, lon = geocode(bar, addr)
-        db.session.add(
-            Special(
-                bar_name=bar,
-                address=addr,
-                deal=deal,
-                day=day,
-                latitude=lat,
-                longitude=lon,
-                verified=True,
-            )
-        )
+
+        db.session.add(Special(
+            bar_name=bar,
+            address=addr,
+            deal=deal,
+            day=day,
+            latitude=lat,
+            longitude=lon,
+            verified=True
+        ))
 
     db.session.commit()
 
@@ -85,7 +99,9 @@ with app.app_context():
     seed_data()
 
 
-# ---------- ROUTES ----------
+# -------------------------
+# ROUTES
+# -------------------------
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -93,28 +109,38 @@ def home():
 
 @app.route("/add_special", methods=["POST"])
 def add_special():
-    data = request.json
+    try:
+        data = request.json
 
-    lat, lon = geocode(data["bar_name"], data.get("address"))
+        lat, lon = geocode(
+            data.get("bar_name"),
+            data.get("address")
+        )
 
-    new_special = Special(
-        bar_name=data["bar_name"],
-        address=data.get("address"),
-        deal=data["deal"],
-        day=data["day"].capitalize(),
-        latitude=lat,
-        longitude=lon,
-    )
+        new_special = Special(
+            bar_name=data.get("bar_name"),
+            address=data.get("address"),
+            deal=data.get("deal"),
+            day=data.get("day").capitalize(),
+            latitude=lat,
+            longitude=lon
+        )
 
-    db.session.add(new_special)
-    db.session.commit()
+        db.session.add(new_special)
+        db.session.commit()
 
-    return jsonify({"status": "Saved"})
+        return jsonify({"status": "Saved Successfully"})
+
+    except Exception as e:
+        print("SAVE ERROR:", e)
+        return jsonify({"status": "Error saving"}), 500
 
 
 @app.route("/get_specials/<day>")
 def get_specials(day):
-    specials = Special.query.filter_by(day=day.capitalize()).all()
+    specials = Special.query.filter_by(
+        day=day.capitalize()
+    ).all()
 
     return jsonify([
         {
