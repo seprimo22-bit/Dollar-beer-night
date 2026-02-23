@@ -1,4 +1,19 @@
 body {
-    font-family: Arial, sans-serif;
+    font-family: Arial;
     text-align: center;
+    background: #f4f6f8;
+}
+
+button {
+    background: #1976d2;
+    color: white;
+    padding: 10px;
+    margin: 5px;
+    border: none;
+    border-radius: 6px;
+}
+
+input {
+    margin: 5px;
+    padding: 8px;
 }
