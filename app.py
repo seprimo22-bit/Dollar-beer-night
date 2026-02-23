@@ -8,22 +8,27 @@ app = Flask(__name__)
 
 # ----------------------
 # DATABASE CONFIG
-# Use Render PostgreSQL if available
 # ----------------------
-database_url = os.getenv("DATABASE_URL")
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
-if database_url:
-    app.config["SQLALCHEMY_DATABASE_URI"] = database_url.replace("postgres://", "postgresql://")
+if DATABASE_URL:
+    # Render postgres sometimes needs ssl fix
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace(
+            "postgres://", "postgresql://", 1
+        )
+
+    app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 else:
+    # Local fallback only
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///beer.db"
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
 
-
 # ----------------------
-# MODEL
+# DATABASE MODEL
 # ----------------------
 class Special(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -37,7 +42,7 @@ class Special(db.Model):
 
 
 # ----------------------
-# GEOCODE
+# GEOCODER
 # ----------------------
 def geocode_location(query):
     try:
@@ -45,22 +50,56 @@ def geocode_location(query):
         params = {"q": query, "format": "json", "limit": 1}
         headers = {"User-Agent": "BeerDollarsApp"}
 
-        response = requests.get(url, params=params, headers=headers)
-        data = response.json()
+        r = requests.get(url, params=params, headers=headers, timeout=5)
+        data = r.json()
 
         if data:
             return float(data[0]["lat"]), float(data[0]["lon"])
-    except:
-        pass
+    except Exception as e:
+        print("Geocode error:", e)
 
     return None, None
 
 
 # ----------------------
-# INIT DB
+# SEED VERIFIED BARS
 # ----------------------
+def seed_data():
+    if Special.query.count() > 0:
+        return
+
+    bars = [
+        ("Lanai Lounge, Boardman Ohio", "$1.50 cans", "Sunday"),
+        ("Steel City Bar & Grill, Youngstown Ohio", "$2 bottles 2–8PM", "Saturday"),
+        ("John & Helen’s Tavern, Kensington Ohio", "$2.50 bottles", "Wednesday"),
+        ("Quench Bar & Grill, Boardman Ohio", "$2.50 Tito shots", "Tuesday"),
+        ("La Villa Tavern, Struthers Ohio", "$2 bottles", "Monday"),
+        ("Los Gallos, Boardman Ohio", "$2 bottles", "Monday"),
+        ("Los Gallos, Boardman Ohio", "$2 bottles", "Tuesday"),
+        ("Los Gallos, Boardman Ohio", "$2 bottles", "Wednesday"),
+        ("Los Gallos, Boardman Ohio", "$2 bottles", "Thursday"),
+    ]
+
+    for name, deal, day in bars:
+        lat, lon = geocode_location(name)
+
+        db.session.add(
+            Special(
+                bar_name=name,
+                deal=deal,
+                day=day,
+                latitude=lat,
+                longitude=lon,
+                verified=True
+            )
+        )
+
+    db.session.commit()
+
+
 with app.app_context():
     db.create_all()
+    seed_data()
 
 
 # ----------------------
@@ -73,11 +112,11 @@ def home():
 
 @app.route("/add_special", methods=["POST"])
 def add_special():
-
     data = request.json
+
     lat, lon = geocode_location(data["bar_name"])
 
-    special = Special(
+    new_special = Special(
         bar_name=data["bar_name"],
         deal=data["deal"],
         day=data["day"].capitalize(),
@@ -86,7 +125,7 @@ def add_special():
         verified=False
     )
 
-    db.session.add(special)
+    db.session.add(new_special)
     db.session.commit()
 
     return jsonify({"status": "Saved — Pending Verification"})
@@ -94,9 +133,7 @@ def add_special():
 
 @app.route("/get_specials/<day>")
 def get_specials(day):
-
-    day = day.capitalize()
-    specials = Special.query.filter_by(day=day).all()
+    specials = Special.query.filter_by(day=day.capitalize()).all()
 
     return jsonify([
         {
