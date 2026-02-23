@@ -2,30 +2,14 @@ from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import requests
-import os
 
 app = Flask(__name__)
 
-# ----------------------
-# DATABASE CONFIG
-# ----------------------
-DATABASE_URL = os.environ.get("DATABASE_URL")
-
-if DATABASE_URL:
-    # Render postgres sometimes needs ssl fix
-    if DATABASE_URL.startswith("postgres://"):
-        DATABASE_URL = DATABASE_URL.replace(
-            "postgres://", "postgresql://", 1
-        )
-
-    app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
-else:
-    # Local fallback only
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///beer.db"
-
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///beer.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
+
 
 # ----------------------
 # DATABASE MODEL
@@ -33,6 +17,7 @@ db = SQLAlchemy(app)
 class Special(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     bar_name = db.Column(db.String(120), nullable=False)
+    address = db.Column(db.String(200))
     deal = db.Column(db.String(200), nullable=False)
     day = db.Column(db.String(20), nullable=False)
     latitude = db.Column(db.Float)
@@ -42,58 +27,62 @@ class Special(db.Model):
 
 
 # ----------------------
-# GEOCODER
+# GEOCODING FUNCTION
 # ----------------------
-def geocode_location(query):
+def geocode_location(bar, address=None):
     try:
+        query = f"{bar}, {address}" if address else bar
+
         url = "https://nominatim.openstreetmap.org/search"
-        params = {"q": query, "format": "json", "limit": 1}
+        params = {
+            "q": query,
+            "format": "json",
+            "limit": 1
+        }
+
         headers = {"User-Agent": "BeerDollarsApp"}
 
-        r = requests.get(url, params=params, headers=headers, timeout=5)
-        data = r.json()
+        response = requests.get(url, params=params, headers=headers)
+        data = response.json()
 
-        if data:
+        if len(data) > 0:
             return float(data[0]["lat"]), float(data[0]["lon"])
-    except Exception as e:
-        print("Geocode error:", e)
+    except:
+        pass
 
     return None, None
 
 
 # ----------------------
-# SEED VERIFIED BARS
+# SEED DATA
 # ----------------------
 def seed_data():
     if Special.query.count() > 0:
         return
 
-    bars = [
-        ("Lanai Lounge, Boardman Ohio", "$1.50 cans", "Sunday"),
-        ("Steel City Bar & Grill, Youngstown Ohio", "$2 bottles 2–8PM", "Saturday"),
-        ("John & Helen’s Tavern, Kensington Ohio", "$2.50 bottles", "Wednesday"),
-        ("Quench Bar & Grill, Boardman Ohio", "$2.50 Tito shots", "Tuesday"),
-        ("La Villa Tavern, Struthers Ohio", "$2 bottles", "Monday"),
-        ("Los Gallos, Boardman Ohio", "$2 bottles", "Monday"),
-        ("Los Gallos, Boardman Ohio", "$2 bottles", "Tuesday"),
-        ("Los Gallos, Boardman Ohio", "$2 bottles", "Wednesday"),
-        ("Los Gallos, Boardman Ohio", "$2 bottles", "Thursday"),
+    seed = [
+        Special(
+            bar_name="La Villa Tavern",
+            address="Struthers Ohio",
+            deal="$2 bottles",
+            day="Monday",
+            verified=True
+        ),
+        Special(
+            bar_name="Los Gallos",
+            address="Boardman Ohio",
+            deal="$2 bottles",
+            day="Monday",
+            verified=True
+        )
     ]
 
-    for name, deal, day in bars:
-        lat, lon = geocode_location(name)
+    for s in seed:
+        lat, lon = geocode_location(s.bar_name, s.address)
+        s.latitude = lat
+        s.longitude = lon
 
-        db.session.add(
-            Special(
-                bar_name=name,
-                deal=deal,
-                day=day,
-                latitude=lat,
-                longitude=lon,
-                verified=True
-            )
-        )
-
+    db.session.add_all(seed)
     db.session.commit()
 
 
@@ -114,10 +103,14 @@ def home():
 def add_special():
     data = request.json
 
-    lat, lon = geocode_location(data["bar_name"])
+    lat, lon = geocode_location(
+        data["bar_name"],
+        data.get("address")
+    )
 
-    new_special = Special(
+    special = Special(
         bar_name=data["bar_name"],
+        address=data.get("address"),
         deal=data["deal"],
         day=data["day"].capitalize(),
         latitude=lat,
@@ -125,7 +118,7 @@ def add_special():
         verified=False
     )
 
-    db.session.add(new_special)
+    db.session.add(special)
     db.session.commit()
 
     return jsonify({"status": "Saved — Pending Verification"})
@@ -133,11 +126,14 @@ def add_special():
 
 @app.route("/get_specials/<day>")
 def get_specials(day):
-    specials = Special.query.filter_by(day=day.capitalize()).all()
+    day = day.capitalize()
+
+    specials = Special.query.filter_by(day=day).all()
 
     return jsonify([
         {
             "bar_name": s.bar_name,
+            "address": s.address,
             "deal": s.deal,
             "verified": s.verified,
             "latitude": s.latitude,
