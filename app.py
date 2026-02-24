@@ -4,9 +4,10 @@ from datetime import datetime
 import requests
 import os
 
-app = Flask(__name__)
+# ---------- APP SETUP ----------
+app = Flask(__name__, static_folder="static", static_url_path="/static")
 
-# ---------------- DATABASE ----------------
+# ---------- DATABASE ----------
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
@@ -17,7 +18,7 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
 
-# ---------------- MODEL ----------------
+# ---------- MODEL ----------
 class Special(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     bar_name = db.Column(db.String(120), nullable=False)
@@ -28,7 +29,11 @@ class Special(db.Model):
     longitude = db.Column(db.Float)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-# ---------------- GEOCODE ----------------
+# ---------- INIT DATABASE ----------
+with app.app_context():
+    db.create_all()
+
+# ---------- GEOCODE ----------
 def geocode(bar, address=None):
     try:
         query = f"{bar}, {address}" if address else bar
@@ -49,18 +54,11 @@ def geocode(bar, address=None):
 
     return None, None
 
-
-# ---------------- NORMALIZE TEXT ----------------
+# ---------- NORMALIZE ----------
 def normalize(text):
-    return (
-        text.lower()
-        .replace("'", "")
-        .replace("’", "")
-        .strip()
-    )
+    return text.lower().replace("'", "").replace("’", "").strip()
 
-
-# ---------------- DUPLICATE CHECK ----------------
+# ---------- DUPLICATE CHECK ----------
 def is_duplicate(day, deal, bar_name):
     specials = Special.query.filter_by(day=day).all()
 
@@ -68,31 +66,20 @@ def is_duplicate(day, deal, bar_name):
     deal_norm = normalize(deal)
 
     for s in specials:
-        if (
-            normalize(s.bar_name) == bar_norm
-            and normalize(s.deal) == deal_norm
-        ):
+        if normalize(s.bar_name) == bar_norm and normalize(s.deal) == deal_norm:
             return True
 
     return False
 
-
-# ---------------- FOOD FILTER ----------------
+# ---------- FOOD FILTER ----------
 def contains_food(deal):
     banned = ["wings", "pizza", "burger", "fries", "food", "sandwich"]
     return any(word in deal.lower() for word in banned)
 
-
-# ---------------- INIT DB ----------------
-with app.app_context():
-    db.create_all()
-
-
-# ---------------- ROUTES ----------------
+# ---------- ROUTES ----------
 @app.route("/")
 def home():
     return render_template("index.html")
-
 
 @app.route("/add_special", methods=["POST"])
 def add_special():
@@ -105,26 +92,17 @@ def add_special():
         day_clean = data.get("day", "").strip().capitalize()
 
         if not bar_name or not deal or not day_clean:
-            return jsonify({
-                "success": False,
-                "message": "Bar, deal, and day required."
-            })
+            return jsonify(success=False, message="Missing info")
 
         if contains_food(deal):
-            return jsonify({
-                "success": False,
-                "message": "Food specials not allowed."
-            })
+            return jsonify(success=False, message="Food specials not allowed")
 
         if is_duplicate(day_clean, deal, bar_name):
-            return jsonify({
-                "success": False,
-                "message": "Duplicate special."
-            })
+            return jsonify(success=False, message="Duplicate")
 
         lat, lon = geocode(bar_name, address)
 
-        new_special = Special(
+        special = Special(
             bar_name=bar_name,
             address=address,
             deal=deal,
@@ -133,16 +111,15 @@ def add_special():
             longitude=lon
         )
 
-        db.session.add(new_special)
+        db.session.add(special)
         db.session.commit()
 
-        return jsonify({"success": True})
+        return jsonify(success=True)
 
     except Exception as e:
         print("SAVE ERROR:", e)
         db.session.rollback()
-        return jsonify({"success": False}), 500
-
+        return jsonify(success=False), 500
 
 @app.route("/get_specials/<day>")
 def get_specials(day):
@@ -150,18 +127,16 @@ def get_specials(day):
     specials = Special.query.filter_by(day=day_clean).all()
 
     return jsonify([
-        {
-            "bar_name": s.bar_name,
-            "address": s.address,
-            "deal": s.deal,
-            "latitude": s.latitude,
-            "longitude": s.longitude
-        }
+        dict(
+            bar_name=s.bar_name,
+            address=s.address,
+            deal=s.deal,
+            latitude=s.latitude,
+            longitude=s.longitude
+        )
         for s in specials
     ])
 
-
-# ---------------- DIRECT DELETE ROUTE ----------------
 @app.route("/delete_bar/<bar>/<day>")
 def delete_bar(bar, day):
     bar = bar.lower().strip()
@@ -176,8 +151,4 @@ def delete_bar(bar, day):
             deleted += 1
 
     db.session.commit()
-    return f"Deleted {deleted} entries for {bar} on {day}"
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
+    return f"Deleted {deleted}"
