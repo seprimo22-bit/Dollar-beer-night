@@ -1,4 +1,4 @@
-I'mfrom flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import requests
@@ -51,21 +51,23 @@ def geocode(bar, address=None):
     return None, None
 
 
-# ---------------- DUPLICATE CHECK (FIXED) ----------------
+# ---------------- DUPLICATE CHECK ----------------
 def is_duplicate(day, lat, lon, deal, bar_name):
     specials = Special.query.filter_by(day=day).all()
 
     for s in specials:
 
-        # CASE 1 — Both entries have coordinates
+        # If coordinates exist
         if lat and lon and s.latitude and s.longitude:
-            distance = math.sqrt((s.latitude - lat) ** 2 +
-                                 (s.longitude - lon) ** 2)
+            distance = math.sqrt(
+                (s.latitude - lat) ** 2 +
+                (s.longitude - lon) ** 2
+            )
 
             if distance < 0.001 and s.deal.lower() == deal.lower():
                 return True
 
-        # CASE 2 — No coordinates available
+        # If no coordinates
         if not lat and not lon:
             if (
                 s.bar_name.lower() == bar_name.lower()
@@ -117,7 +119,6 @@ def add_special():
 
         lat, lon = geocode(bar_name, address)
 
-        # ---- DUPLICATE CHECK ----
         if is_duplicate(day_clean, lat, lon, deal, bar_name):
             return jsonify({
                 "success": False,
@@ -160,6 +161,8 @@ def get_specials(day):
         for s in specials
     ])
 
+
+# ---------------- ONE-TIME CLEANUP ROUTE ----------------
 @app.route("/cleanup_duplicates")
 def cleanup_duplicates():
     seen = set()
@@ -182,28 +185,7 @@ def cleanup_duplicates():
 
     db.session.commit()
     return f"Deleted {deleted} duplicates"
+
+
 if __name__ == "__main__":
     app.run(debug=True)
-@app.route("/cleanup_duplicates")
-def cleanup_duplicates():
-    seen = set()
-    deleted = 0
-
-    specials = Special.query.order_by(Special.created_at).all()
-
-    for s in specials:
-        key = (
-            s.bar_name.lower().strip(),
-            s.deal.lower().strip(),
-            s.day.lower().strip()
-        )
-
-        if key in seen:
-            db.session.delete(s)
-            deleted += 1
-        else:
-            seen.add(key)
-
-    db.session.commit()
-    return f"Deleted {deleted} duplicates"
-    
