@@ -30,20 +30,24 @@ class Special(db.Model):
     longitude = db.Column(db.Float)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-# ---------- INIT DATABASE ----------
 with app.app_context():
     db.create_all()
 
-# ---------- CONFIG ----------
+# ---------- ADMIN KEY ----------
 ADMIN_KEY = os.getenv("ADMIN_KEY", "BeerBoss2026!")
 
-# ---------- UTILITIES ----------
+# ---------- HELPERS ----------
 def normalize(text):
-    return text.lower().replace("'", "").replace("’", "").strip()
-
-def contains_food(deal):
-    banned = ["wings", "pizza", "burger", "fries", "food", "sandwich"]
-    return any(word in deal.lower() for word in banned)
+    if not text:
+        return ""
+    return (
+        text.lower()
+        .replace("'", "")
+        .replace("’", "")
+        .replace(".", "")
+        .replace(",", "")
+        .strip()
+    )
 
 def geocode(bar, address=None):
     try:
@@ -53,7 +57,7 @@ def geocode(bar, address=None):
             "https://nominatim.openstreetmap.org/search",
             params={"q": query, "format": "json", "limit": 1},
             headers={"User-Agent": "BeerDollarsApp"},
-            timeout=8
+            timeout=8,
         )
 
         data = r.json()
@@ -64,21 +68,33 @@ def geocode(bar, address=None):
 
     return None, None
 
+
 def is_duplicate(day, deal, bar_name):
     specials = Special.query.filter_by(day=day).all()
-    bar_norm = normalize(bar_name)
-    deal_norm = normalize(deal)
-
     for s in specials:
-        if normalize(s.bar_name) == bar_norm and normalize(s.deal) == deal_norm:
+        if (
+            normalize(s.bar_name) == normalize(bar_name)
+            and normalize(s.deal) == normalize(deal)
+        ):
             return True
     return False
 
-# ---------- ROUTES ----------
 
+def contains_food(deal):
+    banned = ["wings", "pizza", "burger", "fries", "food", "sandwich"]
+    return any(word in deal.lower() for word in banned)
+
+# ---------- HEALTH CHECK (Render) ----------
+@app.route("/health")
+def health():
+    return "OK", 200
+
+
+# ---------- HOME ----------
 @app.route("/")
 def home():
     return render_template("index.html", admin=session.get("admin"))
+
 
 # ---------- ADMIN LOGIN ----------
 @app.route("/admin")
@@ -88,10 +104,12 @@ def admin_login():
         session["admin"] = True
     return redirect("/admin-panel")
 
+
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/")
+
 
 # ---------- ADMIN PANEL ----------
 @app.route("/admin-panel")
@@ -102,6 +120,7 @@ def admin_panel():
     specials = Special.query.order_by(Special.day, Special.bar_name).all()
     return render_template("admin.html", specials=specials)
 
+
 # ---------- ADD SPECIAL ----------
 @app.route("/add_special", methods=["POST"])
 def add_special():
@@ -111,15 +130,15 @@ def add_special():
         bar_name = data.get("bar_name", "").strip()
         address = data.get("address", "").strip()
         deal = data.get("deal", "").strip()
-        day_clean = data.get("day", "").strip().capitalize()
+        day = data.get("day", "").strip().capitalize()
 
-        if not bar_name or not deal or not day_clean:
+        if not bar_name or not deal or not day:
             return jsonify(success=False, message="Missing info")
 
         if contains_food(deal):
             return jsonify(success=False, message="Food specials not allowed")
 
-        if is_duplicate(day_clean, deal, bar_name):
+        if is_duplicate(day, deal, bar_name):
             return jsonify(success=False, message="Duplicate")
 
         lat, lon = geocode(bar_name, address)
@@ -128,9 +147,9 @@ def add_special():
             bar_name=bar_name,
             address=address,
             deal=deal,
-            day=day_clean,
+            day=day,
             latitude=lat,
-            longitude=lon
+            longitude=lon,
         )
 
         db.session.add(special)
@@ -143,11 +162,20 @@ def add_special():
         db.session.rollback()
         return jsonify(success=False), 500
 
+
 # ---------- GET SPECIALS ----------
 @app.route("/get_specials/<day>")
 def get_specials(day):
-    day_clean = day.strip().capitalize()
-    specials = Special.query.filter_by(day=day_clean).all()
+    day = day.capitalize().strip()
+    specials = Special.query.filter_by(day=day).all()
+
+    # Auto-fix missing coordinates
+    for s in specials:
+        if not s.latitude and s.address:
+            lat, lon = geocode(s.bar_name, s.address)
+            s.latitude = lat
+            s.longitude = lon
+    db.session.commit()
 
     return jsonify([
         dict(
@@ -156,10 +184,11 @@ def get_specials(day):
             address=s.address,
             deal=s.deal,
             latitude=s.latitude,
-            longitude=s.longitude
+            longitude=s.longitude,
         )
         for s in specials
     ])
+
 
 # ---------- EDIT SPECIAL ----------
 @app.route("/edit_special/<int:id>", methods=["POST"])
@@ -169,22 +198,18 @@ def edit_special(id):
 
     special = Special.query.get_or_404(id)
 
-    bar_name = request.form.get("bar_name")
-    address = request.form.get("address")
-    deal = request.form.get("deal")
-    day = request.form.get("day")
+    special.bar_name = request.form.get("bar_name")
+    special.address = request.form.get("address")
+    special.deal = request.form.get("deal")
+    special.day = request.form.get("day").capitalize()
 
-    special.bar_name = bar_name
-    special.address = address
-    special.deal = deal
-    special.day = day.capitalize()
-
-    lat, lon = geocode(bar_name, address)
+    lat, lon = geocode(special.bar_name, special.address)
     special.latitude = lat
     special.longitude = lon
 
     db.session.commit()
     return redirect("/admin-panel")
+
 
 # ---------- DELETE SPECIAL ----------
 @app.route("/delete_special/<int:id>", methods=["POST"])
