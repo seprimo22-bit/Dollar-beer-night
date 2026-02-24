@@ -6,27 +6,18 @@ import os
 
 app = Flask(__name__)
 
-# -------------------------
-# DATABASE CONFIG
-# -------------------------
+# ---------------- DATABASE ----------------
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-if DATABASE_URL:
-    if DATABASE_URL.startswith("postgres://"):
-        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-    print("Using Postgres DB")
-    app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
-else:
-    print("Using SQLite fallback")
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///beer.db"
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
+app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL or "sqlite:///beer.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
 db = SQLAlchemy(app)
 
-
-# -------------------------
-# MODEL
-# -------------------------
+# ---------------- MODEL ----------------
 class Special(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     bar_name = db.Column(db.String(120), nullable=False)
@@ -37,10 +28,7 @@ class Special(db.Model):
     longitude = db.Column(db.Float)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-
-# -------------------------
-# GEOCODING
-# -------------------------
+# ---------------- GEOCODE ----------------
 def geocode(bar, address=None):
     try:
         query = f"{bar}, {address}" if address else bar
@@ -48,12 +36,11 @@ def geocode(bar, address=None):
         r = requests.get(
             "https://nominatim.openstreetmap.org/search",
             params={"q": query, "format": "json", "limit": 1},
-            headers={"User-Agent": "BeerDollarsApp/1.0"},
+            headers={"User-Agent": "BeerDollarsApp"},
             timeout=8
         )
 
         data = r.json()
-
         if data:
             return float(data[0]["lat"]), float(data[0]["lon"])
 
@@ -62,33 +49,21 @@ def geocode(bar, address=None):
 
     return None, None
 
-
-# -------------------------
-# INITIALIZE DB
-# -------------------------
 with app.app_context():
     db.create_all()
 
-
-# -------------------------
-# ROUTES
-# -------------------------
+# ---------------- ROUTES ----------------
 @app.route("/")
 def home():
     return render_template("index.html")
-
 
 @app.route("/add_special", methods=["POST"])
 def add_special():
     try:
         data = request.json
+        day_clean = data.get("day","").strip().capitalize()
 
-        day_clean = data.get("day", "").strip().capitalize()
-
-        lat, lon = geocode(
-            data.get("bar_name"),
-            data.get("address")
-        )
+        lat, lon = geocode(data.get("bar_name"), data.get("address"))
 
         new_special = Special(
             bar_name=data.get("bar_name"),
@@ -102,25 +77,12 @@ def add_special():
         db.session.add(new_special)
         db.session.commit()
 
-        print("Saved:", new_special.bar_name)
-
-        return jsonify({
-            "success": True,
-            "bar": {
-                "bar_name": new_special.bar_name,
-                "address": new_special.address,
-                "deal": new_special.deal,
-                "day": new_special.day,
-                "latitude": new_special.latitude,
-                "longitude": new_special.longitude
-            }
-        })
+        return jsonify({"success": True})
 
     except Exception as e:
         print("SAVE ERROR:", e)
         db.session.rollback()
         return jsonify({"success": False}), 500
-
 
 @app.route("/get_specials/<day>")
 def get_specials(day):
@@ -138,7 +100,6 @@ def get_specials(day):
         }
         for s in specials
     ])
-
 
 if __name__ == "__main__":
     app.run(debug=True)
