@@ -50,48 +50,79 @@ def geocode(bar, address=None):
 
     return None, None
 
-# ---------------- UTILS ----------------
-def is_duplicate(day, lat, lon, deal):
-    if not lat or not lon:
-        return False
 
+# ---------------- DUPLICATE CHECK (FIXED) ----------------
+def is_duplicate(day, lat, lon, deal, bar_name):
     specials = Special.query.filter_by(day=day).all()
 
     for s in specials:
-        if s.latitude and s.longitude:
-            distance = math.sqrt((s.latitude - lat)**2 + (s.longitude - lon)**2)
+
+        # CASE 1 — Both entries have coordinates
+        if lat and lon and s.latitude and s.longitude:
+            distance = math.sqrt((s.latitude - lat) ** 2 +
+                                 (s.longitude - lon) ** 2)
+
             if distance < 0.001 and s.deal.lower() == deal.lower():
                 return True
+
+        # CASE 2 — No coordinates available
+        if not lat and not lon:
+            if (
+                s.bar_name.lower() == bar_name.lower()
+                and s.deal.lower() == deal.lower()
+            ):
+                return True
+
     return False
 
+
+# ---------------- FOOD FILTER ----------------
 def contains_food(deal):
     banned = ["wings", "pizza", "burger", "fries", "food", "sandwich"]
     return any(word in deal.lower() for word in banned)
 
+
+# ---------------- INIT DB ----------------
 with app.app_context():
     db.create_all()
+
 
 # ---------------- ROUTES ----------------
 @app.route("/")
 def home():
     return render_template("index.html")
 
+
 @app.route("/add_special", methods=["POST"])
 def add_special():
     try:
         data = request.json
+
         bar_name = data.get("bar_name", "").strip()
         address = data.get("address", "").strip()
         deal = data.get("deal", "").strip()
-        day_clean = data.get("day","").strip().capitalize()
+        day_clean = data.get("day", "").strip().capitalize()
+
+        if not bar_name or not deal or not day_clean:
+            return jsonify({
+                "success": False,
+                "message": "Bar, deal, and day required."
+            })
 
         if contains_food(deal):
-            return jsonify({"success": False, "message": "Food specials not allowed."})
+            return jsonify({
+                "success": False,
+                "message": "Food specials not allowed."
+            })
 
         lat, lon = geocode(bar_name, address)
 
-        if is_duplicate(day_clean, lat, lon, deal):
-            return jsonify({"success": False, "message": "Duplicate special."})
+        # ---- DUPLICATE CHECK ----
+        if is_duplicate(day_clean, lat, lon, deal, bar_name):
+            return jsonify({
+                "success": False,
+                "message": "Duplicate special."
+            })
 
         new_special = Special(
             bar_name=bar_name,
@@ -112,6 +143,7 @@ def add_special():
         db.session.rollback()
         return jsonify({"success": False}), 500
 
+
 @app.route("/get_specials/<day>")
 def get_specials(day):
     day_clean = day.strip().capitalize()
@@ -127,6 +159,7 @@ def get_specials(day):
         }
         for s in specials
     ])
+
 
 if __name__ == "__main__":
     app.run(debug=True)
