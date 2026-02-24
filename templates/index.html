@@ -4,23 +4,9 @@
     <title>Beer Dollars</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
+    <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet"
-          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
-    <style>
-        body {margin:0;font-family:Arial;background:#f4f6f9;}
-        .header {
-            background:#2f80ed;color:white;
-            padding:20px;text-align:center;
-        }
-        .section {padding:20px;}
-        #map {height:300px;border-radius:12px;margin-top:20px;}
-        input,button {
-            width:100%;padding:10px;margin-top:10px;
-            border-radius:8px;border:1px solid #ddd;
-        }
-        button {background:#2f80ed;color:white;font-weight:bold;}
-    </style>
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 </head>
 
 <body>
@@ -30,75 +16,32 @@
     <p>Stretch Your Beer Money</p>
 </div>
 
-<div class="section">
+<div class="day-selector">
+    <button onclick="loadDay('Monday')">Mon</button>
+    <button onclick="loadDay('Tuesday')">Tue</button>
+    <button onclick="loadDay('Wednesday')">Wed</button>
+    <button onclick="loadDay('Thursday')">Thu</button>
+    <button onclick="loadDay('Friday')">Fri</button>
+    <button onclick="loadDay('Saturday')">Sat</button>
+    <button onclick="loadDay('Sunday')">Sun</button>
+</div>
 
+<div id="results"></div>
+
+<div id="map"></div>
+
+<div class="add-form">
+    <h3>Add Special</h3>
     <input id="bar" placeholder="Bar name">
     <input id="address" placeholder="Address">
     <input id="deal" placeholder="Deal">
     <input id="day" placeholder="Day">
-
-    <button onclick="addSpecial()">Add Special</button>
-
-    <div id="map"></div>
-
+    <button onclick="addSpecial()">Submit</button>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<script>
-let map = L.map('map').setView([41.0998, -80.6495], 11);
-let markers = [];
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
-.addTo(map);
-
-function clearMarkers(){
-    markers.forEach(m=>map.removeLayer(m));
-    markers=[];
-}
-
-function loadDay(day){
-    fetch(`/get_specials/${day}`)
-    .then(r=>r.json())
-    .then(data=>{
-        clearMarkers();
-
-        data.forEach(bar=>{
-            if(bar.latitude && bar.longitude){
-                let m=L.marker([bar.latitude,bar.longitude])
-                .addTo(map)
-                .bindPopup(`<b>${bar.bar_name}</b><br>${bar.deal}`);
-                markers.push(m);
-            }
-        });
-    });
-}
-
-function addSpecial(){
-
-    let payload={
-        bar_name:document.getElementById("bar").value,
-        address:document.getElementById("address").value,
-        deal:document.getElementById("deal").value,
-        day:document.getElementById("day").value
-    };
-
-    fetch("/add_special",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify(payload)
-    })
-    .then(r=>r.json())
-    .then(res=>{
-        if(res.success){
-            loadDay(payload.day);
-            alert("Saved!");
-        }else{
-            alert("Save failed");
-        }
-    });
-}
-</script>
+<script src="/static/map.js"></script>
+<script src="/static/app.js"></script>
 
 </body>
 </html>
