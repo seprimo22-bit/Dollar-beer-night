@@ -1,4 +1,7 @@
-let map = L.map('map').setView([41.0998, -80.6495], 12);
+// --------------------------
+// MAP INITIALIZATION
+// --------------------------
+const map = L.map('map').setView([41.0998, -80.6495], 12);
 let markers = [];
 let currentDay = null;
 
@@ -6,18 +9,31 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
+
+// --------------------------
+// CLEAR MARKERS
+// --------------------------
 function clearMarkers() {
     markers.forEach(m => map.removeLayer(m));
     markers = [];
 }
 
+
+// --------------------------
+// LOAD SPECIALS FOR DAY
+// --------------------------
 function loadDay(day) {
+
+    if (!day) return;
+
     currentDay = day;
 
     fetch(`/get_specials/${day}`)
-        .then(r => r.json())
+        .then(res => res.json())
         .then(data => {
+
             clearMarkers();
+
             const results = document.getElementById("results");
             results.innerHTML = "";
 
@@ -28,6 +44,7 @@ function loadDay(day) {
 
             data.forEach(s => {
 
+                // Deal list display
                 results.innerHTML += `
                     <div class="deal-card">
                         <b>${s.bar_name}</b><br>
@@ -36,8 +53,9 @@ function loadDay(day) {
                     </div>
                 `;
 
+                // Map markers
                 if (s.latitude && s.longitude) {
-                    let marker = L.marker([s.latitude, s.longitude])
+                    const marker = L.marker([s.latitude, s.longitude])
                         .addTo(map)
                         .bindPopup(`<b>${s.bar_name}</b><br>${s.deal}`);
 
@@ -45,27 +63,64 @@ function loadDay(day) {
                 }
             });
 
+            // Fit map bounds if markers exist
             if (markers.length) {
-                let group = new L.featureGroup(markers);
-                map.fitBounds(group.getBounds(), { padding: [40,40] });
+                const group = new L.featureGroup(markers);
+                map.fitBounds(group.getBounds(), { padding: [40, 40] });
             }
+        })
+        .catch(err => {
+            console.error("Load error:", err);
         });
 }
 
+
+// --------------------------
+// ADD SPECIAL
+// --------------------------
 function addSpecial() {
+
+    const barName = document.getElementById("bar").value.trim();
+    const addressVal = document.getElementById("address").value.trim();
+    const dealVal = document.getElementById("deal").value.trim();
+    const dayVal = document.getElementById("day").value.trim();
+
+    if (!barName || !dealVal || !dayVal) {
+        alert("Bar name, deal, and day are required.");
+        return;
+    }
+
     fetch("/add_special", {
         method: "POST",
-        headers: {"Content-Type":"application/json"},
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-            bar_name: bar.value,
-            address: address.value,
-            deal: deal.value,
-            day: day.value
+            bar_name: barName,
+            address: addressVal,
+            deal: dealVal,
+            day: dayVal
         })
     })
-    .then(r => r.json())
-    .then(() => {
+    .then(res => res.json())
+    .then(res => {
+
+        if (!res.success) {
+            alert("Save failed.");
+            return;
+        }
+
         alert("Saved!");
-        if (currentDay) loadDay(currentDay);
+
+        // Clear form
+        document.getElementById("bar").value = "";
+        document.getElementById("address").value = "";
+        document.getElementById("deal").value = "";
+        document.getElementById("day").value = "";
+
+        // Refresh map immediately
+        loadDay(dayVal);
+    })
+    .catch(err => {
+        console.error("Save error:", err);
+        alert("Server error.");
     });
 }
