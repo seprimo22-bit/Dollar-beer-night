@@ -7,19 +7,17 @@ import os
 app = Flask(__name__)
 
 # -------------------------
-# DATABASE SETUP
+# DATABASE CONFIG
 # -------------------------
 DATABASE_URL = os.getenv("DATABASE_URL")
-
-print("DATABASE URL FOUND:", DATABASE_URL is not None)
 
 if DATABASE_URL:
     if DATABASE_URL.startswith("postgres://"):
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-
+    print("Using Postgres DB")
     app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 else:
-    print("⚠️ FALLING BACK TO SQLITE")
+    print("Using SQLite fallback")
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///beer.db"
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -37,7 +35,6 @@ class Special(db.Model):
     day = db.Column(db.String(20), nullable=False)
     latitude = db.Column(db.Float)
     longitude = db.Column(db.Float)
-    verified = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
@@ -47,12 +44,14 @@ class Special(db.Model):
 def geocode(bar, address=None):
     try:
         query = f"{bar}, {address}" if address else bar
-        url = "https://nominatim.openstreetmap.org/search"
 
-        params = {"q": query, "format": "json", "limit": 1}
-        headers = {"User-Agent": "BeerDollarsApp"}
+        r = requests.get(
+            "https://nominatim.openstreetmap.org/search",
+            params={"q": query, "format": "json", "limit": 1},
+            headers={"User-Agent": "BeerDollarsApp/1.0"},
+            timeout=8
+        )
 
-        r = requests.get(url, params=params, headers=headers, timeout=6)
         data = r.json()
 
         if data:
@@ -65,37 +64,10 @@ def geocode(bar, address=None):
 
 
 # -------------------------
-# SEED DATA
+# INITIALIZE DB
 # -------------------------
-def seed_data():
-    if Special.query.count() > 0:
-        return
-
-    starters = [
-        ("La Villa Tavern", "Struthers Ohio", "$2 bottles", "Monday"),
-        ("Los Gallos", "Boardman Ohio", "$2 bottles", "Monday"),
-        ("John & Helen’s Tavern", "Kensington Ohio", "$2.50 bottles", "Wednesday"),
-    ]
-
-    for bar, addr, deal, day in starters:
-        lat, lon = geocode(bar, addr)
-
-        db.session.add(Special(
-            bar_name=bar,
-            address=addr,
-            deal=deal,
-            day=day.strip().capitalize(),
-            latitude=lat,
-            longitude=lon,
-            verified=True
-        ))
-
-    db.session.commit()
-
-
 with app.app_context():
     db.create_all()
-    seed_data()
 
 
 # -------------------------
@@ -110,8 +82,6 @@ def home():
 def add_special():
     try:
         data = request.json
-
-        print("INCOMING DATA:", data)
 
         day_clean = data.get("day", "").strip().capitalize()
 
@@ -132,14 +102,24 @@ def add_special():
         db.session.add(new_special)
         db.session.commit()
 
-        print("SAVED:", new_special.bar_name)
+        print("Saved:", new_special.bar_name)
 
-        return jsonify({"status": "Saved Successfully"})
+        return jsonify({
+            "success": True,
+            "bar": {
+                "bar_name": new_special.bar_name,
+                "address": new_special.address,
+                "deal": new_special.deal,
+                "day": new_special.day,
+                "latitude": new_special.latitude,
+                "longitude": new_special.longitude
+            }
+        })
 
     except Exception as e:
         print("SAVE ERROR:", e)
         db.session.rollback()
-        return jsonify({"status": "Error saving"}), 500
+        return jsonify({"success": False}), 500
 
 
 @app.route("/get_specials/<day>")
@@ -148,16 +128,13 @@ def get_specials(day):
 
     specials = Special.query.filter_by(day=day_clean).all()
 
-    print(f"FETCHING SPECIALS FOR: {day_clean} → {len(specials)} found")
-
     return jsonify([
         {
             "bar_name": s.bar_name,
             "address": s.address,
             "deal": s.deal,
-            "verified": s.verified,
             "latitude": s.latitude,
-            "longitude": s.longitude,
+            "longitude": s.longitude
         }
         for s in specials
     ])
