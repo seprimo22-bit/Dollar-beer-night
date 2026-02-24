@@ -56,7 +56,6 @@ def normalize(text):
         text.lower()
         .replace("'", "")
         .replace("’", "")
-        .replace("  ", " ")
         .strip()
     )
 
@@ -162,29 +161,22 @@ def get_specials(day):
     ])
 
 
-# ---------------- SMART CLEANUP ROUTE ----------------
-@app.route("/smart_cleanup")
-def smart_cleanup():
-    seen = set()
-    deleted = 0
+# ---------------- DIRECT DELETE ROUTE ----------------
+@app.route("/delete_bar/<bar>/<day>")
+def delete_bar(bar, day):
+    bar = bar.lower().strip()
+    day = day.capitalize().strip()
 
-    specials = Special.query.order_by(Special.created_at).all()
+    deleted = 0
+    specials = Special.query.filter_by(day=day).all()
 
     for s in specials:
-        key = (
-            normalize(s.bar_name),
-            normalize(s.deal),
-            s.day.lower().strip()
-        )
-
-        if key in seen:
+        if bar in s.bar_name.lower():
             db.session.delete(s)
             deleted += 1
-        else:
-            seen.add(key)
 
     db.session.commit()
-    return f"Deleted {deleted} normalized duplicates"
+    return f"Deleted {deleted} entries for {bar} on {day}"
 
 
 if __name__ == "__main__":
