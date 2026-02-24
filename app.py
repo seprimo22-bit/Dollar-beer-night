@@ -11,11 +11,15 @@ app = Flask(__name__)
 # -------------------------
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+print("DATABASE URL FOUND:", DATABASE_URL is not None)
+
 if DATABASE_URL:
     if DATABASE_URL.startswith("postgres://"):
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
     app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 else:
+    print("⚠️ FALLING BACK TO SQLITE")
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///beer.db"
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -45,12 +49,7 @@ def geocode(bar, address=None):
         query = f"{bar}, {address}" if address else bar
         url = "https://nominatim.openstreetmap.org/search"
 
-        params = {
-            "q": query,
-            "format": "json",
-            "limit": 1
-        }
-
+        params = {"q": query, "format": "json", "limit": 1}
         headers = {"User-Agent": "BeerDollarsApp"}
 
         r = requests.get(url, params=params, headers=headers, timeout=6)
@@ -66,7 +65,7 @@ def geocode(bar, address=None):
 
 
 # -------------------------
-# SEED BARS (ONLY FIRST RUN)
+# SEED DATA
 # -------------------------
 def seed_data():
     if Special.query.count() > 0:
@@ -85,7 +84,7 @@ def seed_data():
             bar_name=bar,
             address=addr,
             deal=deal,
-            day=day,
+            day=day.strip().capitalize(),
             latitude=lat,
             longitude=lon,
             verified=True
@@ -112,6 +111,10 @@ def add_special():
     try:
         data = request.json
 
+        print("INCOMING DATA:", data)
+
+        day_clean = data.get("day", "").strip().capitalize()
+
         lat, lon = geocode(
             data.get("bar_name"),
             data.get("address")
@@ -121,7 +124,7 @@ def add_special():
             bar_name=data.get("bar_name"),
             address=data.get("address"),
             deal=data.get("deal"),
-            day=data.get("day").capitalize(),
+            day=day_clean,
             latitude=lat,
             longitude=lon
         )
@@ -129,18 +132,23 @@ def add_special():
         db.session.add(new_special)
         db.session.commit()
 
+        print("SAVED:", new_special.bar_name)
+
         return jsonify({"status": "Saved Successfully"})
 
     except Exception as e:
         print("SAVE ERROR:", e)
+        db.session.rollback()
         return jsonify({"status": "Error saving"}), 500
 
 
 @app.route("/get_specials/<day>")
 def get_specials(day):
-    specials = Special.query.filter_by(
-        day=day.capitalize()
-    ).all()
+    day_clean = day.strip().capitalize()
+
+    specials = Special.query.filter_by(day=day_clean).all()
+
+    print(f"FETCHING SPECIALS FOR: {day_clean} → {len(specials)} found")
 
     return jsonify([
         {
