@@ -4,101 +4,22 @@
     <title>Beer Dollars</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- Leaflet CSS -->
     <link rel="stylesheet"
-          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
     <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f4f6f9;
-        }
-
+        body {margin:0;font-family:Arial;background:#f4f6f9;}
         .header {
-            background: linear-gradient(135deg, #2f80ed, #1c4ed8);
-            padding: 30px 20px 40px;
-            text-align: center;
-            color: white;
-            border-radius: 0 0 30px 30px;
+            background:#2f80ed;color:white;
+            padding:20px;text-align:center;
         }
-
-        .header h1 {
-            margin: 0;
-            font-size: 26px;
+        .section {padding:20px;}
+        #map {height:300px;border-radius:12px;margin-top:20px;}
+        input,button {
+            width:100%;padding:10px;margin-top:10px;
+            border-radius:8px;border:1px solid #ddd;
         }
-
-        .header p {
-            margin-top: 8px;
-            opacity: .9;
-        }
-
-        .day-selector {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin: 20px;
-        }
-
-        .day-btn {
-            padding: 8px 14px;
-            border-radius: 20px;
-            border: none;
-            background: white;
-            box-shadow: 0 2px 6px rgba(0,0,0,.1);
-            cursor: pointer;
-        }
-
-        .day-btn.active {
-            background: #2f80ed;
-            color: white;
-        }
-
-        .section {
-            padding: 0 20px;
-        }
-
-        .deal-card {
-            background: white;
-            padding: 15px;
-            border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,.08);
-            margin-bottom: 12px;
-        }
-
-        #map {
-            height: 300px;
-            border-radius: 16px;
-            margin-top: 20px;
-        }
-
-        .add-section {
-            background: white;
-            margin: 30px 20px;
-            padding: 20px;
-            border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,.08);
-        }
-
-        input {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-        }
-
-        .submit-btn {
-            width: 100%;
-            padding: 10px;
-            border: none;
-            border-radius: 8px;
-            background: #2f80ed;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-        }
+        button {background:#2f80ed;color:white;font-weight:bold;}
     </style>
 </head>
 
@@ -109,44 +30,73 @@
     <p>Stretch Your Beer Money</p>
 </div>
 
-<div class="day-selector">
-    <button class="day-btn" onclick="selectDay(this,'Monday')">Mon</button>
-    <button class="day-btn" onclick="selectDay(this,'Tuesday')">Tue</button>
-    <button class="day-btn" onclick="selectDay(this,'Wednesday')">Wed</button>
-    <button class="day-btn" onclick="selectDay(this,'Thursday')">Thu</button>
-    <button class="day-btn" onclick="selectDay(this,'Friday')">Fri</button>
-    <button class="day-btn" onclick="selectDay(this,'Saturday')">Sat</button>
-    <button class="day-btn" onclick="selectDay(this,'Sunday')">Sun</button>
-</div>
-
 <div class="section">
-    <div id="results"></div>
-    <div id="map"></div>
-</div>
-
-<div class="add-section">
-    <h3>Add Special</h3>
 
     <input id="bar" placeholder="Bar name">
-    <input id="address" placeholder="Street OR City/State">
+    <input id="address" placeholder="Address">
     <input id="deal" placeholder="Deal">
-    <input id="day" placeholder="Day (ex: Thursday)">
+    <input id="day" placeholder="Day">
 
-    <button class="submit-btn" onclick="addSpecial()">Submit</button>
+    <button onclick="addSpecial()">Add Special</button>
+
+    <div id="map"></div>
+
 </div>
 
-<!-- Leaflet JS FIXED -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<!-- Your map script -->
-<script src="/static/map.js"></script>
-
 <script>
-function selectDay(btn, day){
-    document.querySelectorAll('.day-btn')
-        .forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    loadDay(day);
+let map = L.map('map').setView([41.0998, -80.6495], 11);
+let markers = [];
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
+.addTo(map);
+
+function clearMarkers(){
+    markers.forEach(m=>map.removeLayer(m));
+    markers=[];
+}
+
+function loadDay(day){
+    fetch(`/get_specials/${day}`)
+    .then(r=>r.json())
+    .then(data=>{
+        clearMarkers();
+
+        data.forEach(bar=>{
+            if(bar.latitude && bar.longitude){
+                let m=L.marker([bar.latitude,bar.longitude])
+                .addTo(map)
+                .bindPopup(`<b>${bar.bar_name}</b><br>${bar.deal}`);
+                markers.push(m);
+            }
+        });
+    });
+}
+
+function addSpecial(){
+
+    let payload={
+        bar_name:document.getElementById("bar").value,
+        address:document.getElementById("address").value,
+        deal:document.getElementById("deal").value,
+        day:document.getElementById("day").value
+    };
+
+    fetch("/add_special",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(payload)
+    })
+    .then(r=>r.json())
+    .then(res=>{
+        if(res.success){
+            loadDay(payload.day);
+            alert("Saved!");
+        }else{
+            alert("Save failed");
+        }
+    });
 }
 </script>
 
