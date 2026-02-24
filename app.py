@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+I'mfrom flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import requests
@@ -160,6 +160,27 @@ def get_specials(day):
         for s in specials
     ])
 
+@app.route("/cleanup_duplicates")
+def cleanup_duplicates():
+    seen = set()
+    deleted = 0
 
+    specials = Special.query.order_by(Special.created_at).all()
+
+    for s in specials:
+        key = (
+            s.bar_name.lower().strip(),
+            s.deal.lower().strip(),
+            s.day.lower().strip()
+        )
+
+        if key in seen:
+            db.session.delete(s)
+            deleted += 1
+        else:
+            seen.add(key)
+
+    db.session.commit()
+    return f"Deleted {deleted} duplicates"
 if __name__ == "__main__":
     app.run(debug=True)
