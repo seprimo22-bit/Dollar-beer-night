@@ -12,23 +12,45 @@ function loadSpecials(day) {
 
             data.forEach(item => {
                 const li = document.createElement("li");
-                const badge = item.verified ? " ✔ Verified" : "";
-                li.innerText = `${item.bar_name} — ${item.deal}${badge}`;
+                li.innerText = `${item.bar_name} — ${item.deal}`;
                 list.appendChild(li);
+
+                // If map exists, add marker
+                if (window.map && item.latitude && item.longitude) {
+                    L.marker([item.latitude, item.longitude])
+                        .addTo(window.map)
+                        .bindPopup(`<b>${item.bar_name}</b><br>${item.deal}`);
+                }
             });
         });
 }
 
 
 function addSpecial() {
-    const bar_name = document.getElementById("bar_name").value;
-    const deal = document.getElementById("deal").value;
-    const day = document.getElementById("day").value;
+
+    const bar_name = document.getElementById("bar").value.trim();
+    const address = document.getElementById("address").value.trim();
+    const deal = document.getElementById("deal").value.trim();
+    const day = document.getElementById("day").value.trim();
+
+    if (!bar_name || !deal || !day) {
+        alert("Please fill required fields.");
+        return;
+    }
 
     fetch("/add_special", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({bar_name, deal, day})
+        body: JSON.stringify({bar_name, address, deal, day})
     })
-    .then(() => alert("Added! Pending verification."));
+    .then(res => res.json())
+    .then(res => {
+        if(res.success){
+            alert("Saved!");
+            loadSpecials(day);   // refresh immediately
+        } else {
+            alert("Save failed.");
+        }
+    })
+    .catch(() => alert("Server error."));
 }
