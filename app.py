@@ -3,7 +3,6 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import requests
 import os
-import math
 
 app = Flask(__name__)
 
@@ -51,29 +50,30 @@ def geocode(bar, address=None):
     return None, None
 
 
+# ---------------- NORMALIZE TEXT ----------------
+def normalize(text):
+    return (
+        text.lower()
+        .replace("'", "")
+        .replace("’", "")
+        .replace("  ", " ")
+        .strip()
+    )
+
+
 # ---------------- DUPLICATE CHECK ----------------
-def is_duplicate(day, lat, lon, deal, bar_name):
+def is_duplicate(day, deal, bar_name):
     specials = Special.query.filter_by(day=day).all()
 
+    bar_norm = normalize(bar_name)
+    deal_norm = normalize(deal)
+
     for s in specials:
-
-        # If coordinates exist
-        if lat and lon and s.latitude and s.longitude:
-            distance = math.sqrt(
-                (s.latitude - lat) ** 2 +
-                (s.longitude - lon) ** 2
-            )
-
-            if distance < 0.001 and s.deal.lower() == deal.lower():
-                return True
-
-        # If no coordinates
-        if not lat and not lon:
-            if (
-                s.bar_name.lower() == bar_name.lower()
-                and s.deal.lower() == deal.lower()
-            ):
-                return True
+        if (
+            normalize(s.bar_name) == bar_norm
+            and normalize(s.deal) == deal_norm
+        ):
+            return True
 
     return False
 
@@ -117,13 +117,13 @@ def add_special():
                 "message": "Food specials not allowed."
             })
 
-        lat, lon = geocode(bar_name, address)
-
-        if is_duplicate(day_clean, lat, lon, deal, bar_name):
+        if is_duplicate(day_clean, deal, bar_name):
             return jsonify({
                 "success": False,
                 "message": "Duplicate special."
             })
+
+        lat, lon = geocode(bar_name, address)
 
         new_special = Special(
             bar_name=bar_name,
@@ -162,9 +162,9 @@ def get_specials(day):
     ])
 
 
-# ---------------- ONE-TIME CLEANUP ROUTE ----------------
-@app.route("/cleanup_duplicates")
-def cleanup_duplicates():
+# ---------------- SMART CLEANUP ROUTE ----------------
+@app.route("/smart_cleanup")
+def smart_cleanup():
     seen = set()
     deleted = 0
 
@@ -172,8 +172,8 @@ def cleanup_duplicates():
 
     for s in specials:
         key = (
-            s.bar_name.lower().strip(),
-            s.deal.lower().strip(),
+            normalize(s.bar_name),
+            normalize(s.deal),
             s.day.lower().strip()
         )
 
@@ -184,7 +184,7 @@ def cleanup_duplicates():
             seen.add(key)
 
     db.session.commit()
-    return f"Deleted {deleted} duplicates"
+    return f"Deleted {deleted} normalized duplicates"
 
 
 if __name__ == "__main__":
