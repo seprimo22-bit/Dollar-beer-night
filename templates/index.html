@@ -3,77 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <title>Beer Dollars</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/static/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/ol@v7.5.0/dist/ol.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places"></script>
 </head>
 <body>
+    <!-- Banner -->
+    <header>
+        <h1>🍺 Beer Dollars</h1>
+        <p>"Stretch your beer dollars"</p>
+    </header>
 
-<!-- --------------------
-     SPLASH ANIMATION
--------------------- -->
-<div id="splash">
-    <div class="beer-fill"></div>
-</div>
+    <!-- Day Buttons -->
+    <div id="days">
+        <button data-day="Monday">Monday</button>
+        <button data-day="Tuesday">Tuesday</button>
+        <button data-day="Wednesday">Wednesday</button>
+        <button data-day="Thursday">Thursday</button>
+        <button data-day="Friday">Friday</button>
+        <button data-day="Saturday">Saturday</button>
+        <button data-day="Sunday">Sunday</button>
+    </div>
 
-<!-- --------------------
-     HEADER
--------------------- -->
-<div class="header">
-    <h2>🍺 Beer Dollars</h2>
-    <p>Stretch Your Beer Money</p>
-</div>
+    <!-- Map -->
+    <div id="map" style="height: 70vh; width: 100%; margin-bottom: 10px;"></div>
 
-<!-- --------------------
-     DAY SELECTOR
--------------------- -->
-<div class="day-selector">
-    <button onclick="loadDay('Monday')">Mon</button>
-    <button onclick="loadDay('Tuesday')">Tue</button>
-    <button onclick="loadDay('Wednesday')">Wed</button>
-    <button onclick="loadDay('Thursday')">Thu</button>
-    <button onclick="loadDay('Friday')">Fri</button>
-    <button onclick="loadDay('Saturday')">Sat</button>
-    <button onclick="loadDay('Sunday')">Sun</button>
-</div>
+    <!-- Bar List -->
+    <div id="bar-list"></div>
 
-<!-- --------------------
-     BAR LIST
--------------------- -->
-<div id="results"></div>
+    <!-- Add Bar Form Modal -->
+    <div id="add-bar-form" style="display:none;">
+        <h3>Add a Bar</h3>
+        <form id="new-bar-form">
+            <label>Name: <input type="text" name="name" required></label><br>
+            <label>Address: <input type="text" name="address"></label><br>
+            <label>Deal: <input type="text" name="deal" required></label><br>
+            <label>Day:
+                <select name="day" required>
+                    <option>Monday</option>
+                    <option>Tuesday</option>
+                    <option>Wednesday</option>
+                    <option>Thursday</option>
+                    <option>Friday</option>
+                    <option>Saturday</option>
+                    <option>Sunday</option>
+                </select>
+            </label><br>
+            <input type="hidden" name="lat">
+            <input type="hidden" name="lng">
+            <button type="submit">Add Bar</button>
+            <button type="button" onclick="closeForm()">Cancel</button>
+        </form>
+    </div>
 
-<!-- --------------------
-     MAP
--------------------- -->
-<div id="map"></div>
-
-<!-- --------------------
-     ADD SPECIAL FORM
--------------------- -->
-<div class="form add-form">
-    <h3>Add Special</h3>
-    <input id="bar" placeholder="Bar name">
-    <input id="address" placeholder="Address or click map to drop pin">
-    <input id="deal" placeholder="Deal">
-    <input id="day" placeholder="Day">
-    <button onclick="addSpecial()">Add</button>
-</div>
-
-<!-- --------------------
-     SCRIPTS
--------------------- -->
-<script src="/static/map.js"></script>
-<script src="/static/app.js"></script>
-
-<script>
-    // Hide splash after animation
-    document.addEventListener("DOMContentLoaded", () => {
-        setTimeout(() => {
-            const splash = document.getElementById("splash");
-            if (splash) splash.style.display = "none";
-        }, 2500); // matches beer-fill animation duration
-    });
-</script>
-
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
