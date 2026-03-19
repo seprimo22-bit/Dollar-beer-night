@@ -18,17 +18,66 @@ const map = new ol.Map({
 });
 
 // ===============================
-// TAP-TO-DROP-PIN FEATURE
+// VECTOR LAYER FOR MARKERS
+// ===============================
+
+let markerLayer = new ol.layer.Vector({
+  source: new ol.source.Vector()
+});
+
+map.addLayer(markerLayer);
+
+// ===============================
+// LOAD BARS AND SHOW ON MAP
+// ===============================
+
+window.loadBars = async function(day) {
+  try {
+    const res = await fetch(`/get_specials/${day}`);
+    const bars = await res.json();
+
+    // Clear old markers
+    markerLayer.getSource().clear();
+
+    const features = [];
+
+    bars.forEach(bar => {
+      if (!bar.lat || !bar.lng) return;
+
+      const marker = new ol.Feature({
+        geometry: new ol.geom.Point(ol.proj.fromLonLat([bar.lng, bar.lat])),
+        name: bar.bar_name,
+        deal: bar.deal
+      });
+
+      features.push(marker);
+    });
+
+    markerLayer.getSource().addFeatures(features);
+
+    // Auto zoom to fit all markers
+    if (features.length > 0) {
+      const extent = ol.extent.createEmpty();
+      features.forEach(f => ol.extent.extend(extent, f.getGeometry().getExtent()));
+      map.getView().fit(extent, { padding: [50, 50, 50, 50], maxZoom: 16 });
+    }
+
+  } catch (err) {
+    console.error("Error loading bars:", err);
+  }
+};
+
+// ===============================
+// CLICK TO ADD TEMP PIN (OPTIONAL)
 // ===============================
 
 let tempPinLayer = null;
 let selectedCoords = null;
 
-map.on("click", function (evt) {
+map.on("click", function(evt) {
   const lonLat = ol.proj.toLonLat(evt.coordinate);
   selectedCoords = lonLat;
 
-  // Remove old temp pin
   if (tempPinLayer) map.removeLayer(tempPinLayer);
 
   const pin = new ol.Feature({
@@ -43,7 +92,6 @@ map.on("click", function (evt) {
 
   map.addLayer(tempPinLayer);
 
-  // Autofill form fields if they exist
   const latField = document.getElementById("lat");
   const lngField = document.getElementById("lng");
 
@@ -54,52 +102,7 @@ map.on("click", function (evt) {
 });
 
 // ===============================
-// LOAD EXISTING BARS FROM BACKEND
-// ===============================
-
-async function loadBars() {
-  try {
-    const res = await fetch("/api/bars");
-    const bars = await res.json();
-
-    bars.forEach(bar => {
-      if (!bar.lat || !bar.lng) return;
-
-      const marker = new ol.Feature({
-        geometry: new ol.geom.Point(
-          ol.proj.fromLonLat([bar.lng, bar.lat])
-        )
-      });
-
-      const layer = new ol.layer.Vector({
-        source: new ol.source.Vector({
-          features: [marker]
-        })
-      });
-
-      map.addLayer(layer);
-
-      // Optional: flyTo behavior when clicking cards
-      const card = document.getElementById(`bar-${bar.id}`);
-      if (card) {
-        card.onclick = () => {
-          map.getView().animate({
-            center: ol.proj.fromLonLat([bar.lng, bar.lat]),
-            zoom: 15,
-            duration: 600
-          });
-        };
-      }
-    });
-  } catch (err) {
-    console.error("Error loading bars:", err);
-  }
-}
-
-loadBars();
-
-// ===============================
-// EXPORT COORDS FOR SAVE BUTTON
+// EXPORT SELECTED COORDS
 // ===============================
 
 window.getSelectedCoords = () => selectedCoords;
