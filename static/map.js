@@ -1,27 +1,30 @@
 let map, vectorSource, vectorLayer, popupOverlay;
 
 function initMap() {
+    // Create a vector source and layer for bar markers
     vectorSource = new ol.source.Vector({});
     vectorLayer = new ol.layer.Vector({ source: vectorSource });
 
+    // Create popup overlay
     const container = document.createElement("div");
     container.id = "popup";
     container.style.backgroundColor = "white";
-    container.style.padding = "6px";
+    container.style.padding = "8px";
     container.style.border = "1px solid black";
-    container.style.borderRadius = "4px";
+    container.style.borderRadius = "6px";
+    container.style.minWidth = "150px";
     container.style.position = "absolute";
     container.style.display = "none";
-    container.style.minWidth = "140px";
     document.body.appendChild(container);
 
     popupOverlay = new ol.Overlay({
         element: container,
         positioning: 'bottom-center',
         stopEvent: true,
-        offset: [0, -10]
+        offset: [0, -12]
     });
 
+    // Initialize the map
     map = new ol.Map({
         target: "map",
         layers: [
@@ -29,13 +32,13 @@ function initMap() {
             vectorLayer
         ],
         view: new ol.View({
-            center: ol.proj.fromLonLat([-84.5555, 41.0379]),
+            center: ol.proj.fromLonLat([-84.5555, 41.0379]), // Default center
             zoom: 10
         }),
         overlays: [popupOverlay]
     });
 
-    // Click map feature to show popup
+    // Click on marker to show popup with Navigate link
     map.on("singleclick", function(evt) {
         const feature = map.forEachFeatureAtPixel(evt.pixel, f => f);
         if (feature) {
@@ -47,11 +50,7 @@ function initMap() {
             const lat = feature.get("lat");
             const lng = feature.get("lng");
 
-            // Detect OS for map link
-            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-            const navUrl = isIOS
-                ? `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`
-                : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+            const navUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
 
             container.innerHTML = `<b>${name}</b><br>${deal}<br><a href="${navUrl}" target="_blank">Navigate</a>`;
             container.style.display = "block";
@@ -61,8 +60,10 @@ function initMap() {
     });
 }
 
+// Load bars for a given day and add markers
 function loadBars(bars) {
     vectorSource.clear();
+
     bars.forEach(bar => {
         if (bar.lat && bar.lng) {
             const feature = new ol.Feature({
@@ -73,28 +74,47 @@ function loadBars(bars) {
                 lng: bar.lng
             });
 
-            const style = new ol.style.Style({
-                image: new ol.style.Circle({
-                    radius: 8,
-                    fill: new ol.style.Fill({ color: '#ff5722' }),
-                    stroke: new ol.style.Stroke({ color: '#fff', width: 2 })
+            // Use a standard pin icon instead of a circle
+            const iconStyle = new ol.style.Style({
+                image: new ol.style.Icon({
+                    anchor: [0.5, 1],
+                    src: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
+                    scale: 0.05
                 })
             });
 
-            feature.setStyle(style);
+            feature.setStyle(iconStyle);
             vectorSource.addFeature(feature);
         }
     });
-}
 
-function focusBar(bar) {
-    if (bar.lat && bar.lng) {
-        const view = map.getView();
-        view.animate({ center: ol.proj.fromLonLat([bar.lng, bar.lat]), zoom: 14, duration: 500 });
+    // Optionally auto-zoom to fit all markers
+    if (vectorSource.getFeatures().length > 0) {
+        const extent = vectorSource.getExtent();
+        map.getView().fit(extent, { padding: [50, 50, 50, 50], maxZoom: 14 });
     }
 }
 
+// Focus map on a specific bar when clicking the list
+function focusBar(bar) {
+    if (bar.lat && bar.lng) {
+        const coords = ol.proj.fromLonLat([bar.lng, bar.lat]);
+        map.getView().animate({ center: coords, zoom: 14, duration: 500 });
+
+        // Trigger popup for that bar
+        const feature = vectorSource.getFeatures().find(f => f.get("name") === bar.bar_name && f.get("deal") === bar.deal);
+        if (feature) {
+            popupOverlay.setPosition(feature.getGeometry().getCoordinates());
+            const navUrl = `https://www.google.com/maps/dir/?api=1&destination=${bar.lat},${bar.lng}`;
+            document.getElementById("popup").innerHTML = `<b>${bar.bar_name}</b><br>${bar.deal}<br><a href="${navUrl}" target="_blank">Navigate</a>`;
+            document.getElementById("popup").style.display = "block";
+        }
+    }
+}
+
+// Expose functions globally for index.html
 window.loadBars = loadBars;
 window.focusBar = focusBar;
 
+// Initialize map
 initMap();
