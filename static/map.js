@@ -5,14 +5,14 @@ function initMap() {
     vectorSource = new ol.source.Vector({});
     vectorLayer = new ol.layer.Vector({ source: vectorSource });
 
-    // Create popup container
+    // Popup container
     const container = document.createElement("div");
     container.id = "popup";
     container.style.backgroundColor = "white";
     container.style.padding = "6px";
     container.style.border = "1px solid black";
     container.style.borderRadius = "4px";
-    container.style.minWidth = "140px";
+    container.style.minWidth = "160px";
     container.style.position = "absolute";
     container.style.display = "none";
     document.body.appendChild(container);
@@ -57,7 +57,7 @@ function initMap() {
     });
 }
 
-// Load bars for the current day
+// Load bars for a day
 function loadBars(bars) {
     vectorSource.clear();
 
@@ -84,7 +84,7 @@ function loadBars(bars) {
     });
 }
 
-// Focus map on a bar from the list
+// Focus map on a bar
 function focusBar(bar) {
     if (bar.lat && bar.lng) {
         const view = map.getView();
@@ -92,8 +92,63 @@ function focusBar(bar) {
     }
 }
 
-// Bind functions globally so index.html can use them
+// Bind functions globally
 window.loadBars = loadBars;
 window.focusBar = focusBar;
 
 initMap();
+
+// Load today on start
+document.addEventListener("DOMContentLoaded", () => {
+    const today = new Date().toLocaleString('en-US', { weekday: 'long' });
+    loadDay(today);
+});
+
+// Add new bar
+function addSpecial() {
+    const bar = document.getElementById("bar").value.trim();
+    const address = document.getElementById("address").value.trim();
+    const deal = document.getElementById("deal").value.trim();
+    const day = document.getElementById("day").value.trim();
+
+    if (!bar || !deal || !day) {
+        alert("Bar, deal, and day required.");
+        return;
+    }
+
+    fetch("/add_special", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bar_name: bar, address, deal, day })
+    })
+    .then(res => res.json())
+    .then(res => {
+        if (!res.success) {
+            alert("Save failed.");
+            return;
+        }
+        alert("Saved!");
+        loadDay(day);
+    });
+}
+
+// Load bars by day
+function loadDay(day) {
+    fetch(`/get_specials/${day}`)
+        .then(res => res.json())
+        .then(data => {
+            const results = document.getElementById("results");
+            results.innerHTML = "";
+
+            data.forEach(bar => {
+                const div = document.createElement("div");
+                div.innerHTML = `<b>${bar.bar_name}</b> - ${bar.deal}`;
+                div.onclick = () => {
+                    if (window.focusBar) window.focusBar(bar);
+                };
+                results.appendChild(div);
+            });
+
+            if (window.loadBars) window.loadBars(data);
+        });
+                      }
