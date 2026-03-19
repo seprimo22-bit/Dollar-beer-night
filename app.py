@@ -30,16 +30,22 @@ with app.app_context():
     db.create_all()
 
 # --------------------
-# GEOCODER
+# GOOGLE MAPS GEOCODER
 # --------------------
+GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
+
 def geocode(query):
+    if not GOOGLE_MAPS_API_KEY:
+        print("Error: GOOGLE_MAPS_API_KEY not set.")
+        return None, None
     try:
-        url = "https://nominatim.openstreetmap.org/search"
-        params = {"q": query, "format": "json", "limit": 1}
-        r = requests.get(url, params=params, headers={"User-Agent": "BeerDollarsApp"}, timeout=5)
+        url = "https://maps.googleapis.com/maps/api/geocode/json"
+        params = {"address": query, "key": GOOGLE_MAPS_API_KEY}
+        r = requests.get(url, params=params, timeout=5)
         data = r.json()
-        if data:
-            return float(data[0]["lat"]), float(data[0]["lon"])
+        if data.get("status") == "OK":
+            location = data["results"][0]["geometry"]["location"]
+            return location["lat"], location["lng"]
     except Exception as e:
         print("Geocode error:", e)
     return None, None
@@ -64,7 +70,6 @@ def add_special():
     if not bar or not deal or not day:
         return jsonify(success=False)
 
-    # Geocode only if no manual coordinates
     if lat is None or lng is None:
         queries = [f"{bar} {address}", f"{bar} near {address}", address, bar]
         for q in queries:
@@ -73,8 +78,12 @@ def add_special():
                 break
 
     special = Special(
-        bar_name=bar, address=address, deal=deal,
-        day=day, latitude=lat, longitude=lng
+        bar_name=bar,
+        address=address,
+        deal=deal,
+        day=day,
+        latitude=lat,
+        longitude=lng
     )
     db.session.add(special)
     db.session.commit()
