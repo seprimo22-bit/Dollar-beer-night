@@ -34,6 +34,34 @@ with app.app_context():
 # --------------------
 def geocode(query):
     try:
+        api_key = os.getenv("GOOGLE_MAPS_API_KEY")
+
+        print("GEOCODE QUERY:", query)
+        print("API KEY EXISTS:", bool(api_key))
+
+        if not api_key:
+            print("No API key found")
+            return None, None
+
+        url = "https://maps.googleapis.com/maps/api/geocode/json"
+        params = {"address": query, "key": api_key}
+
+        r = requests.get(url, params=params, timeout=5)
+        data = r.json()
+
+        print("GOOGLE RESPONSE:", data)
+
+        if data.get("status") == "OK":
+            location = data["results"][0]["geometry"]["location"]
+            return location["lat"], location["lng"]
+        else:
+            print("FAILED STATUS:", data.get("status"))
+
+    except Exception as e:
+        print("GEOCODE ERROR:", e)
+
+    return None, None
+    try:
         api_key = os.getenv("GOOGLE_MAPS_API_KEY")  # read fresh every time
 
         if not api_key:
