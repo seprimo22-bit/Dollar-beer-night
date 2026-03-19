@@ -1,12 +1,12 @@
 function addSpecial() {
 
-    const bar = document.getElementById("bar").value;
-    const address = document.getElementById("address").value;
-    const deal = document.getElementById("deal").value;
-    const day = document.getElementById("day").value;
+    const bar = document.getElementById("bar").value.trim();
+    const address = document.getElementById("address").value.trim();
+    const deal = document.getElementById("deal").value.trim();
+    const day = document.getElementById("day").value.trim();
 
     if (!bar || !deal || !day) {
-        alert("Missing fields");
+        alert("Bar, deal, and day required.");
         return;
     }
 
@@ -21,12 +21,41 @@ function addSpecial() {
         })
     })
     .then(res => res.json())
-    .then(() => {
-        alert("Saved");
-        loadDay(day);
+    .then(res => {
+
+        if (!res.success) {
+            alert("Save failed.");
+            return;
+        }
+
+        alert("Saved!");
+
+        loadDay(day); // 🔥 THIS is what makes buttons + map work together
     });
 }
 
+
 function loadDay(day) {
-    loadBars(day);
+
+    fetch(`/get_specials/${day}`)
+        .then(res => res.json())
+        .then(data => {
+
+            const results = document.getElementById("results");
+            results.innerHTML = "";
+
+            data.forEach(bar => {
+
+                const div = document.createElement("div");
+                div.innerHTML = `<b>${bar.bar_name}</b><br>${bar.deal}<hr>`;
+                results.appendChild(div);
+
+            });
+
+            // 🔥 ALSO update map
+            if (window.loadBars) {
+                loadBars(day);
+            }
+
+        });
 }
