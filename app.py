@@ -1,14 +1,12 @@
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
-import requests
-import os
+import requests, os
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 
 # DATABASE
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///beer.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
 db = SQLAlchemy(app)
 
 # MODEL
@@ -24,40 +22,27 @@ class Special(db.Model):
 with app.app_context():
     db.create_all()
 
-# 🔥 STRONGER GEOCODER
+# GEOCODER
 def geocode(query):
     try:
         url = "https://nominatim.openstreetmap.org/search"
-        params = {
-            "q": query,
-            "format": "json",
-            "limit": 1
-        }
-
-        r = requests.get(url, params=params, headers={
-            "User-Agent": "BeerDollarsApp"
-        }, timeout=5)
-
+        params = {"q": query, "format": "json", "limit": 1}
+        r = requests.get(url, params=params, headers={"User-Agent": "BeerDollarsApp"}, timeout=5)
         data = r.json()
-
         if data:
             return float(data[0]["lat"]), float(data[0]["lon"])
-
     except Exception as e:
         print("Geocode error:", e)
-
     return None, None
 
-# HOME
+# ROUTES
 @app.route("/")
 def home():
     return render_template("index.html")
 
-# ADD SPECIAL
 @app.route("/add_special", methods=["POST"])
 def add_special():
     data = request.json
-
     bar = data.get("bar_name", "")
     address = data.get("address", "")
     deal = data.get("deal", "")
@@ -66,49 +51,24 @@ def add_special():
     if not bar or not deal or not day:
         return jsonify(success=False)
 
-    # 🔥 TRY MULTIPLE SEARCH FORMATS
-    queries = [
-        f"{bar} {address}",
-        f"{bar} near {address}",
-        address,
-        bar
-    ]
-
+    # TRY MULTIPLE SEARCH FORMATS
+    queries = [f"{bar} {address}", f"{bar} near {address}", address, bar]
     lat, lng = None, None
-
     for q in queries:
         lat, lng = geocode(q)
         if lat:
             break
 
-    special = Special(
-        bar_name=bar,
-        address=address,
-        deal=deal,
-        day=day,
-        latitude=lat,
-        longitude=lng
-    )
-
+    special = Special(bar_name=bar, address=address, deal=deal, day=day, latitude=lat, longitude=lng)
     db.session.add(special)
     db.session.commit()
-
     return jsonify(success=True)
 
-# GET BY DAY
 @app.route("/get_specials/<day>")
 def get_specials(day):
     specials = Special.query.filter_by(day=day.capitalize()).all()
-
-    # 🔥 KEY CHANGE: frontend expects "lat" and "lng" for map pins
     return jsonify([
-        {
-            "id": s.id,
-            "bar_name": s.bar_name,
-            "deal": s.deal,
-            "lat": s.latitude,
-            "lng": s.longitude
-        }
+        {"id": s.id, "bar_name": s.bar_name, "deal": s.deal, "lat": s.latitude, "lng": s.longitude}
         for s in specials
     ])
 
