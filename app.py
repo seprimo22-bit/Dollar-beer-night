@@ -30,24 +30,31 @@ with app.app_context():
     db.create_all()
 
 # --------------------
-# GOOGLE MAPS GEOCODER
+# GOOGLE MAPS GEOCODER (FIXED)
 # --------------------
-GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
-
 def geocode(query):
-    if not GOOGLE_MAPS_API_KEY:
-        print("Error: GOOGLE_MAPS_API_KEY not set.")
-        return None, None
     try:
+        api_key = os.getenv("GOOGLE_MAPS_API_KEY")  # read fresh every time
+
+        if not api_key:
+            print("No Google API key found.")
+            return None, None
+
         url = "https://maps.googleapis.com/maps/api/geocode/json"
-        params = {"address": query, "key": GOOGLE_MAPS_API_KEY}
+        params = {"address": query, "key": api_key}
+
         r = requests.get(url, params=params, timeout=5)
         data = r.json()
+
         if data.get("status") == "OK":
             location = data["results"][0]["geometry"]["location"]
             return location["lat"], location["lng"]
+        else:
+            print("Google Geocode failed:", data.get("status"))
+
     except Exception as e:
         print("Geocode error:", e)
+
     return None, None
 
 # --------------------
@@ -70,6 +77,7 @@ def add_special():
     if not bar or not deal or not day:
         return jsonify(success=False)
 
+    # Only geocode if no manual coordinates
     if lat is None or lng is None:
         queries = [f"{bar} {address}", f"{bar} near {address}", address, bar]
         for q in queries:
