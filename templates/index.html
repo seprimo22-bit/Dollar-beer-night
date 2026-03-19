@@ -7,52 +7,62 @@
     <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places"></script>
 </head>
 <body>
-    <!-- Banner -->
-    <header>
+    <!-- Splash Screen -->
+    <div id="splash">
+        <div id="beer-animation"></div>
         <h1>🍺 Beer Dollars</h1>
         <p>"Stretch your beer dollars"</p>
-    </header>
-
-    <!-- Day Buttons -->
-    <div id="days">
-        <button data-day="Monday">Monday</button>
-        <button data-day="Tuesday">Tuesday</button>
-        <button data-day="Wednesday">Wednesday</button>
-        <button data-day="Thursday">Thursday</button>
-        <button data-day="Friday">Friday</button>
-        <button data-day="Saturday">Saturday</button>
-        <button data-day="Sunday">Sunday</button>
     </div>
 
-    <!-- Map -->
-    <div id="map" style="height: 70vh; width: 100%; margin-bottom: 10px;"></div>
+    <!-- Main App -->
+    <div id="main-app" style="display:none;">
+        <!-- Banner -->
+        <header>
+            <h1>🍺 Beer Dollars</h1>
+            <p>"Stretch your beer dollars"</p>
+        </header>
 
-    <!-- Bar List -->
-    <div id="bar-list"></div>
+        <!-- Day Buttons -->
+        <div id="days">
+            <button data-day="Monday">Monday</button>
+            <button data-day="Tuesday">Tuesday</button>
+            <button data-day="Wednesday">Wednesday</button>
+            <button data-day="Thursday">Thursday</button>
+            <button data-day="Friday">Friday</button>
+            <button data-day="Saturday">Saturday</button>
+            <button data-day="Sunday">Sunday</button>
+        </div>
 
-    <!-- Add Bar Form Modal -->
-    <div id="add-bar-form" style="display:none;">
-        <h3>Add a Bar</h3>
-        <form id="new-bar-form">
-            <label>Name: <input type="text" name="name" required></label><br>
-            <label>Address: <input type="text" name="address"></label><br>
-            <label>Deal: <input type="text" name="deal" required></label><br>
-            <label>Day:
-                <select name="day" required>
-                    <option>Monday</option>
-                    <option>Tuesday</option>
-                    <option>Wednesday</option>
-                    <option>Thursday</option>
-                    <option>Friday</option>
-                    <option>Saturday</option>
-                    <option>Sunday</option>
-                </select>
-            </label><br>
-            <input type="hidden" name="lat">
-            <input type="hidden" name="lng">
-            <button type="submit">Add Bar</button>
-            <button type="button" onclick="closeForm()">Cancel</button>
-        </form>
+        <!-- Map -->
+        <div id="map" style="height: 60vh; width: 100%; margin-bottom: 10px;"></div>
+
+        <!-- Bar List -->
+        <div id="bar-list"></div>
+
+        <!-- Add Bar Form Modal -->
+        <div id="add-bar-form" style="display:none;">
+            <h3>Add a Bar</h3>
+            <form id="new-bar-form">
+                <label>Name: <input type="text" name="name" required></label><br>
+                <label>Address: <input type="text" name="address"></label><br>
+                <label>Deal: <input type="text" name="deal" required></label><br>
+                <label>Day:
+                    <select name="day" required>
+                        <option>Monday</option>
+                        <option>Tuesday</option>
+                        <option>Wednesday</option>
+                        <option>Thursday</option>
+                        <option>Friday</option>
+                        <option>Saturday</option>
+                        <option>Sunday</option>
+                    </select>
+                </label><br>
+                <input type="hidden" name="lat">
+                <input type="hidden" name="lng">
+                <button type="submit">Add Bar</button>
+                <button type="button" onclick="closeForm()">Cancel</button>
+            </form>
+        </div>
     </div>
 
     <script src="{{ url_for('static', filename='app.js') }}"></script>
