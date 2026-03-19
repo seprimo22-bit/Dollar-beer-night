@@ -77,3 +77,8 @@ def get_specials(day):
 
 if __name__ == "__main__":
     app.run(debug=True)
+# ADMIN PANEL
+@app.route("/admin")
+def admin_panel():
+    specials = Special.query.all()
+    return render_template("admin.html", specials=specials)
