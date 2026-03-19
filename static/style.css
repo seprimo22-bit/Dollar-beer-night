@@ -1,49 +1,72 @@
-body{
-    margin:0;
-    font-family:Arial;
-    background:#f4f6f8;
-    text-align:center;
+body {
+    margin: 0;
+    font-family: Arial;
+    background: #f4f6f8;
+    text-align: center;
 }
 
-.header{
-    background:#2f80ed;
-    color:white;
-    padding:20px;
+.header {
+    background: #2f80ed;
+    color: white;
+    padding: 20px;
 }
 
-.day-selector button{
-    margin:6px;
-    padding:10px;
-    border:none;
-    border-radius:6px;
-    background:#1976d2;
-    color:white;
+.day-selector {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px;
+    position: relative;
+    z-index: 10;
 }
 
-#map{
-    height:350px;
-    margin:20px;
-    border-radius:12px;
+.day-selector button {
+    padding: 10px 14px;
+    border: none;
+    background: #1976d2;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
 }
 
-.deal-card{
-    background:white;
-    margin:10px auto;
-    padding:15px;
-    max-width:400px;
-    border-radius:10px;
-    box-shadow:0 2px 6px rgba(0,0,0,0.1);
+#results {
+    max-width: 400px;
+    margin: 10px auto;
 }
 
-.add-form input{
-    width:90%;
-    margin:5px;
-    padding:10px;
+#results div {
+    cursor: pointer;
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+    background: white;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
-.add-form button{
-    background:#1976d2;
-    color:white;
-    padding:10px;
-    border:none;
+#results div:hover {
+    background-color: #f0f0f0;
+}
+
+#map {
+    height: 275px;
+    width: 100%;
+    margin: 10px 0;
+    border-radius: 12px;
+}
+
+.add-form input {
+    width: 90%;
+    margin: 5px;
+    padding: 10px;
+}
+
+.add-form button {
+    background: #1976d2;
+    color: white;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
 }
