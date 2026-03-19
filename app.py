@@ -1,116 +1,154 @@
-from flask import Flask, render_template, request, jsonify
-from flask_sqlalchemy import SQLAlchemy
-import requests
-import os
+let map, vectorSource, vectorLayer, popupOverlay;
 
-app = Flask(__name__, static_folder="static", static_url_path="/static")
+// Initialize the map
+function initMap() {
+    vectorSource = new ol.source.Vector({});
+    vectorLayer = new ol.layer.Vector({ source: vectorSource });
 
-# DATABASE CONFIGURATION
-app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///beer.db")
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-db = SQLAlchemy(app)
+    // Popup container
+    const container = document.createElement("div");
+    container.id = "popup";
+    container.style.backgroundColor = "white";
+    container.style.padding = "6px";
+    container.style.border = "1px solid black";
+    container.style.borderRadius = "4px";
+    container.style.minWidth = "160px";
+    container.style.position = "absolute";
+    container.style.display = "none";
+    document.body.appendChild(container);
 
-# MODEL
-class Special(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    bar_name = db.Column(db.String(120), nullable=False)
-    address = db.Column(db.String(200))
-    deal = db.Column(db.String(200), nullable=False)
-    day = db.Column(db.String(20), nullable=False)
-    latitude = db.Column(db.Float)
-    longitude = db.Column(db.Float)
+    popupOverlay = new ol.Overlay({
+        element: container,
+        positioning: 'bottom-center',
+        stopEvent: true,
+        offset: [0, -12]
+    });
 
-# Initialize database
-with app.app_context():
-    db.create_all()
+    map = new ol.Map({
+        target: "map",
+        layers: [
+            new ol.layer.Tile({ source: new ol.source.OSM() }),
+            vectorLayer
+        ],
+        view: new ol.View({
+            center: ol.proj.fromLonLat([-84.5555, 41.0379]), // default center
+            zoom: 10
+        }),
+        overlays: [popupOverlay]
+    });
 
-# GEOCODER
-def geocode(query):
-    try:
-        url = "https://nominatim.openstreetmap.org/search"
-        params = {"q": query, "format": "json", "limit": 1}
-        r = requests.get(url, params=params, headers={"User-Agent": "BeerDollarsApp"}, timeout=5)
-        data = r.json()
-        if data:
-            return float(data[0]["lat"]), float(data[0]["lon"])
-    except Exception as e:
-        print("Geocode error:", e)
-    return None, None
+    // Click on marker to show popup
+    map.on("singleclick", function(evt) {
+        const feature = map.forEachFeatureAtPixel(evt.pixel, f => f);
+        if (feature) {
+            const coords = feature.getGeometry().getCoordinates();
+            const name = feature.get("name");
+            const deal = feature.get("deal");
+            const address = feature.get("address");
 
-# --------------------
-# FRONT-END ROUTES
-# --------------------
-@app.route("/")
-def home():
-    return render_template("index.html")
+            popupOverlay.setPosition(coords);
+            container.innerHTML = `<b>${name}</b><br>${deal}<br>
+                <a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}" target="_blank">
+                Navigate</a>`;
+            container.style.display = "block";
+        } else {
+            container.style.display = "none";
+        }
+    });
+}
 
-@app.route("/add_special", methods=["POST"])
-def add_special():
-    data = request.json
-    bar = data.get("bar_name", "").strip()
-    address = data.get("address", "").strip()
-    deal = data.get("deal", "").strip()
-    day = data.get("day", "").capitalize().strip()
+// Load bars for a day
+function loadBars(bars) {
+    vectorSource.clear();
 
-    if not bar or not deal or not day:
-        return jsonify(success=False)
+    bars.forEach(bar => {
+        if (bar.lat && bar.lng) {
+            const feature = new ol.Feature({
+                geometry: new ol.geom.Point(ol.proj.fromLonLat([bar.lng, bar.lat])),
+                name: bar.bar_name,
+                deal: bar.deal,
+                address: bar.address || bar.bar_name
+            });
 
-    # Try multiple queries to get lat/lng
-    queries = [f"{bar} {address}", f"{bar} near {address}", address, bar]
-    lat, lng = None, None
-    for q in queries:
-        lat, lng = geocode(q)
-        if lat:
-            break
+            const style = new ol.style.Style({
+                image: new ol.style.Circle({
+                    radius: 8,
+                    fill: new ol.style.Fill({ color: '#1976d2' }),
+                    stroke: new ol.style.Stroke({ color: '#fff', width: 2 })
+                })
+            });
 
-    special = Special(bar_name=bar, address=address, deal=deal, day=day, latitude=lat, longitude=lng)
-    db.session.add(special)
-    db.session.commit()
+            feature.setStyle(style);
+            vectorSource.addFeature(feature);
+        }
+    });
+}
 
-    return jsonify(success=True)
+// Focus map on a bar
+function focusBar(bar) {
+    if (bar.lat && bar.lng) {
+        const view = map.getView();
+        view.animate({ center: ol.proj.fromLonLat([bar.lng, bar.lat]), zoom: 14, duration: 500 });
+    }
+}
 
-@app.route("/get_specials/<day>")
-def get_specials(day):
-    specials = Special.query.filter_by(day=day.capitalize()).all()
-    return jsonify([
-        {"id": s.id, "bar_name": s.bar_name, "deal": s.deal, "lat": s.latitude, "lng": s.longitude}
-        for s in specials
-    ])
+// Bind functions globally
+window.loadBars = loadBars;
+window.focusBar = focusBar;
 
-# --------------------
-# ADMIN ROUTES
-# --------------------
-@app.route("/admin")
-def admin_panel():
-    specials = Special.query.all()
-    return render_template("admin.html", specials=specials)
+initMap();
 
-@app.route("/edit_special/<int:special_id>", methods=["POST"])
-def edit_special(special_id):
-    special = Special.query.get_or_404(special_id)
-    special.bar_name = request.form.get("bar_name", special.bar_name).strip()
-    special.address = request.form.get("address", special.address).strip()
-    special.deal = request.form.get("deal", special.deal).strip()
-    special.day = request.form.get("day", special.day).capitalize().strip()
+// Load today on start
+document.addEventListener("DOMContentLoaded", () => {
+    const today = new Date().toLocaleString('en-US', { weekday: 'long' });
+    loadDay(today);
+});
 
-    # Update lat/lng if address changed
-    if special.address:
-        lat, lng = geocode(f"{special.bar_name} {special.address}")
-        special.latitude = lat
-        special.longitude = lng
+// Add new bar
+function addSpecial() {
+    const bar = document.getElementById("bar").value.trim();
+    const address = document.getElementById("address").value.trim();
+    const deal = document.getElementById("deal").value.trim();
+    const day = document.getElementById("day").value.trim();
 
-    db.session.commit()
-    return render_template("admin.html", specials=Special.query.all())
+    if (!bar || !deal || !day) {
+        alert("Bar, deal, and day required.");
+        return;
+    }
 
-@app.route("/delete_special/<int:special_id>", methods=["POST"])
-def delete_special(special_id):
-    special = Special.query.get_or_404(special_id)
-    db.session.delete(special)
-    db.session.commit()
-    return render_template("admin.html", specials=Special.query.all())
+    fetch("/add_special", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bar_name: bar, address, deal, day })
+    })
+    .then(res => res.json())
+    .then(res => {
+        if (!res.success) {
+            alert("Save failed.");
+            return;
+        }
+        alert("Saved!");
+        loadDay(day);
+    });
+}
 
-# --------------------
-# RUN APP
-# --------------------
-if __name__ == "__main__":
-    app.run(debug=True)
+// Load bars by day
+function loadDay(day) {
+    fetch(`/get_specials/${day}`)
+        .then(res => res.json())
+        .then(data => {
+            const results = document.getElementById("results");
+            results.innerHTML = "";
+
+            data.forEach(bar => {
+                const div = document.createElement("div");
+                div.innerHTML = `<b>${bar.bar_name}</b> - ${bar.deal}`;
+                div.onclick = () => {
+                    if (window.focusBar) window.focusBar(bar);
+                };
+                results.appendChild(div);
+            });
+
+            if (window.loadBars) window.loadBars(data);
+        });
+}
