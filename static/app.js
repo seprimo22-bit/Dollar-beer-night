@@ -1,12 +1,12 @@
 function addSpecial() {
 
-    const bar = document.getElementById("bar").value.trim();
-    const address = document.getElementById("address").value.trim();
-    const deal = document.getElementById("deal").value.trim();
-    const day = document.getElementById("day").value.trim();
+    const bar = document.getElementById("bar").value;
+    const address = document.getElementById("address").value;
+    const deal = document.getElementById("deal").value;
+    const day = document.getElementById("day").value;
 
     if (!bar || !deal || !day) {
-        alert("Bar, deal, and day required.");
+        alert("Missing fields");
         return;
     }
 
@@ -21,24 +21,12 @@ function addSpecial() {
         })
     })
     .then(res => res.json())
-    .then(res => {
-
-        if (!res.success) {
-            alert(res.message || "Save failed.");
-            return;
-        }
-
-        alert("Saved!");
-
-        // CLEAR INPUTS
-        document.getElementById("bar").value = "";
-        document.getElementById("address").value = "";
-        document.getElementById("deal").value = "";
-        document.getElementById("day").value = "";
-
-        // REFRESH DAY RESULTS + MAP
+    .then(() => {
+        alert("Saved");
         loadDay(day);
+    });
+}
 
-    })
-    .catch(() => alert("Server error."));
+function loadDay(day) {
+    loadBars(day);
 }
