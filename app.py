@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
-import requests, os
+import requests
+import os
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 
@@ -35,11 +36,12 @@ def geocode(query):
         print("Geocode error:", e)
     return None, None
 
-# ROUTES
+# HOME
 @app.route("/")
 def home():
     return render_template("index.html")
 
+# ADD SPECIAL
 @app.route("/add_special", methods=["POST"])
 def add_special():
     data = request.json
@@ -51,7 +53,6 @@ def add_special():
     if not bar or not deal or not day:
         return jsonify(success=False)
 
-    # TRY MULTIPLE SEARCH FORMATS
     queries = [f"{bar} {address}", f"{bar} near {address}", address, bar]
     lat, lng = None, None
     for q in queries:
@@ -62,8 +63,10 @@ def add_special():
     special = Special(bar_name=bar, address=address, deal=deal, day=day, latitude=lat, longitude=lng)
     db.session.add(special)
     db.session.commit()
+
     return jsonify(success=True)
 
+# GET BY DAY
 @app.route("/get_specials/<day>")
 def get_specials(day):
     specials = Special.query.filter_by(day=day.capitalize()).all()
