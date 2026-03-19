@@ -5,7 +5,7 @@ import os
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 
-# DATABASE
+# DATABASE CONFIGURATION
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///beer.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
@@ -20,6 +20,7 @@ class Special(db.Model):
     latitude = db.Column(db.Float)
     longitude = db.Column(db.Float)
 
+# Initialize database
 with app.app_context():
     db.create_all()
 
@@ -36,23 +37,25 @@ def geocode(query):
         print("Geocode error:", e)
     return None, None
 
-# HOME
+# --------------------
+# FRONT-END ROUTES
+# --------------------
 @app.route("/")
 def home():
     return render_template("index.html")
 
-# ADD SPECIAL
 @app.route("/add_special", methods=["POST"])
 def add_special():
     data = request.json
-    bar = data.get("bar_name", "")
-    address = data.get("address", "")
-    deal = data.get("deal", "")
-    day = data.get("day", "").capitalize()
+    bar = data.get("bar_name", "").strip()
+    address = data.get("address", "").strip()
+    deal = data.get("deal", "").strip()
+    day = data.get("day", "").capitalize().strip()
 
     if not bar or not deal or not day:
         return jsonify(success=False)
 
+    # Try multiple queries to get lat/lng
     queries = [f"{bar} {address}", f"{bar} near {address}", address, bar]
     lat, lng = None, None
     for q in queries:
@@ -66,7 +69,6 @@ def add_special():
 
     return jsonify(success=True)
 
-# GET BY DAY
 @app.route("/get_specials/<day>")
 def get_specials(day):
     specials = Special.query.filter_by(day=day.capitalize()).all()
@@ -75,23 +77,23 @@ def get_specials(day):
         for s in specials
     ])
 
-if __name__ == "__main__":
-    app.run(debug=True)
-# ADMIN PANEL
+# --------------------
+# ADMIN ROUTES
+# --------------------
 @app.route("/admin")
 def admin_panel():
     specials = Special.query.all()
     return render_template("admin.html", specials=specials)
-# EDIT SPECIAL
+
 @app.route("/edit_special/<int:special_id>", methods=["POST"])
 def edit_special(special_id):
     special = Special.query.get_or_404(special_id)
-    special.bar_name = request.form.get("bar_name", special.bar_name)
-    special.address = request.form.get("address", special.address)
-    special.deal = request.form.get("deal", special.deal)
-    special.day = request.form.get("day", special.day)
+    special.bar_name = request.form.get("bar_name", special.bar_name).strip()
+    special.address = request.form.get("address", special.address).strip()
+    special.deal = request.form.get("deal", special.deal).strip()
+    special.day = request.form.get("day", special.day).capitalize().strip()
 
-    # Update geocode if address changed
+    # Update lat/lng if address changed
     if special.address:
         lat, lng = geocode(f"{special.bar_name} {special.address}")
         special.latitude = lat
@@ -100,10 +102,15 @@ def edit_special(special_id):
     db.session.commit()
     return render_template("admin.html", specials=Special.query.all())
 
-# DELETE SPECIAL
 @app.route("/delete_special/<int:special_id>", methods=["POST"])
 def delete_special(special_id):
     special = Special.query.get_or_404(special_id)
     db.session.delete(special)
     db.session.commit()
     return render_template("admin.html", specials=Special.query.all())
+
+# --------------------
+# RUN APP
+# --------------------
+if __name__ == "__main__":
+    app.run(debug=True)
