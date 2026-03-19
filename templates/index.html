@@ -7,33 +7,67 @@
     <script src="https://cdn.jsdelivr.net/npm/ol@v7.5.0/dist/ol.js"></script>
 </head>
 <body>
-<div class="header">
+
+<!-- Splash Overlay -->
+<div id="splash">
+    <div class="beer-animation">
+        <div class="beer-glass">
+            <div class="beer-fill"></div>
+        </div>
+    </div>
     <h2>🍺 Beer Dollars</h2>
     <p>Stretch Your Beer Money</p>
 </div>
 
-<div class="day-selector">
-    <button onclick="loadDay('Monday')">Mon</button>
-    <button onclick="loadDay('Tuesday')">Tue</button>
-    <button onclick="loadDay('Wednesday')">Wed</button>
-    <button onclick="loadDay('Thursday')">Thu</button>
-    <button onclick="loadDay('Friday')">Fri</button>
-    <button onclick="loadDay('Saturday')">Sat</button>
-    <button onclick="loadDay('Sunday')">Sun</button>
-</div>
+<!-- Main App Content -->
+<div id="app" style="display:none;">
 
-<div id="results"></div>
-<div id="map"></div>
+    <div class="header">
+        <h2>🍺 Beer Dollars</h2>
+        <p>Stretch Your Beer Money</p>
+    </div>
 
-<div class="form add-form">
-    <h3>Add Special</h3>
-    <input id="bar" placeholder="Bar name">
-    <input id="address" placeholder="Address">
-    <input id="deal" placeholder="Deal">
-    <input id="day" placeholder="Day">
-    <button onclick="addSpecial()">Add</button>
+    <div class="day-selector">
+        <button onclick="loadDay('Monday')">Mon</button>
+        <button onclick="loadDay('Tuesday')">Tue</button>
+        <button onclick="loadDay('Wednesday')">Wed</button>
+        <button onclick="loadDay('Thursday')">Thu</button>
+        <button onclick="loadDay('Friday')">Fri</button>
+        <button onclick="loadDay('Saturday')">Sat</button>
+        <button onclick="loadDay('Sunday')">Sun</button>
+    </div>
+
+    <div id="results"></div>
+    <div id="map"></div>
+
+    <div class="form add-form">
+        <h3>Add Special</h3>
+        <input id="bar" placeholder="Bar name">
+        <input id="address" placeholder="Address">
+        <input id="deal" placeholder="Deal">
+        <input id="day" placeholder="Day">
+        <button onclick="addSpecial()">Add</button>
+        <p>Or click the map to drop a pin for a new bar!</p>
+    </div>
+
 </div>
 
 <script src="/static/map.js"></script>
+<script src="/static/app.js"></script>
+
+<script>
+    // Show splash animation for 1.5s then reveal app
+    document.addEventListener("DOMContentLoaded", () => {
+        setTimeout(() => {
+            document.getElementById("splash").style.display = "none";
+            document.getElementById("app").style.display = "block";
+
+            // Load today's day
+            const today = new Date().toLocaleString('en-US', { weekday: 'long' });
+            loadDay(today);
+        }, 1500);
+    });
+</script>
+
 </body>
 </html>
