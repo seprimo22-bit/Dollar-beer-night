@@ -4,16 +4,23 @@
     <title>Beer Dollars</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <link rel="stylesheet" href="/static/style.css">
-    <link rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <style>
+        body { font-family: Arial; margin: 0; }
+        .header { background: #2b6cb0; color: white; padding: 15px; text-align: center; }
+        .day-selector { padding: 10px; text-align: center; }
+        button { margin: 4px; padding: 8px 12px; }
+        #map { height: 300px; margin: 10px; }
+        .form { padding: 10px; }
+        input { display: block; width: 100%; margin: 5px 0; padding: 8px; }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/ol@v7.5.0/dist/ol.js"></script>
 </head>
 
 <body>
 
 <div class="header">
-    <h1>🍺 Beer Dollars</h1>
-    <p>Stretch Your Beer Money</p>
+    <h2>🍺 Beer Dollars</h2>
 </div>
 
 <div class="day-selector">
@@ -26,20 +33,16 @@
     <button onclick="loadDay('Sunday')">Sun</button>
 </div>
 
-<div id="results"></div>
-
 <div id="map"></div>
 
-<div class="add-form">
-    <h3>Add Special</h3>
+<div class="form">
     <input id="bar" placeholder="Bar name">
     <input id="address" placeholder="Address">
     <input id="deal" placeholder="Deal">
     <input id="day" placeholder="Day">
-    <button onclick="addSpecial()">Submit</button>
+    <button onclick="addSpecial()">Add</button>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="/static/map.js"></script>
 <script src="/static/app.js"></script>
 
