@@ -86,5 +86,4 @@ function focusBar(bar) {
 window.loadBars = loadBars;
 window.focusBar = focusBar;
 
-// Initialize map
 initMap();
