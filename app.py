@@ -82,3 +82,28 @@ if __name__ == "__main__":
 def admin_panel():
     specials = Special.query.all()
     return render_template("admin.html", specials=specials)
+# EDIT SPECIAL
+@app.route("/edit_special/<int:special_id>", methods=["POST"])
+def edit_special(special_id):
+    special = Special.query.get_or_404(special_id)
+    special.bar_name = request.form.get("bar_name", special.bar_name)
+    special.address = request.form.get("address", special.address)
+    special.deal = request.form.get("deal", special.deal)
+    special.day = request.form.get("day", special.day)
+
+    # Update geocode if address changed
+    if special.address:
+        lat, lng = geocode(f"{special.bar_name} {special.address}")
+        special.latitude = lat
+        special.longitude = lng
+
+    db.session.commit()
+    return render_template("admin.html", specials=Special.query.all())
+
+# DELETE SPECIAL
+@app.route("/delete_special/<int:special_id>", methods=["POST"])
+def delete_special(special_id):
+    special = Special.query.get_or_404(special_id)
+    db.session.delete(special)
+    db.session.commit()
+    return render_template("admin.html", specials=Special.query.all())
