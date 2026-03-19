@@ -100,6 +100,7 @@ def add_special():
 def get_specials(day):
     specials = Special.query.filter_by(day=day.capitalize()).all()
 
+    # 🔥 KEY CHANGE: frontend expects "lat" and "lng" for map pins
     return jsonify([
         {
             "id": s.id,
