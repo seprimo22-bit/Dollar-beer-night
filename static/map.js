@@ -1,4 +1,4 @@
-let map, vectorSource, vectorLayer, popupOverlay;
+let map, vectorSource, vectorLayer, popupOverlay, dropPinFeature;
 
 // Initialize the map
 function initMap() {
@@ -40,20 +40,55 @@ function initMap() {
     // Click on marker to show popup
     map.on("singleclick", function(evt) {
         const feature = map.forEachFeatureAtPixel(evt.pixel, f => f);
-        if (feature) {
+        if (feature && feature !== dropPinFeature) {
             const coords = feature.getGeometry().getCoordinates();
             const name = feature.get("name");
             const deal = feature.get("deal");
             const address = feature.get("address");
+            const verified = feature.get("verified");
 
             popupOverlay.setPosition(coords);
             container.innerHTML = `<b>${name}</b><br>${deal}<br>
-                <a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}" target="_blank">
-                Navigate</a>`;
+                ${verified ? "<span style='color:green;'>✔ Verified</span><br>" : ""}
+                <a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}" target="_blank">Navigate</a>`;
             container.style.display = "block";
         } else {
             container.style.display = "none";
         }
+    });
+
+    // Click on map to drop a new pin for adding a bar
+    map.on("dblclick", function(evt) {
+        const coords = evt.coordinate;
+        if (dropPinFeature) vectorSource.removeFeature(dropPinFeature);
+
+        dropPinFeature = new ol.Feature({
+            geometry: new ol.geom.Point(coords),
+            name: "New Bar",
+            deal: "",
+            address: ""
+        });
+
+        dropPinFeature.setStyle(new ol.style.Style({
+            image: new ol.style.Icon({
+                color: "#ff5722",
+                crossOrigin: "anonymous",
+                src: "https://openlayers.org/en/v7.5.0/examples/data/dot.png",
+                scale: 1.2
+            })
+        }));
+
+        vectorSource.addFeature(dropPinFeature);
+
+        const [lng, lat] = ol.proj.toLonLat(coords);
+
+        // Fill form inputs with coordinates for backend
+        document.getElementById("bar").value = "";
+        document.getElementById("address").value = `Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}`;
+        document.getElementById("day").value = new Date().toLocaleString('en-US', { weekday: 'long' });
+
+        // Optional: You can automatically trigger addSpecial() here if desired
+        alert("Pin dropped! Fill bar name and deal, then click Add.");
     });
 }
 
@@ -67,13 +102,14 @@ function loadBars(bars) {
                 geometry: new ol.geom.Point(ol.proj.fromLonLat([bar.lng, bar.lat])),
                 name: bar.bar_name,
                 deal: bar.deal,
-                address: bar.address || bar.bar_name
+                address: bar.address || bar.bar_name,
+                verified: bar.verified
             });
 
             const style = new ol.style.Style({
                 image: new ol.style.Circle({
                     radius: 8,
-                    fill: new ol.style.Fill({ color: '#1976d2' }),
+                    fill: new ol.style.Fill({ color: bar.verified ? '#2ecc71' : '#1976d2' }),
                     stroke: new ol.style.Stroke({ color: '#fff', width: 2 })
                 })
             });
@@ -97,58 +133,3 @@ window.loadBars = loadBars;
 window.focusBar = focusBar;
 
 initMap();
-
-// Load today on start
-document.addEventListener("DOMContentLoaded", () => {
-    const today = new Date().toLocaleString('en-US', { weekday: 'long' });
-    loadDay(today);
-});
-
-// Add new bar
-function addSpecial() {
-    const bar = document.getElementById("bar").value.trim();
-    const address = document.getElementById("address").value.trim();
-    const deal = document.getElementById("deal").value.trim();
-    const day = document.getElementById("day").value.trim();
-
-    if (!bar || !deal || !day) {
-        alert("Bar, deal, and day required.");
-        return;
-    }
-
-    fetch("/add_special", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bar_name: bar, address, deal, day })
-    })
-    .then(res => res.json())
-    .then(res => {
-        if (!res.success) {
-            alert("Save failed.");
-            return;
-        }
-        alert("Saved!");
-        loadDay(day);
-    });
-}
-
-// Load bars by day
-function loadDay(day) {
-    fetch(`/get_specials/${day}`)
-        .then(res => res.json())
-        .then(data => {
-            const results = document.getElementById("results");
-            results.innerHTML = "";
-
-            data.forEach(bar => {
-                const div = document.createElement("div");
-                div.innerHTML = `<b>${bar.bar_name}</b> - ${bar.deal}`;
-                div.onclick = () => {
-                    if (window.focusBar) window.focusBar(bar);
-                };
-                results.appendChild(div);
-            });
-
-            if (window.loadBars) window.loadBars(data);
-        });
-                      }
