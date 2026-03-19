@@ -1,131 +1,99 @@
-// ===============================
-//   Dollar Beer Night – map.js
-// ===============================
+const map = L.map('map').setView([41.0998, -80.6495], 11);
 
-// Blue/white tile layer
-const tileLayer = L.tileLayer(
-  "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-  {
-    attribution: "&copy; OpenStreetMap & Carto",
-    maxZoom: 19
-  }
-);
+let markerGroup = [];
 
-// Initialize map
-const map = L.map("map", {
-  zoomControl: true,
-  scrollWheelZoom: true
-});
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+}).addTo(map);
 
-// Add tile layer
-tileLayer.addTo(map);
-
-// Try to center on user location
-navigator.geolocation.getCurrentPosition(
-  (pos) => {
-    const userLat = pos.coords.latitude;
-    const userLng = pos.coords.longitude;
-    map.setView([userLat, userLng], 12);
-    loadBars(userLat, userLng);
-  },
-  () => {
-    // Fallback center (Youngstown)
-    map.setView([41.0998, -80.6495], 11);
-    loadBars(41.0998, -80.6495);
-  }
-);
-
-// ===============================
-// Load bars from backend
-// ===============================
-function loadBars(userLat, userLng) {
-  fetch(`/get_specials/${currentDay}`)
-    .then((res) => res.json())
-    .then((bars) => {
-      bars.forEach((bar) => {
-        // If coordinates exist, use them directly
-        if (bar.latitude && bar.longitude) {
-          if (withinRadius(userLat, userLng, bar.latitude, bar.longitude, 45)) {
-            addMarker(bar);
-          }
-        } else {
-          // Otherwise try geocoding
-          geocodeBar(bar, userLat, userLng);
-        }
-      });
-    });
+// ---------------- CLEAR MAP ----------------
+function clearMarkers() {
+    markerGroup.forEach(m => map.removeLayer(m));
+    markerGroup = [];
 }
 
-// ===============================
-// Add marker to map
-// ===============================
-function addMarker(bar) {
-  L.marker([bar.latitude, bar.longitude])
-    .addTo(map)
-    .bindPopup(`<b>${bar.name}</b><br>${bar.deal}`);
+// ---------------- LOAD DAY ----------------
+function loadDay(day) {
+    fetch(`/get_specials/${day}`)
+        .then(r => r.json())
+        .then(data => {
+
+            clearMarkers();
+
+            const results = document.getElementById("results");
+            results.innerHTML = "";
+
+            const grouped = {};
+
+            // --- Group entries by lat/lon IF they exist ---
+            data.forEach(s => {
+                if (s.latitude && s.longitude) {
+                    const key = `${s.latitude.toFixed(5)},${s.longitude.toFixed(5)}`;
+
+                    if (!grouped[key]) {
+                        grouped[key] = {
+                            bar_name: s.bar_name,
+                            latitude: s.latitude,
+                            longitude: s.longitude,
+                            deals: []
+                        };
+                    }
+
+                    grouped[key].deals.push(s.deal);
+                } else {
+                    // --- NO COORDINATES: still show listing ---
+                    const card = document.createElement("div");
+                    card.className = "deal-card";
+                    card.innerHTML = `
+                        <b>${s.bar_name}</b><br>
+                        ${s.deal}<br>
+                        <em style="font-size:13px;color:#666;">
+                            Location unclear – pin unavailable
+                        </em>
+                    `;
+                    results.appendChild(card);
+                }
+            });
+
+            // --- Create markers + interactive listings ---
+            Object.values(grouped).forEach(bar => {
+
+                const marker = L.marker([bar.latitude, bar.longitude])
+                    .addTo(map)
+                    .bindPopup(`
+                        <b>${bar.bar_name}</b><br>
+                        ${bar.deals.join("<br>")}<br><br>
+                        <a href="https://www.google.com/maps/dir/?api=1&destination=${bar.latitude},${bar.longitude}"
+                           target="_blank">
+                           🧭 Navigate Here
+                        </a>
+                    `);
+
+                markerGroup.push(marker);
+
+                const card = document.createElement("div");
+                card.className = "deal-card";
+                card.innerHTML = `
+                    <b>${bar.bar_name}</b><br>
+                    ${bar.deals.join("<br>")}
+                `;
+
+                // Click listing → zoom + popup
+                card.onclick = function () {
+                    map.flyTo([bar.latitude, bar.longitude], 15);
+                    marker.openPopup();
+                };
+
+                results.appendChild(card);
+            });
+
+            // --- Auto-fit map if pins exist ---
+            if (markerGroup.length) {
+                const group = new L.featureGroup(markerGroup);
+                map.fitBounds(group.getBounds(), { padding: [40, 40] });
+            }
+        })
+        .catch(err => {
+            console.error("Load error:", err);
+        });
 }
-
-// ===============================
-// Geocode fallback
-// ===============================
-function geocodeBar(bar, userLat, userLng) {
-  fetch(
-    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
-      bar.address
-    )}&format=json&limit=1`
-  )
-    .then((res) => res.json())
-    .then((data) => {
-      if (data.length > 0) {
-        const lat = parseFloat(data[0].lat);
-        const lon = parseFloat(data[0].lon);
-
-        if (withinRadius(userLat, userLng, lat, lon, 45)) {
-          bar.latitude = lat;
-          bar.longitude = lon;
-          addMarker(bar);
-        }
-      }
-    })
-    .catch(() => {});
-}
-
-// ===============================
-// Radius filter (miles)
-// ===============================
-function withinRadius(lat1, lon1, lat2, lon2, miles) {
-  const R = 3958.8; // Earth radius in miles
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2;
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c <= miles;
-}
-
-// ===============================
-// Tap-to-drop-pin for adding bars
-// ===============================
-map.on("click", function (e) {
-  const lat = e.latlng.lat.toFixed(6);
-  const lon = e.latlng.lng.toFixed(6);
-
-  // Auto-fill the Add Special form
-  const latField = document.getElementById("latitude");
-  const lonField = document.getElementById("longitude");
-
-  if (latField && lonField) {
-    latField.value = lat;
-    lonField.value = lon;
-  }
-
-  L.marker([lat, lon])
-    .addTo(map)
-    .bindPopup("New bar location selected.")
-    .openPopup();
-});
