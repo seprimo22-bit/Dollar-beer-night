@@ -3,44 +3,45 @@ from config import Config
 from models import db, Bar
 import os
 
-# --- FLASK APP SETUP ---
 app = Flask(__name__)
 app.config.from_object(Config)
 db.init_app(app)
 
-# --- CREATE DATABASE TABLES ---
-@app.before_first_request
-def create_tables():
-    db.create_all()
+# --- Ensure tables are created only once ---
+tables_created = False
+@app.before_request
+def create_tables_once():
+    global tables_created
+    if not tables_created:
+        db.create_all()
+        tables_created = True
 
-# --- ROUTES ---
+# --- Routes ---
 
-# Index page
+# Main user interface
 @app.route("/")
 def index():
     return render_template("index.html", google_maps_api_key=app.config["GOOGLE_MAPS_API_KEY"])
 
-# Admin page
+# Admin interface
 @app.route("/admin")
 def admin():
     return render_template("admin.html")
 
-# Get bars for a specific day
+# Get bars for a given day
 @app.route("/api/bars/<day>")
 def get_bars(day):
     bars = Bar.query.filter_by(day=day).all()
-    result = []
-    for bar in bars:
-        result.append({
-            "id": bar.id,
-            "name": bar.name,
-            "address": bar.address,
-            "deal": bar.deal,
-            "day": bar.day,
-            "lat": bar.lat,
-            "lng": bar.lng,
-            "paid": bar.paid
-        })
+    result = [{
+        "id": bar.id,
+        "name": bar.name,
+        "address": bar.address,
+        "deal": bar.deal,
+        "day": bar.day,
+        "lat": bar.lat,
+        "lng": bar.lng,
+        "paid": bar.paid
+    } for bar in bars]
     return jsonify(result)
 
 # Add a new bar
@@ -67,9 +68,29 @@ def delete_bar(bar_id):
     if bar:
         db.session.delete(bar)
         db.session.commit()
-        return jsonify({"status":"deleted"})
+        return jsonify({"status": "deleted"})
     return jsonify({"status":"not found"}), 404
 
-# --- RUN APP ---
+# Update a bar (optional enhancement)
+@app.route("/api/update_bar/<int:bar_id>", methods=["PUT"])
+def update_bar(bar_id):
+    bar = Bar.query.get(bar_id)
+    if not bar:
+        return jsonify({"status": "not found"}), 404
+
+    data = request.get_json()
+    bar.name = data.get("name", bar.name)
+    bar.address = data.get("address", bar.address)
+    bar.deal = data.get("deal", bar.deal)
+    bar.day = data.get("day", bar.day)
+    bar.lat = data.get("lat", bar.lat)
+    bar.lng = data.get("lng", bar.lng)
+    bar.paid = data.get("paid", bar.paid)
+    db.session.commit()
+    return jsonify({"status": "updated", "id": bar.id})
+
+# --- Run app ---
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Use port from environment (Render) or default 5000
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
