@@ -3,46 +3,15 @@
 <head>
     <title>Beer Dollars Admin Panel</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th, td {
-            padding: 8px;
-            border-bottom: 1px solid #ddd;
-        }
-
-        input {
-            width: 95%;
-            padding: 4px;
-        }
-
-        button {
-            padding: 6px 10px;
-            cursor: pointer;
-        }
-
-        .delete-btn {
-            background: #cc3333;
-            color: white;
-            border: none;
-        }
-
-        .save-btn {
-            background: #2d7d2d;
-            color: white;
-            border: none;
-        }
-
-        .top-bar {
-            margin-bottom: 20px;
-        }
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px; border-bottom: 1px solid #ddd; }
+        input { width: 95%; padding: 4px; }
+        button { padding: 6px 10px; cursor: pointer; }
+        .delete-btn { background: #cc3333; color: white; border: none; }
+        .save-btn { background: #2d7d2d; color: white; border: none; }
+        .top-bar { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .top-bar a { text-decoration: none; color: #1976d2; font-weight: bold; }
     </style>
 
     <script>
@@ -56,7 +25,7 @@
 
 <div class="top-bar">
     <h2>Beer Dollars Admin Panel</h2>
-    <a href="/logout">Logout</a>
+    <a href="/">Back to App</a>
 </div>
 
 <table>
@@ -71,18 +40,10 @@
     {% for s in specials %}
     <tr>
         <form method="POST" action="/edit_special/{{ s.id }}">
-            <td>
-                <input name="bar_name" value="{{ s.bar_name }}">
-            </td>
-            <td>
-                <input name="address" value="{{ s.address }}">
-            </td>
-            <td>
-                <input name="deal" value="{{ s.deal }}">
-            </td>
-            <td>
-                <input name="day" value="{{ s.day }}">
-            </td>
+            <td><input name="bar_name" value="{{ s.bar_name }}"></td>
+            <td><input name="address" value="{{ s.address }}"></td>
+            <td><input name="deal" value="{{ s.deal }}"></td>
+            <td><input name="day" value="{{ s.day }}"></td>
             <td>
                 <button class="save-btn">Save</button>
         </form>
@@ -94,7 +55,6 @@
             </td>
     </tr>
     {% endfor %}
-
 </table>
 
 </body>
