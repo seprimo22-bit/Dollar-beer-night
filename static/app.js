@@ -1,3 +1,12 @@
+// Current day default
+document.addEventListener("DOMContentLoaded", () => {
+    const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const today = new Date();
+    const dayName = days[today.getDay()];
+    document.getElementById("day-notice").innerText = `Today is ${dayName}`;
+    loadDay(dayName);
+});
+
 function addSpecial() {
     const bar = document.getElementById("bar").value.trim();
     const address = document.getElementById("address").value.trim();
@@ -12,12 +21,7 @@ function addSpecial() {
     fetch("/add_special", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            bar_name: bar,
-            address: address,
-            deal: deal,
-            day: day
-        })
+        body: JSON.stringify({ bar_name: bar, address: address, deal: deal, day: day })
     })
     .then(res => res.json())
     .then(res => {
@@ -25,14 +29,12 @@ function addSpecial() {
             alert("Save failed.");
             return;
         }
-
         alert("Saved!");
         loadDay(day);
     });
 }
 
 function loadDay(day) {
-    currentDay = day;
     fetch(`/get_specials/${day}`)
         .then(res => res.json())
         .then(data => {
@@ -41,21 +43,13 @@ function loadDay(day) {
 
             data.forEach(bar => {
                 const div = document.createElement("div");
-                div.classList.add("bar-item");
-                div.innerHTML = `<b>${bar.bar_name}</b><br>${bar.deal}`;
-                div.onclick = function() {
-                    if (bar.lat && bar.lng) {
-                        map.getView().animate({
-                            center: ol.proj.fromLonLat([bar.lng, bar.lat]),
-                            zoom: 15,
-                            duration: 500
-                        });
-                    }
+                div.innerHTML = `<b>${bar.bar_name}</b> - ${bar.deal}`;
+                div.onclick = () => {
+                    if (window.focusBar) window.focusBar(bar);
                 };
                 results.appendChild(div);
             });
 
-            // Update map markers
-            loadBars(day, data);
+            if (window.loadBars) window.loadBars(data);
         });
 }
