@@ -1,3 +1,36 @@
+// Determine today's day automatically
+const today = new Date().toLocaleString('en-US', { weekday: 'long' });
+document.addEventListener("DOMContentLoaded", () => {
+    loadDay(today);
+});
+
+function addSpecial() {
+    const bar = document.getElementById("bar").value.trim();
+    const address = document.getElementById("address").value.trim();
+    const deal = document.getElementById("deal").value.trim();
+    const day = document.getElementById("day").value.trim();
+
+    if (!bar || !deal || !day) {
+        alert("Bar, deal, and day required.");
+        return;
+    }
+
+    fetch("/add_special", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bar_name: bar, address, deal, day })
+    })
+    .then(res => res.json())
+    .then(res => {
+        if (!res.success) {
+            alert("Save failed.");
+            return;
+        }
+        alert("Saved!");
+        loadDay(day);
+    });
+}
+
 function loadDay(day) {
     fetch(`/get_specials/${day}`)
         .then(res => res.json())
