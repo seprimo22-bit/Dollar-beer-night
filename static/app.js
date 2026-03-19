@@ -1,5 +1,4 @@
 function addSpecial() {
-
     const bar = document.getElementById("bar").value.trim();
     const address = document.getElementById("address").value.trim();
     const deal = document.getElementById("deal").value.trim();
@@ -22,40 +21,41 @@ function addSpecial() {
     })
     .then(res => res.json())
     .then(res => {
-
         if (!res.success) {
             alert("Save failed.");
             return;
         }
 
         alert("Saved!");
-
-        loadDay(day); // 🔥 THIS is what makes buttons + map work together
+        loadDay(day);
     });
 }
 
-
 function loadDay(day) {
-
+    currentDay = day;
     fetch(`/get_specials/${day}`)
         .then(res => res.json())
         .then(data => {
-
             const results = document.getElementById("results");
             results.innerHTML = "";
 
             data.forEach(bar => {
-
                 const div = document.createElement("div");
-                div.innerHTML = `<b>${bar.bar_name}</b><br>${bar.deal}<hr>`;
+                div.classList.add("bar-item");
+                div.innerHTML = `<b>${bar.bar_name}</b><br>${bar.deal}`;
+                div.onclick = function() {
+                    if (bar.lat && bar.lng) {
+                        map.getView().animate({
+                            center: ol.proj.fromLonLat([bar.lng, bar.lat]),
+                            zoom: 15,
+                            duration: 500
+                        });
+                    }
+                };
                 results.appendChild(div);
-
             });
 
-            // 🔥 ALSO update map
-            if (window.loadBars) {
-                loadBars(day);
-            }
-
+            // Update map markers
+            loadBars(day, data);
         });
 }
