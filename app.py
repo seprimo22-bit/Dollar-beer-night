@@ -1,178 +1,169 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
-import requests
 import os
+import requests
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 
 # --------------------
-# DATABASE CONFIGURATION
+# CONFIGURATION
 # --------------------
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///beer.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
+GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
+
+
 # --------------------
-# MODEL
+# DATABASE MODELS
 # --------------------
-class Special(db.Model):
+class Bar(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    bar_name = db.Column(db.String(120), nullable=False)
+    name = db.Column(db.String(120), nullable=False)
     address = db.Column(db.String(200))
-    deal = db.Column(db.String(200), nullable=False)
-    day = db.Column(db.String(20), nullable=False)
     latitude = db.Column(db.Float)
     longitude = db.Column(db.Float)
+    deal = db.Column(db.String(200), nullable=False)
+    day = db.Column(db.String(20), nullable=False)
+    highlighted = db.Column(db.Boolean, default=False)  # Paid promotion
     verified = db.Column(db.Boolean, default=False)
 
-# Initialize database
+
+# --------------------
+# DATABASE INITIALIZATION
+# --------------------
 with app.app_context():
     db.create_all()
 
+
 # --------------------
-# GOOGLE MAPS GEOCODER (FIXED)
+# GOOGLE MAPS GEOCODER
 # --------------------
-def geocode(query):
+def geocode_address(address):
+    if not GOOGLE_MAPS_API_KEY:
+        print("Error: GOOGLE_MAPS_API_KEY not set")
+        return None, None
     try:
-        api_key = os.getenv("GOOGLE_MAPS_API_KEY")
-
-        print("GEOCODE QUERY:", query)
-        print("API KEY EXISTS:", bool(api_key))
-
-        if not api_key:
-            print("No API key found")
-            return None, None
-
         url = "https://maps.googleapis.com/maps/api/geocode/json"
-        params = {"address": query, "key": api_key}
-
-        r = requests.get(url, params=params, timeout=5)
-        data = r.json()
-
-        print("GOOGLE RESPONSE:", data)
-
+        params = {"address": address, "key": GOOGLE_MAPS_API_KEY}
+        response = requests.get(url, params=params, timeout=5)
+        data = response.json()
         if data.get("status") == "OK":
             location = data["results"][0]["geometry"]["location"]
             return location["lat"], location["lng"]
-        else:
-            print("FAILED STATUS:", data.get("status"))
-
-    except Exception as e:
-        print("GEOCODE ERROR:", e)
-
-    return None, None
-    try:
-        api_key = os.getenv("GOOGLE_MAPS_API_KEY")  # read fresh every time
-
-        if not api_key:
-            print("No Google API key found.")
-            return None, None
-
-        url = "https://maps.googleapis.com/maps/api/geocode/json"
-        params = {"address": query, "key": api_key}
-
-        r = requests.get(url, params=params, timeout=5)
-        data = r.json()
-
-        if data.get("status") == "OK":
-            location = data["results"][0]["geometry"]["location"]
-            return location["lat"], location["lng"]
-        else:
-            print("Google Geocode failed:", data.get("status"))
-
     except Exception as e:
         print("Geocode error:", e)
-
     return None, None
 
+
 # --------------------
-# FRONT-END ROUTES
+# ROUTES
 # --------------------
+
+# Splash / loading screen (can be replaced with animation)
+@app.route("/splash")
+def splash():
+    return render_template("splash.html")
+
+
+# Main user interface
 @app.route("/")
 def home():
     return render_template("index.html")
 
-@app.route("/add_special", methods=["POST"])
-def add_special():
+
+# Add new bar/deal (from user input or pin)
+@app.route("/add_bar", methods=["POST"])
+def add_bar():
     data = request.json
-    bar = data.get("bar_name", "").strip()
+    name = data.get("name", "").strip()
     address = data.get("address", "").strip()
     deal = data.get("deal", "").strip()
     day = data.get("day", "").capitalize().strip()
-    lat = data.get("lat")  # optional manual pin
+    lat = data.get("lat")
     lng = data.get("lng")
+    highlighted = data.get("highlighted", False)
 
-    if not bar or not deal or not day:
-        return jsonify(success=False)
+    if not name or not deal or not day:
+        return jsonify(success=False, error="Missing required fields")
 
-    # Only geocode if no manual coordinates
+    # Geocode if lat/lng not provided
     if lat is None or lng is None:
-        queries = [f"{bar} {address}", f"{bar} near {address}", address, bar]
+        queries = [f"{name} {address}", f"{name} near {address}", address, name]
         for q in queries:
-            lat, lng = geocode(q)
-            if lat:
+            lat, lng = geocode_address(q)
+            if lat is not None:
                 break
 
-    special = Special(
-        bar_name=bar,
+    new_bar = Bar(
+        name=name,
         address=address,
         deal=deal,
         day=day,
         latitude=lat,
-        longitude=lng
+        longitude=lng,
+        highlighted=highlighted,
     )
-    db.session.add(special)
+    db.session.add(new_bar)
     db.session.commit()
+    return jsonify(success=True, bar_id=new_bar.id)
 
-    return jsonify(success=True)
 
-@app.route("/get_specials/<day>")
-def get_specials(day):
-    specials = Special.query.filter_by(day=day.capitalize()).all()
+# Get all bars for a specific day
+@app.route("/get_bars/<day>")
+def get_bars(day):
+    bars = Bar.query.filter_by(day=day.capitalize()).all()
     return jsonify([
         {
-            "id": s.id,
-            "bar_name": s.bar_name,
-            "deal": s.deal,
-            "lat": s.latitude,
-            "lng": s.longitude,
-            "address": s.address,
-            "verified": s.verified
+            "id": b.id,
+            "name": b.name,
+            "address": b.address,
+            "lat": b.latitude,
+            "lng": b.longitude,
+            "deal": b.deal,
+            "highlighted": b.highlighted,
+            "verified": b.verified
         }
-        for s in specials
+        for b in bars
     ])
 
-# --------------------
-# ADMIN ROUTES
-# --------------------
+
+# Admin interface
 @app.route("/admin")
-def admin_panel():
-    specials = Special.query.all()
-    return render_template("admin.html", specials=specials)
+def admin():
+    bars = Bar.query.all()
+    return render_template("admin.html", bars=bars)
 
-@app.route("/edit_special/<int:special_id>", methods=["POST"])
-def edit_special(special_id):
-    special = Special.query.get_or_404(special_id)
-    special.bar_name = request.form.get("bar_name", special.bar_name).strip()
-    special.address = request.form.get("address", special.address).strip()
-    special.deal = request.form.get("deal", special.deal).strip()
-    special.day = request.form.get("day", special.day).capitalize().strip()
-    special.verified = "verified" in request.form  # optional checkbox
 
-    if special.address:
-        lat, lng = geocode(f"{special.bar_name} {special.address}")
-        special.latitude = lat
-        special.longitude = lng
+# Edit bar/deal in admin
+@app.route("/edit_bar/<int:bar_id>", methods=["POST"])
+def edit_bar(bar_id):
+    bar = Bar.query.get_or_404(bar_id)
+    bar.name = request.form.get("name", bar.name).strip()
+    bar.address = request.form.get("address", bar.address).strip()
+    bar.deal = request.form.get("deal", bar.deal).strip()
+    bar.day = request.form.get("day", bar.day).capitalize().strip()
+    bar.highlighted = "highlighted" in request.form
+    bar.verified = "verified" in request.form
+
+    if bar.address:
+        lat, lng = geocode_address(f"{bar.name} {bar.address}")
+        bar.latitude = lat
+        bar.longitude = lng
 
     db.session.commit()
-    return render_template("admin.html", specials=Special.query.all())
+    return redirect(url_for("admin"))
 
-@app.route("/delete_special/<int:special_id>", methods=["POST"])
-def delete_special(special_id):
-    special = Special.query.get_or_404(special_id)
-    db.session.delete(special)
+
+# Delete bar/deal
+@app.route("/delete_bar/<int:bar_id>", methods=["POST"])
+def delete_bar(bar_id):
+    bar = Bar.query.get_or_404(bar_id)
+    db.session.delete(bar)
     db.session.commit()
-    return render_template("admin.html", specials=Special.query.all())
+    return redirect(url_for("admin"))
+
 
 # --------------------
 # RUN APP
