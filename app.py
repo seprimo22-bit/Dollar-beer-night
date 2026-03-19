@@ -5,12 +5,16 @@ import os
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 
+# --------------------
 # DATABASE CONFIGURATION
+# --------------------
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///beer.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
+# --------------------
 # MODEL
+# --------------------
 class Special(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     bar_name = db.Column(db.String(120), nullable=False)
@@ -24,7 +28,9 @@ class Special(db.Model):
 with app.app_context():
     db.create_all()
 
+# --------------------
 # GEOCODER
+# --------------------
 def geocode(query):
     try:
         url = "https://nominatim.openstreetmap.org/search"
@@ -55,7 +61,6 @@ def add_special():
     if not bar or not deal or not day:
         return jsonify(success=False)
 
-    # Try multiple queries to get lat/lng
     queries = [f"{bar} {address}", f"{bar} near {address}", address, bar]
     lat, lng = None, None
     for q in queries:
@@ -73,7 +78,7 @@ def add_special():
 def get_specials(day):
     specials = Special.query.filter_by(day=day.capitalize()).all()
     return jsonify([
-        {"id": s.id, "bar_name": s.bar_name, "deal": s.deal, "lat": s.latitude, "lng": s.longitude}
+        {"id": s.id, "bar_name": s.bar_name, "deal": s.deal, "lat": s.latitude, "lng": s.longitude, "address": s.address}
         for s in specials
     ])
 
@@ -93,7 +98,6 @@ def edit_special(special_id):
     special.deal = request.form.get("deal", special.deal).strip()
     special.day = request.form.get("day", special.day).capitalize().strip()
 
-    # Update lat/lng if address changed
     if special.address:
         lat, lng = geocode(f"{special.bar_name} {special.address}")
         special.latitude = lat
