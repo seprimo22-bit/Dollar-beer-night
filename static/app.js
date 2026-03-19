@@ -1,92 +1,68 @@
 let map;
 let markers = [];
-let currentDay = getToday();
-const apiBase = "/";
+let currentDay = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+let newMarker = null;
+
+function initApp() {
+    document.getElementById('splash').style.display = 'block';
+    setTimeout(() => {
+        document.getElementById('splash').style.display = 'none';
+        document.getElementById('main-app').style.display = 'block';
+        initMap();
+        loadBars(currentDay);
+        setupDayButtons();
+    }, 1500);
+}
 
 function initMap() {
-    // Default center: Youngstown, OH
-    const defaultLoc = { lat: 41.0998, lng: -80.6495 };
-
-    map = new google.maps.Map(document.getElementById("map"), {
-        center: defaultLoc,
-        zoom: 12,
+    map = new google.maps.Map(document.getElementById('map'), {
+        center: { lat: 41.1, lng: -80.65 },
+        zoom: 12
     });
 
-    // Try to get user location
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                map.setCenter(loc);
-                loadBars(currentDay, loc);
-            },
-            () => loadBars(currentDay, defaultLoc)
-        );
-    } else {
-        loadBars(currentDay, defaultLoc);
-    }
-
-    // Click to add bar
-    map.addListener("click", (e) => {
-        openForm(e.latLng);
+    map.addListener('click', (e) => {
+        placeNewMarker(e.latLng);
     });
+}
 
-    setupDayButtons();
+function placeNewMarker(latLng) {
+    if (newMarker) newMarker.setMap(null);
+    newMarker = new google.maps.Marker({
+        position: latLng,
+        map: map,
+        draggable: true
+    });
+    document.getElementById('add-bar-form').style.display = 'block';
+    document.querySelector('input[name="lat"]').value = latLng.lat();
+    document.querySelector('input[name="lng"]').value = latLng.lng();
 }
 
 function setupDayButtons() {
-    const buttons = document.querySelectorAll("#days button");
-    buttons.forEach(btn => {
-        btn.addEventListener("click", () => {
-            currentDay = btn.dataset.day;
-            clearMarkers();
+    document.querySelectorAll('#days button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentDay = btn.getAttribute('data-day');
             loadBars(currentDay);
         });
     });
 }
 
-function getToday() {
-    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    const today = new Date().getDay();
-    return days[today];
-}
-
-function loadBars(day, loc=null) {
-    fetch(`${apiBase}get_bars/${day}`)
+function loadBars(day) {
+    fetch(`/get_bars?day=${day}`)
         .then(res => res.json())
         .then(data => {
-            displayBars(data);
-            placeMarkers(data);
+            clearMarkers();
+            const barList = document.getElementById('bar-list');
+            barList.innerHTML = '';
+            data.forEach(bar => {
+                const marker = new google.maps.Marker({
+                    position: { lat: bar.lat, lng: bar.lng },
+                    map: map,
+                    title: bar.name
+                });
+                markers.push(marker);
+                barList.innerHTML += `<div class="bar-item">${bar.name} - ${bar.deal}</div>`;
+            });
         });
-}
-
-function displayBars(bars) {
-    const list = document.getElementById("bar-list");
-    list.innerHTML = "";
-    bars.forEach(b => {
-        const div = document.createElement("div");
-        div.innerHTML = `<strong>${b.name}</strong> - ${b.deal}`;
-        if (b.highlighted) div.style.color = "red";
-        list.appendChild(div);
-    });
-}
-
-function placeMarkers(bars) {
-    clearMarkers();
-    bars.forEach(b => {
-        if (b.lat && b.lng) {
-            const marker = new google.maps.Marker({
-                position: { lat: b.lat, lng: b.lng },
-                map: map,
-                title: `${b.name} - ${b.deal}`,
-            });
-            const infowindow = new google.maps.InfoWindow({
-                content: `<strong>${b.name}</strong><br>${b.deal}`
-            });
-            marker.addListener("click", () => infowindow.open(map, marker));
-            markers.push(marker);
-        }
-    });
 }
 
 function clearMarkers() {
@@ -94,43 +70,31 @@ function clearMarkers() {
     markers = [];
 }
 
-// ----------------------
-// Add Bar Form Functions
-// ----------------------
-function openForm(latLng) {
-    const formDiv = document.getElementById("add-bar-form");
-    formDiv.style.display = "block";
-    const form = document.getElementById("new-bar-form");
-    form.lat.value = latLng.lat();
-    form.lng.value = latLng.lng();
-}
-
-function closeForm() {
-    document.getElementById("add-bar-form").style.display = "none";
-}
-
-document.getElementById("new-bar-form").addEventListener("submit", function(e) {
+document.getElementById('new-bar-form').addEventListener('submit', function(e){
     e.preventDefault();
-    const formData = new FormData(this);
-    const jsonData = {};
-    formData.forEach((value, key) => { jsonData[key] = value; });
-
-    fetch(`${apiBase}add_bar`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(jsonData)
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            alert("Bar added!");
-            closeForm();
-            loadBars(currentDay);
-        } else {
-            alert("Error: " + data.error);
-        }
-    });
+    const formData = {
+        name: this.name.value,
+        address: this.address.value,
+        deal: this.deal.value,
+        day: this.day.value,
+        lat: parseFloat(this.lat.value),
+        lng: parseFloat(this.lng.value)
+    };
+    fetch('/add_bar', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(formData)
+    }).then(res => res.json())
+      .then(() => {
+        document.getElementById('add-bar-form').style.display = 'none';
+        loadBars(currentDay);
+        if(newMarker) newMarker.setMap(null);
+      });
 });
 
-// Initialize map on page load
-window.onload = initMap;
+function closeForm() {
+    document.getElementById('add-bar-form').style.display = 'none';
+    if (newMarker) newMarker.setMap(null);
+}
+
+window.onload = initApp;
