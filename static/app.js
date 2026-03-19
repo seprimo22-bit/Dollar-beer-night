@@ -1,6 +1,5 @@
-// Determine today's day automatically
-const today = new Date().toLocaleString('en-US', { weekday: 'long' });
 document.addEventListener("DOMContentLoaded", () => {
+    const today = new Date().toLocaleString('en-US', { weekday: 'long' });
     loadDay(today);
 });
 
