@@ -23,6 +23,7 @@ class Special(db.Model):
     day = db.Column(db.String(20), nullable=False)
     latitude = db.Column(db.Float)
     longitude = db.Column(db.Float)
+    verified = db.Column(db.Boolean, default=False)
 
 # Initialize database
 with app.app_context():
@@ -57,18 +58,24 @@ def add_special():
     address = data.get("address", "").strip()
     deal = data.get("deal", "").strip()
     day = data.get("day", "").capitalize().strip()
+    lat = data.get("lat")  # optional manual pin
+    lng = data.get("lng")
 
     if not bar or not deal or not day:
         return jsonify(success=False)
 
-    queries = [f"{bar} {address}", f"{bar} near {address}", address, bar]
-    lat, lng = None, None
-    for q in queries:
-        lat, lng = geocode(q)
-        if lat:
-            break
+    # Geocode only if no manual coordinates
+    if lat is None or lng is None:
+        queries = [f"{bar} {address}", f"{bar} near {address}", address, bar]
+        for q in queries:
+            lat, lng = geocode(q)
+            if lat:
+                break
 
-    special = Special(bar_name=bar, address=address, deal=deal, day=day, latitude=lat, longitude=lng)
+    special = Special(
+        bar_name=bar, address=address, deal=deal,
+        day=day, latitude=lat, longitude=lng
+    )
     db.session.add(special)
     db.session.commit()
 
@@ -78,7 +85,15 @@ def add_special():
 def get_specials(day):
     specials = Special.query.filter_by(day=day.capitalize()).all()
     return jsonify([
-        {"id": s.id, "bar_name": s.bar_name, "deal": s.deal, "lat": s.latitude, "lng": s.longitude, "address": s.address}
+        {
+            "id": s.id,
+            "bar_name": s.bar_name,
+            "deal": s.deal,
+            "lat": s.latitude,
+            "lng": s.longitude,
+            "address": s.address,
+            "verified": s.verified
+        }
         for s in specials
     ])
 
@@ -97,6 +112,7 @@ def edit_special(special_id):
     special.address = request.form.get("address", special.address).strip()
     special.deal = request.form.get("deal", special.deal).strip()
     special.day = request.form.get("day", special.day).capitalize().strip()
+    special.verified = "verified" in request.form  # optional checkbox
 
     if special.address:
         lat, lng = geocode(f"{special.bar_name} {special.address}")
