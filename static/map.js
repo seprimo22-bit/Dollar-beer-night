@@ -1,14 +1,11 @@
-let map, vectorSource, vectorLayer, currentDay;
-let markers = {};
+let map, vectorLayer, vectorSource;
 
 function initMap() {
     vectorSource = new ol.source.Vector({});
-    vectorLayer = new ol.layer.Vector({
-        source: vectorSource
-    });
+    vectorLayer = new ol.layer.Vector({ source: vectorSource });
 
     map = new ol.Map({
-        target: 'map',
+        target: "map",
         layers: [
             new ol.layer.Tile({
                 source: new ol.source.OSM()
@@ -16,54 +13,46 @@ function initMap() {
             vectorLayer
         ],
         view: new ol.View({
-            center: ol.proj.fromLonLat([-80.65, 40.98]), // default center (Youngstown)
-            zoom: 12
+            center: ol.proj.fromLonLat([-84.5555, 41.0379]), // default center (Youngstown)
+            zoom: 10
         })
     });
 }
 
-// Add markers from the specials list
-function loadBars(day, specials) {
+function loadBars(bars) {
     vectorSource.clear();
-    markers = {};
 
-    specials.forEach(bar => {
+    bars.forEach(bar => {
         if (bar.lat && bar.lng) {
-            const marker = new ol.Feature({
+            const feature = new ol.Feature({
                 geometry: new ol.geom.Point(ol.proj.fromLonLat([bar.lng, bar.lat])),
                 name: bar.bar_name,
                 deal: bar.deal
             });
 
-            vectorSource.addFeature(marker);
-            markers[bar.bar_name] = marker;
+            const style = new ol.style.Style({
+                image: new ol.style.Circle({
+                    radius: 8,
+                    fill: new ol.style.Fill({ color: '#ff0000' }),
+                    stroke: new ol.style.Stroke({ color: '#fff', width: 2 })
+                })
+            });
+            feature.setStyle(style);
+            vectorSource.addFeature(feature);
         }
     });
+}
 
-    if (specials.length > 0) {
-        const first = specials[0];
-        if (first.lat && first.lng) {
-            map.getView().setCenter(ol.proj.fromLonLat([first.lng, first.lat]));
-        }
+// Click a bar from list
+function focusBar(bar) {
+    if (bar.lat && bar.lng) {
+        const view = map.getView();
+        view.animate({ center: ol.proj.fromLonLat([bar.lng, bar.lat]), zoom: 14, duration: 500 });
     }
 }
 
-// Click on map features to show bar info
-mapClickHandler = function() {
-    map.on('singleclick', function(evt) {
-        map.forEachFeatureAtPixel(evt.pixel, function(feature) {
-            alert(`${feature.get('name')} - ${feature.get('deal')}`);
-        });
-    });
-};
+window.loadBars = loadBars;
+window.focusBar = focusBar;
 
-// Initialize map immediately
-window.onload = function() {
-    initMap();
-    mapClickHandler();
-
-    // Default to today
-    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    const today = new Date().getDay(); // Sunday=0
-    loadDay(days[today]);
-};
+// initialize map when script loads
+initMap();
