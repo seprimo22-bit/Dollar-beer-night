@@ -50,3 +50,11 @@ def add_bar():
 
 if __name__ == "__main__":
     app.run(debug=True)
+@app.route("/api/delete_bar/<int:bar_id>", methods=["DELETE"])
+def delete_bar(bar_id):
+    bar = Bar.query.get(bar_id)
+    if bar:
+        db.session.delete(bar)
+        db.session.commit()
+        return jsonify({"status":"deleted"})
+    return jsonify({"status":"not found"}), 404
