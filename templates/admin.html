@@ -1,61 +1,55 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Beer Dollars Admin Panel</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 8px; border-bottom: 1px solid #ddd; }
-        input { width: 95%; padding: 4px; }
-        button { padding: 6px 10px; cursor: pointer; }
-        .delete-btn { background: #cc3333; color: white; border: none; }
-        .save-btn { background: #2d7d2d; color: white; border: none; }
-        .top-bar { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .top-bar a { text-decoration: none; color: #1976d2; font-weight: bold; }
-    </style>
-
-    <script>
-        function confirmDelete() {
-            return confirm("Delete this bar special? This cannot be undone.");
-        }
-    </script>
+    <meta charset="UTF-8">
+    <title>Beer Dollars Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-
 <body>
+    <header>
+        <h1>🍺 Beer Dollars Admin</h1>
+    </header>
 
-<div class="top-bar">
-    <h2>Beer Dollars Admin Panel</h2>
-    <a href="/">Back to App</a>
-</div>
+    <h2>Bars Management</h2>
 
-<table>
-    <tr>
-        <th>Bar</th>
-        <th>Address</th>
-        <th>Deal</th>
-        <th>Day</th>
-        <th>Actions</th>
-    </tr>
+    <table id="bars-table" border="1" cellpadding="8" cellspacing="0" style="width:100%; text-align:left;">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Address</th>
+                <th>Deal</th>
+                <th>Day</th>
+                <th>Paid</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Filled dynamically by admin.js -->
+        </tbody>
+    </table>
 
-    {% for s in specials %}
-    <tr>
-        <form method="POST" action="/edit_special/{{ s.id }}">
-            <td><input name="bar_name" value="{{ s.bar_name }}"></td>
-            <td><input name="address" value="{{ s.address }}"></td>
-            <td><input name="deal" value="{{ s.deal }}"></td>
-            <td><input name="day" value="{{ s.day }}"></td>
-            <td>
-                <button class="save-btn">Save</button>
-        </form>
+    <h3>Add New Bar</h3>
+    <form id="admin-add-bar-form">
+        <label>Name: <input type="text" name="name" required></label><br>
+        <label>Address: <input type="text" name="address"></label><br>
+        <label>Deal: <input type="text" name="deal" required></label><br>
+        <label>Day:
+            <select name="day" required>
+                <option>Monday</option>
+                <option>Tuesday</option>
+                <option>Wednesday</option>
+                <option>Thursday</option>
+                <option>Friday</option>
+                <option>Saturday</option>
+                <option>Sunday</option>
+            </select>
+        </label><br>
+        <label>Paid: <input type="checkbox" name="paid"></label><br>
+        <input type="hidden" name="lat">
+        <input type="hidden" name="lng">
+        <button type="submit">Add Bar</button>
+    </form>
 
-        <form method="POST" action="/delete_special/{{ s.id }}" 
-              onsubmit="return confirmDelete();" style="display:inline;">
-            <button class="delete-btn">Delete</button>
-        </form>
-            </td>
-    </tr>
-    {% endfor %}
-</table>
-
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
 </body>
 </html>
