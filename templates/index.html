@@ -1,38 +1,99 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Beer Dollars | Stretch Your Beer Money</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Beer Dollars</title>
+    <style>
+        body { margin: 0; font-family: sans-serif; background: #000; color: white; }
+        #splash { height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #auth, #main { display: none; text-align: center; }
+        .hidden { display: none !important; }
+        #map { height: 400px; width: 100%; border-top: 3px solid #ffcc00; position: fixed; bottom: 0; }
+        #bar-list { padding: 20px; padding-bottom: 420px; background: #111; }
+        .bar-card { background: #222; margin: 10px 0; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; }
+        input { padding: 10px; margin: 10px; width: 80%; }
+        button { padding: 10px 20px; background: #ffcc00; border: none; font-weight: bold; }
+    </style>
 </head>
 <body>
     <div id="splash">
-        <img src="{{ url_for('static', filename='1773978135981~2.png') }}" alt="Logo">
-        <div class="loader"></div>
-        <p>Anchoring System...</p>
+        <h1>BEER DOLLARS</h1>
+        <p>Anchoring...</p>
     </div>
 
-    <div id="auth" class="hidden">
-        <div class="login-box">
-            <h1>Beer Dollars</h1>
-            <input type="tel" id="phone" placeholder="Phone Number">
-            <button onclick="showCodeInput()">Send Code</button>
-            <div id="code-section" class="hidden">
-                <input type="text" id="code" placeholder="0000">
-                <button onclick="verifyCode()">Verify Access</button>
-            </div>
-        </div>
+    <div id="auth">
+        <h2>Enter Access Code</h2>
+        <input type="text" id="code" placeholder="0000">
+        <button onclick="verify()">Login</button>
     </div>
 
-    <div id="main" class="hidden">
-        <header><h2>Thank God It's Friday</h2></header>
-        <div id="bar-list"></div>
+    <div id="main">
+        <header style="background:#0056b3; padding:10px;"><h2>Thank God It's Friday</h2></header>
+        <div id="bar-list">Loading local specials...</div>
         <div id="map"></div>
     </div>
 
-    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_key }}&callback=initMap" async defer></script>
-    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <script>
+        let map, userLoc, longPressTimeout;
+
+        setTimeout(() => {
+            document.getElementById('splash').style.display = 'none';
+            document.getElementById('auth').style.display = 'block';
+        }, 2000);
+
+        function verify() {
+            if(document.getElementById('code').value === '0000') {
+                document.getElementById('auth').style.display = 'none';
+                document.getElementById('main').style.display = 'block';
+                navigator.geolocation.getCurrentPosition(p => {
+                    userLoc = {lat: p.coords.latitude, lng: p.coords.longitude};
+                    initApp();
+                }, () => {
+                    userLoc = {lat: 41.10, lng: -80.65}; // Youngstown
+                    initApp();
+                });
+            }
+        }
+
+        async function initApp() {
+            const res = await fetch(`/api/bars?lat=${userLoc.lat}&lng=${userLoc.lng}`);
+            const bars = await res.json();
+            const list = document.getElementById('bar-list');
+            list.innerHTML = bars.length ? '' : 'No bars found within 40 miles.';
+
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 12, center: userLoc, disableDefaultUI: true
+            });
+
+            // Long Press (Blue Angel)
+            map.addListener("mousedown", (e) => {
+                longPressTimeout = setTimeout(() => {
+                    const name = prompt("Bar Name:");
+                    const deal = prompt("Friday Deal:");
+                    if(name && deal) saveBar(name, deal, e.latLng.lat(), e.latLng.lng());
+                }, 1000);
+            });
+            map.addListener("mouseup", () => clearTimeout(longPressTimeout));
+
+            bars.forEach(bar => {
+                const div = document.createElement('div');
+                div.className = 'bar-card';
+                div.innerHTML = `<div><strong>${bar.name}</strong><br>${bar.deal}</div><div>${bar.dist}mi</div>`;
+                div.onclick = () => { map.panTo({lat: bar.lat, lng: bar.lng}); map.setZoom(15); };
+                list.appendChild(div);
+                new google.maps.Marker({ position: {lat: bar.lat, lng: bar.lng}, map });
+            });
+        }
+
+        async function saveBar(name, deal, lat, lng) {
+            await fetch('/api/add', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name, deal, lat, lng})
+            });
+            location.reload();
+        }
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_key }}"></script>
 </body>
-</html>
 </html>
