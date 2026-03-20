@@ -1,108 +1,80 @@
-from flask import Flask, render_template, request, redirect, jsonify
-import sqlite3
-import requests
+from flask import Flask, request, jsonify, render_template
+import os
+import json
 
 app = Flask(__name__)
-DB = "beer.db"
 
-# ---------------- DATABASE ----------------
-def init_db():
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS specials (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            deal TEXT,
-            day TEXT,
-            address TEXT,
-            lat REAL,
-            lng REAL
-        )
-    ''')
-    conn.commit()
-    conn.close()
+# -------------------------
+# CONFIG
+# -------------------------
 
-init_db()
+DATA_DIR = "data"
+DATA_FILE = os.path.join(DATA_DIR, "specials.json")
 
-# ---------------- GEOCODER ----------------
-def geocode(address):
-    url = "https://nominatim.openstreetmap.org/search"
-    params = {
-        "q": address,
-        "format": "json",
-        "limit": 1
-    }
-    headers = {"User-Agent": "beer-dollars-app"}
+# Ensure data folder exists
+os.makedirs(DATA_DIR, exist_ok=True)
+
+
+# -------------------------
+# DATA UTILITIES
+# -------------------------
+
+def load_specials():
+    """Load specials safely."""
+    if not os.path.exists(DATA_FILE):
+        return []
 
     try:
-        r = requests.get(url, params=params, headers=headers)
-        data = r.json()
-        if data:
-            return float(data[0]["lat"]), float(data[0]["lon"])
-    except:
-        pass
+        with open(DATA_FILE, "r") as f:
+            return json.load(f)
+    except Exception:
+        return []
 
-    return None, None
 
-# ---------------- ROUTES ----------------
+def save_specials(data):
+    """Save specials safely."""
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+
+# -------------------------
+# ROUTES
+# -------------------------
+
 @app.route("/")
-def index():
+def home():
     return render_template("index.html")
 
-@app.route("/admin")
-def admin():
-    return render_template("admin.html")
 
-@app.route("/add", methods=["POST"])
-def add():
-    name = request.form["name"]
-    deal = request.form["deal"]
-    day = request.form["day"]
-    address = request.form["address"]
+@app.route("/api/specials", methods=["GET"])
+def get_specials():
+    return jsonify(load_specials())
 
-    lat, lng = geocode(address)
 
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO specials (name, deal, day, address, lat, lng) VALUES (?, ?, ?, ?, ?, ?)",
-        (name, deal, day, address, lat, lng)
-    )
-    conn.commit()
-    conn.close()
+@app.route("/api/specials", methods=["POST"])
+def add_special():
+    data = request.json
 
-    return redirect("/admin")
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
 
-@app.route("/specials")
-def specials():
-    day = request.args.get("day")
+    specials = load_specials()
+    specials.append(data)
+    save_specials(specials)
 
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
+    return jsonify({"status": "added", "data": data})
 
-    if day:
-        c.execute("SELECT * FROM specials WHERE day=?", (day,))
-    else:
-        c.execute("SELECT * FROM specials")
 
-    rows = c.fetchall()
-    conn.close()
+@app.route("/api/specials/clear", methods=["POST"])
+def clear_specials():
+    save_specials([])
+    return jsonify({"status": "cleared"})
 
-    results = []
-    for r in rows:
-        results.append({
-            "id": r[0],
-            "name": r[1],
-            "deal": r[2],
-            "day": r[3],
-            "address": r[4],
-            "lat": r[5],
-            "lng": r[6]
-        })
 
-    return jsonify(results)
+# -------------------------
+# ENTRY POINT
+# -------------------------
 
-# ---------------- RUN ----------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port, debug=False)
