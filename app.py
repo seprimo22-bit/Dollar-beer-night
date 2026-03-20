@@ -1,9 +1,9 @@
-
 from flask import Flask, render_template, request, jsonify, session
 from datetime import datetime
 import random
 import math
 import os
+from twilio.rest import Client as TwilioClient
 import googlemaps
 
 from config import Config
@@ -18,7 +18,7 @@ gmaps = googlemaps.Client(key=app.config["GOOGLE_MAPS_API_KEY"])
 with app.app_context():
     db.create_all()
 
-# ---------- Auto-generate main.html if missing ----------
+# ---------- Auto-generate main.html ----------
 MAIN_HTML = '''<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -31,8 +31,6 @@ MAIN_HTML = '''<!DOCTYPE html>
     html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a1628; color: #fff; overflow: hidden; }
     .hidden { display: none !important; }
     .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
-
-    /* LOADING */
     #screen-loading { background: linear-gradient(160deg, #0a1628 0%, #001a4d 60%, #0a1628 100%); gap: 24px; }
     .loading-logo { width: min(280px, 75vw); height: auto; filter: drop-shadow(0 0 24px rgba(30,144,255,0.5)); animation: pulse 2s ease-in-out infinite; }
     @keyframes pulse { 0%,100% { filter: drop-shadow(0 0 24px rgba(30,144,255,0.4)); } 50% { filter: drop-shadow(0 0 40px rgba(30,144,255,0.8)); } }
@@ -40,8 +38,6 @@ MAIN_HTML = '''<!DOCTYPE html>
     .loading-bar-track { width: min(320px,80vw); height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
     #beer-fill { height: 100%; width: 0%; background: linear-gradient(90deg,#1e90ff,#00bfff); border-radius: 4px; transition: width 0.9s ease-in-out; }
     .loading-footer { position: fixed; bottom: 24px; font-size: 0.75rem; color: rgba(255,255,255,0.4); text-align: center; line-height: 1.6; }
-
-    /* AUTH */
     #screen-phone, #screen-code { background: linear-gradient(160deg,#0a1628 0%,#001a4d 100%); gap: 0; }
     .auth-card { width: 100%; max-width: 400px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 36px 28px; display: flex; flex-direction: column; gap: 20px; }
     .auth-logo-small { width: 72px; height: 72px; object-fit: contain; margin: 0 auto 4px; }
@@ -59,8 +55,6 @@ MAIN_HTML = '''<!DOCTYPE html>
     .code-inputs { display: flex; gap: 12px; justify-content: center; }
     .code-digit { width: 58px; height: 64px; background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.15); border-radius: 12px; color: #fff; font-size: 1.8rem; font-weight: 700; text-align: center; outline: none; -webkit-appearance: none; }
     .code-digit:focus { border-color: #1e90ff; }
-
-    /* MAIN */
     #screen-main { display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; padding: 0; background: #0f1b2d; overflow: hidden; }
     .app-header { background: linear-gradient(135deg,#1456cc,#1e90ff); padding: 16px 16px 12px; flex-shrink: 0; }
     .header-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
@@ -96,19 +90,16 @@ MAIN_HTML = '''<!DOCTYPE html>
   </style>
 </head>
 <body>
-
-  <!-- LOADING -->
   <div id="screen-loading" class="screen">
-    <img src="{{ url_for('static', filename='images/beer-dollars-logo.png') }}" alt="Beer Dollars" class="loading-logo" />
+    <img src="{{ url_for(\'static\', filename=\'1773978135981~2.png\') }}" alt="Beer Dollars" class="loading-logo" />
     <div class="loading-tagline">"STRETCH YOUR BEER MONEY"</div>
     <div class="loading-bar-track"><div id="beer-fill"></div></div>
     <div class="loading-footer">Crafted for Beer Lovers &bull; Est. 2024<br/>Follow us: @beer_dollars_app</div>
   </div>
 
-  <!-- PHONE -->
   <div id="screen-phone" class="screen hidden">
     <div class="auth-card">
-      <img src="{{ url_for('static', filename='images/beer-dollars-logo.png') }}" alt="" class="auth-logo-small" onerror="this.style.display='none'" />
+      <img src="{{ url_for(\'static\', filename=\'1773978135981~2.png\') }}" alt="" class="auth-logo-small" />
       <div class="auth-title">🍺 Beer Dollars</div>
       <div class="auth-subtitle">Enter your phone number to find cheap beers near you.</div>
       <div>
@@ -121,7 +112,6 @@ MAIN_HTML = '''<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- CODE -->
   <div id="screen-code" class="screen hidden">
     <div class="auth-card">
       <div style="font-size:2.5rem;text-align:center;">📱</div>
@@ -140,11 +130,10 @@ MAIN_HTML = '''<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- MAIN -->
   <div id="screen-main" class="screen hidden" style="justify-content:flex-start;">
     <div class="app-header">
       <div class="header-top">
-        <img src="{{ url_for('static', filename='images/beer-dollars-logo.png') }}" alt="" class="header-logo" onerror="this.style.display=\'none\'" />
+        <img src="{{ url_for(\'static\', filename=\'1773978135981~2.png\') }}" alt="" class="header-logo" />
         <div class="header-title">Beer Dollars 🍺</div>
       </div>
       <div class="search-bar">
@@ -168,9 +157,9 @@ MAIN_HTML = '''<!DOCTYPE html>
     <button class="fab" id="add-special-btn">＋</button>
   </div>
 
-  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  <script src="{{ url_for(\'static\', filename=\'app.js\') }}"></script>
   <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap" async defer></script>
-  <script src="{{ url_for('static', filename='map.js') }}"></script>
+  <script src="{{ url_for(\'static\', filename=\'map.js\') }}"></script>
   <script>
     (function() {
       var digits = [\'digit-0\',\'digit-1\',\'digit-2\',\'digit-3\'];
@@ -193,13 +182,11 @@ MAIN_HTML = '''<!DOCTYPE html>
 </body>
 </html>'''
 
-# Write main.html to templates folder if it doesn't exist
 templates_dir = os.path.join(os.path.dirname(__file__), 'templates')
 main_html_path = os.path.join(templates_dir, 'main.html')
-if not os.path.exists(main_html_path):
-    with open(main_html_path, 'w') as f:
-        f.write(MAIN_HTML)
-    print("[INFO] main.html created in templates/")
+with open(main_html_path, 'w') as f:
+    f.write(MAIN_HTML)
+print("[INFO] main.html written to templates/")
 
 # ---------- Helpers ----------
 def generate_code():
@@ -225,6 +212,25 @@ def geocode_address(address):
         return loc['lat'], loc['lng']
     except Exception as e:
         raise ValueError(f"Geocoding failed: {str(e)}")
+
+def send_sms(phone, code):
+    twilio_sid = os.environ.get("TWILIO_ACCOUNT_SID")
+    twilio_token = os.environ.get("TWILIO_AUTH_TOKEN")
+    twilio_from = os.environ.get("TWILIO_PHONE_NUMBER")
+    if twilio_sid and twilio_token and twilio_from:
+        try:
+            client = TwilioClient(twilio_sid, twilio_token)
+            client.messages.create(
+                body=f"Your Beer Dollars code is: {code}",
+                from_=twilio_from,
+                to=phone
+            )
+            print(f"[SMS] Code sent to {phone}")
+        except Exception as e:
+            print(f"[SMS ERROR] {e}")
+            print(f"[DEBUG] CODE for {phone}: {code}")
+    else:
+        print(f"[DEBUG] CODE for {phone}: {code}")
 
 # ---------- Routes ----------
 @app.route("/")
@@ -257,7 +263,7 @@ def send_code():
     vc = VerificationCode(phone=phone, code=code)
     db.session.add(vc)
     db.session.commit()
-    print(f"[DEBUG] CODE for {phone}: {code}")
+    send_sms(phone, code)
     return jsonify({"success": True})
 
 @app.route("/api/verify_code", methods=["POST"])
@@ -330,4 +336,3 @@ def admin_bars():
 
 if __name__ == "__main__":
     app.run(debug=True)
-
