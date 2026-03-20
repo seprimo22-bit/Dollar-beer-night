@@ -1,65 +1,108 @@
-import os
-import math
-from datetime import datetime
-from flask import Flask, render_template, request, jsonify
-from flask_sqlalchemy import SQLAlchemy
-import googlemaps
+from flask import Flask, render_template, request, redirect, jsonify
+import sqlite3
+import requests
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'brick_1_percent_anchor'
-# Render Postgres Fix
-db_url = os.environ.get("DATABASE_URL", "sqlite:///beer_dollars.db")
-if db_url and db_url.startswith("postgres://"):
-    db_url = db_url.replace("postgres://", "postgresql://", 1)
-app.config['SQLALCHEMY_DATABASE_URI'] = db_url
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+DB = "beer.db"
 
-db = SQLAlchemy(app)
-gmaps = googlemaps.Client(key=os.environ.get('GOOGLE_MAPS_API_KEY'))
+# ---------------- DATABASE ----------------
+def init_db():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS specials (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            deal TEXT,
+            day TEXT,
+            address TEXT,
+            lat REAL,
+            lng REAL
+        )
+    ''')
+    conn.commit()
+    conn.close()
 
-class Bar(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(128), nullable=False)
-    address = db.Column(db.String(256), nullable=False)
-    deal = db.Column(db.String(256), nullable=False)
-    day_of_week = db.Column(db.String(16), nullable=False)
-    lat = db.Column(db.Float, nullable=False)
-    lng = db.Column(db.Float, nullable=False)
+init_db()
 
-@app.route('/')
+# ---------------- GEOCODER ----------------
+def geocode(address):
+    url = "https://nominatim.openstreetmap.org/search"
+    params = {
+        "q": address,
+        "format": "json",
+        "limit": 1
+    }
+    headers = {"User-Agent": "beer-dollars-app"}
+
+    try:
+        r = requests.get(url, params=params, headers=headers)
+        data = r.json()
+        if data:
+            return float(data[0]["lat"]), float(data[0]["lon"])
+    except:
+        pass
+
+    return None, None
+
+# ---------------- ROUTES ----------------
+@app.route("/")
 def index():
-    return render_template('index.html', google_key=os.environ.get('GOOGLE_MAPS_API_KEY'))
+    return render_template("index.html")
 
-@app.route('/api/bars', methods=['GET'])
-def get_bars():
-    today = datetime.now().strftime('%A').lower()
-    u_lat = request.args.get('lat', type=float)
-    u_lng = request.args.get('lng', type=float)
-    bars = Bar.query.filter_by(day_of_week=today).all()
-    res = []
-    for b in bars:
-        dist = 0
-        if u_lat and u_lng:
-            R = 3958.8
-            dlat, dlon = math.radians(b.lat-u_lat), math.radians(b.lng-u_lng)
-            a = math.sin(dlat/2)**2 + math.cos(math.radians(u_lat)) * math.cos(math.radians(b.lat)) * math.sin(dlon/2)**2
-            dist = R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-        if dist <= 40:
-            res.append({"name": b.name, "deal": b.deal, "lat": b.lat, "lng": b.lng, "dist": round(dist, 1)})
-    return jsonify(sorted(res, key=lambda x: x['dist']))
+@app.route("/admin")
+def admin():
+    return render_template("admin.html")
 
-@app.route('/api/add', methods=['POST'])
-def add_bar():
-    data = request.json
-    new_bar = Bar(
-        name=data['name'], address="Pinned", deal=data['deal'],
-        day_of_week="friday", lat=data['lat'], lng=data['lng']
+@app.route("/add", methods=["POST"])
+def add():
+    name = request.form["name"]
+    deal = request.form["deal"]
+    day = request.form["day"]
+    address = request.form["address"]
+
+    lat, lng = geocode(address)
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO specials (name, deal, day, address, lat, lng) VALUES (?, ?, ?, ?, ?, ?)",
+        (name, deal, day, address, lat, lng)
     )
-    db.session.add(new_bar)
-    db.session.commit()
-    return jsonify({"success": True})
+    conn.commit()
+    conn.close()
 
-if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-    app.run()
+    return redirect("/admin")
+
+@app.route("/specials")
+def specials():
+    day = request.args.get("day")
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    if day:
+        c.execute("SELECT * FROM specials WHERE day=?", (day,))
+    else:
+        c.execute("SELECT * FROM specials")
+
+    rows = c.fetchall()
+    conn.close()
+
+    results = []
+    for r in rows:
+        results.append({
+            "id": r[0],
+            "name": r[1],
+            "deal": r[2],
+            "day": r[3],
+            "address": r[4],
+            "lat": r[5],
+            "lng": r[6]
+        })
+
+    return jsonify(results)
+
+# ---------------- RUN ----------------
+if __name__ == "__main__":
+    app.run(debug=True)
