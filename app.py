@@ -13,58 +13,58 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 gmaps = googlemaps.Client(key=os.environ.get('GOOGLE_MAPS_API_KEY'))
 
+# --- THE MODELS (Lined up with your code) ---
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    phone = db.Column(db.String(32), unique=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 class Bar(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    address = db.Column(db.String(200), nullable=False)
-    deal = db.Column(db.String(100), nullable=False)
-    day = db.Column(db.String(20), nullable=False)
-    lat = db.Column(db.Float)
-    lng = db.Column(db.Float)
+    name = db.Column(db.String(128), nullable=False)
+    address = db.Column(db.String(256), nullable=False)
+    city = db.Column(db.String(128))
+    state = db.Column(db.String(64))
+    zip_code = db.Column(db.String(32))
+    deal = db.Column(db.String(256), nullable=False)
+    day_of_week = db.Column(db.String(16), nullable=False)
+    lat = db.Column(db.Float, nullable=False)
+    lng = db.Column(db.Float, nullable=False)
 
-def get_distance(lat1, lon1, lat2, lon2):
-    R = 3958.8 
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi, dlambda = math.radians(lat2-lat1), math.radians(lon2-lon1)
-    a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
-    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-
+# --- THE LOGIC ---
 @app.route('/')
 def index():
     return render_template('index.html', google_key=os.environ.get('GOOGLE_MAPS_API_KEY'))
 
-@app.route('/api/verify', methods=['POST'])
-def verify():
-    if request.json.get('code') == '0000':
-        session['verified'] = True
-        return jsonify({"success": True})
-    return jsonify({"success": False}), 401
-
-@app.route('/api/bars', methods=['GET'])
-def get_bars():
-    today = datetime.now().strftime('%A')
-    u_lat = request.args.get('lat', type=float)
-    u_lng = request.args.get('lng', type=float)
-    bars = Bar.query.filter_by(day=today).all()
-    res = []
-    for b in bars:
-        d = get_distance(u_lat, u_lng, b.lat, b.lng) if u_lat else None
-        if d is None or d <= 40:
-            res.append({"name": b.name, "deal": b.deal, "addr": b.address, "lat": b.lat, "lng": b.lng, "dist": round(d, 1) if d else None})
-    return jsonify(sorted(res, key=lambda x: x['dist'] or 999))
-
 @app.route('/api/add', methods=['POST'])
-def add():
+def add_bar():
     data = request.json
-    lat, lng = data.get('lat'), data.get('lng')
-    if not lat:
-        g = gmaps.geocode(data['address'])
-        if g: lat, lng = g[0]['geometry']['location']['lat'], g[0]['geometry']['location']['lng']
-    db.session.add(Bar(name=data['name'], address=data['address'], deal=data['deal'], day=data['day'], lat=lat, lng=lng))
+    # Geocode logic using the new specific fields
+    full_address = f"{data['address']}, {data['city']}, {data['state']} {data['zip_code']}"
+    g = gmaps.geocode(full_address)
+    lat, lng = (g[0]['geometry']['location']['lat'], g[0]['geometry']['location']['lng']) if g else (0,0)
+    
+    new_bar = Bar(
+        name=data['name'], address=data['address'], city=data['city'],
+        state=data['state'], zip_code=data['zip_code'], deal=data['deal'],
+        day_of_week=data['day_of_week'].lower(), lat=lat, lng=lng
+    )
+    db.session.add(new_bar)
     db.session.commit()
     return jsonify({"success": True})
 
+@app.route('/api/bars', methods=['GET'])
+def get_bars():
+    today = datetime.now().strftime('%A').lower()
+    bars = Bar.query.filter_by(day_of_week=today).all()
+    return jsonify([{
+        "id": b.id, "name": b.name, "deal": b.deal, "address": b.address,
+        "city": b.city, "lat": b.lat, "lng": b.lng
+    } for b in bars])
+
 if __name__ == '__main__':
-    with app.app_context(): db.create_all()
+    with app.app_context():
+        # db.drop_all() # Uncomment this once to wipe the old "broken" table structure
+        db.create_all()
     app.run()
     
