@@ -1,52 +1,129 @@
+/* Global */
 body {
     font-family: Arial, sans-serif;
     margin: 0;
     padding: 0;
+    background-color: #f7f7f7;
 }
 
-header, #splash {
+/* Banner / Splash */
+#splash {
     text-align: center;
     background-color: #0074D9;
     color: white;
-    padding: 20px;
+    padding: 25px 10px;
+    border-bottom: 4px solid #005fa8;
 }
 
+#splash h1 {
+    margin: 0;
+    font-size: 28px;
+}
+
+#splash p {
+    margin: 5px 0 0;
+    font-size: 14px;
+}
+
+/* Day Buttons */
 #days {
     display: flex;
     justify-content: center;
-    margin: 10px 0;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px;
 }
 
 #days button {
-    margin: 0 5px;
-    padding: 10px 15px;
+    padding: 10px 16px;
+    border: none;
+    background-color: #e6f2ff;
+    color: #005fa8;
+    border-radius: 20px;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
     cursor: pointer;
+    transition: 0.2s;
 }
 
+#days button:hover {
+    background-color: #cfe6ff;
+}
+
+#days button.active {
+    background-color: #0074D9;
+    color: white;
+}
+
+/* Map */
+#map {
+    width: 92%;
+    height: 50vh;
+    margin: 10px auto;
+    border-radius: 12px;
+    border: 3px solid #0074D9;
+    overflow: hidden;
+}
+
+/* Bar List */
 #bar-list {
-    padding: 10px;
-    max-height: 20vh;
+    width: 92%;
+    margin: 10px auto;
+    max-height: 25vh;
     overflow-y: auto;
 }
 
 .bar {
-    padding: 5px;
-    border-bottom: 1px solid #ccc;
+    background: white;
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
     cursor: pointer;
 }
 
 .bar.paid {
-    background-color: #ffeb3b;
+    background-color: #fff7c2;
+    border-left: 5px solid #ffcc00;
     font-weight: bold;
 }
 
+/* Add Bar Form (now BELOW the map, not floating) */
 #add-bar-form {
-    position: fixed;
-    top: 20%;
-    left: 50%;
-    transform: translateX(-50%);
+    width: 92%;
+    margin: 20px auto;
     background-color: white;
     padding: 15px;
+    border-radius: 12px;
     border: 2px solid #0074D9;
-    z-index: 1000;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+#add-bar-form h3 {
+    margin-top: 0;
+    text-align: center;
+}
+
+#add-bar-form input,
+#add-bar-form select {
+    width: 100%;
+    padding: 8px;
+    margin: 6px 0 12px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+#add-bar-form button {
+    width: 100%;
+    padding: 10px;
+    background-color: #0074D9;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+#add-bar-form button:hover {
+    background-color: #005fa8;
 }
