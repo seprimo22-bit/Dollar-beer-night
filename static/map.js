@@ -1,11 +1,9 @@
 let map, vectorSource, vectorLayer, popupOverlay, dropPinFeature;
 
-// Initialize the map
 function initMap() {
     vectorSource = new ol.source.Vector({});
     vectorLayer = new ol.layer.Vector({ source: vectorSource });
 
-    // Popup container
     const container = document.createElement("div");
     container.id = "popup";
     container.style.backgroundColor = "white";
@@ -19,7 +17,7 @@ function initMap() {
 
     popupOverlay = new ol.Overlay({
         element: container,
-        positioning: 'bottom-center',
+        positioning: "bottom-center",
         stopEvent: true,
         offset: [0, -12]
     });
@@ -31,34 +29,36 @@ function initMap() {
             vectorLayer
         ],
         view: new ol.View({
-            center: ol.proj.fromLonLat([-84.5555, 41.0379]), // default center
+            center: ol.proj.fromLonLat([-84.5555, 41.0379]),
             zoom: 10
         }),
         overlays: [popupOverlay]
     });
 
-    // Click on marker to show popup
-    map.on("singleclick", function(evt) {
+    // Click marker → popup
+    map.on("singleclick", function (evt) {
         const feature = map.forEachFeatureAtPixel(evt.pixel, f => f);
         if (feature && feature !== dropPinFeature) {
             const coords = feature.getGeometry().getCoordinates();
             const name = feature.get("name");
             const deal = feature.get("deal");
             const address = feature.get("address");
-            const verified = feature.get("verified");
+            const paid = feature.get("paid");
 
             popupOverlay.setPosition(coords);
-            container.innerHTML = `<b>${name}</b><br>${deal}<br>
-                ${verified ? "<span style='color:green;'>✔ Verified</span><br>" : ""}
-                <a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}" target="_blank">Navigate</a>`;
+            container.innerHTML = `
+                <b>${name}</b><br>${deal}<br>
+                ${paid ? "<span style='color:gold;'>★ Featured</span><br>" : ""}
+                <a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}" target="_blank">Navigate</a>
+            `;
             container.style.display = "block";
         } else {
             container.style.display = "none";
         }
     });
 
-    // Click on map to drop a new pin for adding a bar
-    map.on("dblclick", function(evt) {
+    // Double-click map → drop pin for new bar
+    map.on("dblclick", function (evt) {
         const coords = evt.coordinate;
         if (dropPinFeature) vectorSource.removeFeature(dropPinFeature);
 
@@ -82,17 +82,15 @@ function initMap() {
 
         const [lng, lat] = ol.proj.toLonLat(coords);
 
-        // Fill form inputs with coordinates for backend
-        document.getElementById("bar").value = "";
-        document.getElementById("address").value = `Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}`;
-        document.getElementById("day").value = new Date().toLocaleString('en-US', { weekday: 'long' });
+        // Fill hidden lat/lng fields for backend
+        document.querySelector("input[name='lat']").value = lat;
+        document.querySelector("input[name='lng']").value = lng;
 
-        // Optional: You can automatically trigger addSpecial() here if desired
-        alert("Pin dropped! Fill bar name and deal, then click Add.");
+        alert("Pin dropped! Enter bar name, address, deal, and click Add.");
     });
 }
 
-// Load bars for a day
+// Load bars from backend
 function loadBars(bars) {
     vectorSource.clear();
 
@@ -100,17 +98,17 @@ function loadBars(bars) {
         if (bar.lat && bar.lng) {
             const feature = new ol.Feature({
                 geometry: new ol.geom.Point(ol.proj.fromLonLat([bar.lng, bar.lat])),
-                name: bar.bar_name,
+                name: bar.name,
                 deal: bar.deal,
-                address: bar.address || bar.bar_name,
-                verified: bar.verified
+                address: bar.address || bar.name,
+                paid: bar.paid
             });
 
             const style = new ol.style.Style({
                 image: new ol.style.Circle({
                     radius: 8,
-                    fill: new ol.style.Fill({ color: bar.verified ? '#2ecc71' : '#1976d2' }),
-                    stroke: new ol.style.Stroke({ color: '#fff', width: 2 })
+                    fill: new ol.style.Fill({ color: bar.paid ? "#f1c40f" : "#1976d2" }),
+                    stroke: new ol.style.Stroke({ color: "#fff", width: 2 })
                 })
             });
 
@@ -120,15 +118,17 @@ function loadBars(bars) {
     });
 }
 
-// Focus map on a bar
 function focusBar(bar) {
     if (bar.lat && bar.lng) {
         const view = map.getView();
-        view.animate({ center: ol.proj.fromLonLat([bar.lng, bar.lat]), zoom: 14, duration: 500 });
+        view.animate({
+            center: ol.proj.fromLonLat([bar.lng, bar.lat]),
+            zoom: 14,
+            duration: 500
+        });
     }
 }
 
-// Bind functions globally
 window.loadBars = loadBars;
 window.focusBar = focusBar;
 
