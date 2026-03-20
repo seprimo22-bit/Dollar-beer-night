@@ -1,135 +1,131 @@
-let map, vectorSource, vectorLayer, popupOverlay, dropPinFeature;
+let map;
+let markers = [];
+let lastTapTime = 0;
+let holdTimer = null;
 
+// Initialize Google Map
 function initMap() {
-    vectorSource = new ol.source.Vector({});
-    vectorLayer = new ol.layer.Vector({ source: vectorSource });
-
-    const container = document.createElement("div");
-    container.id = "popup";
-    container.style.backgroundColor = "white";
-    container.style.padding = "6px";
-    container.style.border = "1px solid black";
-    container.style.borderRadius = "4px";
-    container.style.minWidth = "160px";
-    container.style.position = "absolute";
-    container.style.display = "none";
-    document.body.appendChild(container);
-
-    popupOverlay = new ol.Overlay({
-        element: container,
-        positioning: "bottom-center",
-        stopEvent: true,
-        offset: [0, -12]
+    map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 41.0998, lng: -80.6495 }, // Youngstown default
+        zoom: 11,
+        disableDoubleClickZoom: true,
+        gestureHandling: "greedy"
     });
 
-    map = new ol.Map({
-        target: "map",
-        layers: [
-            new ol.layer.Tile({ source: new ol.source.OSM() }),
-            vectorLayer
-        ],
-        view: new ol.View({
-            center: ol.proj.fromLonLat([-84.5555, 41.0379]),
-            zoom: 10
-        }),
-        overlays: [popupOverlay]
-    });
-
-    // Click marker → popup
-    map.on("singleclick", function (evt) {
-        const feature = map.forEachFeatureAtPixel(evt.pixel, f => f);
-        if (feature && feature !== dropPinFeature) {
-            const coords = feature.getGeometry().getCoordinates();
-            const name = feature.get("name");
-            const deal = feature.get("deal");
-            const address = feature.get("address");
-            const paid = feature.get("paid");
-
-            popupOverlay.setPosition(coords);
-            container.innerHTML = `
-                <b>${name}</b><br>${deal}<br>
-                ${paid ? "<span style='color:gold;'>★ Featured</span><br>" : ""}
-                <a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}" target="_blank">Navigate</a>
-            `;
-            container.style.display = "block";
-        } else {
-            container.style.display = "none";
-        }
-    });
-
-    // Double-click map → drop pin for new bar
-    map.on("dblclick", function (evt) {
-        const coords = evt.coordinate;
-        if (dropPinFeature) vectorSource.removeFeature(dropPinFeature);
-
-        dropPinFeature = new ol.Feature({
-            geometry: new ol.geom.Point(coords),
-            name: "New Bar",
-            deal: "",
-            address: ""
-        });
-
-        dropPinFeature.setStyle(new ol.style.Style({
-            image: new ol.style.Icon({
-                color: "#ff5722",
-                crossOrigin: "anonymous",
-                src: "https://openlayers.org/en/v7.5.0/examples/data/dot.png",
-                scale: 1.2
-            })
-        }));
-
-        vectorSource.addFeature(dropPinFeature);
-
-        const [lng, lat] = ol.proj.toLonLat(coords);
-
-        // Fill hidden lat/lng fields for backend
-        document.querySelector("input[name='lat']").value = lat;
-        document.querySelector("input[name='lng']").value = lng;
-
-        alert("Pin dropped! Enter bar name, address, deal, and click Add.");
-    });
+    setupLongPress();
+    loadBars("Monday"); // default
 }
 
-// Load bars from backend
-function loadBars(bars) {
-    vectorSource.clear();
+// Load bars for selected day
+function loadBars(day) {
+    fetch(`/api/bars/${day}`)
+        .then(res => res.json())
+        .then(bars => {
+            clearMarkers();
+            renderBarList(bars);
+            bars.forEach(bar => addMarker(bar));
+        });
+}
+
+// Add marker with tap/double‑tap behavior
+function addMarker(bar) {
+    const marker = new google.maps.Marker({
+        position: { lat: bar.lat, lng: bar.lng },
+        map: map,
+        title: bar.name
+    });
+
+    let lastTap = 0;
+
+    marker.addListener("click", () => {
+        const now = Date.now();
+        const timeSince = now - lastTap;
+
+        if (timeSince < 300) {
+            openInMaps(bar.lat, bar.lng);
+        } else {
+            selectBar(bar);
+            map.panTo({ lat: bar.lat, lng: bar.lng });
+        }
+
+        lastTap = now;
+    });
+
+    markers.push(marker);
+}
+
+// Highlight bar in list
+function selectBar(bar) {
+    document.querySelectorAll(".bar").forEach(el => el.classList.remove("selected"));
+    const el = document.getElementById(`bar-${bar.id}`);
+    if (el) el.classList.add("selected");
+}
+
+// Open native Maps app
+function openInMaps(lat, lng) {
+    const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+    window.open(url, "_blank");
+}
+
+// Render bar list
+function renderBarList(bars) {
+    const list = document.getElementById("bar-list");
+    list.innerHTML = "";
 
     bars.forEach(bar => {
-        if (bar.lat && bar.lng) {
-            const feature = new ol.Feature({
-                geometry: new ol.geom.Point(ol.proj.fromLonLat([bar.lng, bar.lat])),
-                name: bar.name,
-                deal: bar.deal,
-                address: bar.address || bar.name,
-                paid: bar.paid
-            });
+        const div = document.createElement("div");
+        div.className = "bar" + (bar.paid ? " paid" : "");
+        div.id = `bar-${bar.id}`;
+        div.innerHTML = `
+            <strong>${bar.name}</strong><br>
+            ${bar.deal}<br>
+            <small>${bar.address}</small>
+        `;
 
-            const style = new ol.style.Style({
-                image: new ol.style.Circle({
-                    radius: 8,
-                    fill: new ol.style.Fill({ color: bar.paid ? "#f1c40f" : "#1976d2" }),
-                    stroke: new ol.style.Stroke({ color: "#fff", width: 2 })
-                })
-            });
+        div.onclick = () => {
+            map.panTo({ lat: bar.lat, lng: bar.lng });
+            selectBar(bar);
+        };
 
-            feature.setStyle(style);
-            vectorSource.addFeature(feature);
-        }
+        list.appendChild(div);
     });
 }
 
-function focusBar(bar) {
-    if (bar.lat && bar.lng) {
-        const view = map.getView();
-        view.animate({
-            center: ol.proj.fromLonLat([bar.lng, bar.lat]),
-            zoom: 14,
-            duration: 500
-        });
-    }
+// Clear markers
+function clearMarkers() {
+    markers.forEach(m => m.setMap(null));
+    markers = [];
 }
 
-window.loadBars = loadBars;
-window.focusBar = focusBar;
+// Long‑press to drop a pin
+function setupLongPress() {
+    map.addListener("mousedown", (e) => {
+        holdTimer = setTimeout(() => {
+            dropPin(e.latLng);
+        }, 600);
+    });
 
-initMap();
+    map.addListener("mouseup", () => {
+        clearTimeout(holdTimer);
+    });
+}
+
+// Drop pin + auto‑fill form
+function dropPin(latLng) {
+    new google.maps.Marker({
+        position: latLng,
+        map: map
+    });
+
+    document.getElementById("bar-lat").value = latLng.lat();
+    document.getElementById("bar-lng").value = latLng.lng();
+}
+
+// Day button switching
+document.querySelectorAll("#days button").forEach(btn => {
+    btn.addEventListener("click", () => {
+        document.querySelectorAll("#days button").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        loadBars(btn.innerText);
+    });
+});
