@@ -9,21 +9,30 @@
 <body class="admin-body">
   <div class="admin-container">
     <h1>Beer Dollars Admin</h1>
-    <p>List of all bars in the system.</p>
+    
+    <div class="admin-form">
+      <h3>Add New Bar</h3>
+      <input type="text" id="admin-name" placeholder="Bar Name (e.g. Flying Pig)">
+      <input type="text" id="admin-deal" placeholder="Deal (e.g. $1.25 Cans)">
+      <input type="text" id="admin-day" placeholder="Day (e.g. Friday)">
+      <input type="text" id="admin-address" placeholder="Full Address (Street, City, State)">
+      <button onclick="addNewBar()">Add to Database</button>
+    </div>
+
+    <hr>
+
+    <p>Current Bars in System</p>
     <table id="admin-bars-table">
       <thead>
         <tr>
-          <th>ID</th>
           <th>Name</th>
           <th>Deal</th>
           <th>Day</th>
           <th>Address</th>
-          <th>City</th>
-          <th>State</th>
-          <th>ZIP</th>
+          <th>Actions</th>
         </tr>
       </thead>
-      <tbody></tbody>
+      <tbody id="admin-tbody"></tbody>
     </table>
   </div>
 
