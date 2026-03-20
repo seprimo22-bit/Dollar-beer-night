@@ -4,16 +4,16 @@
     <meta charset="UTF-8">
     <title>Beer Dollars</title>
 
-    <!-- OpenLayers CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.5.0/ol.css">
-    <!-- Your CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body>
+<div class="container">
+
     <!-- Splash Header -->
     <div id="splash">
         <h1>🍺 Beer Dollars</h1>
-        <p>"Stretch your beer dollars"</p>
+        <p>Stretch your beer dollars</p>
     </div>
 
     <!-- Day Buttons -->
@@ -28,7 +28,7 @@
     </div>
 
     <!-- Map -->
-    <div id="map" style="height: 50vh; width: 100%; margin-bottom: 10px;"></div>
+    <div id="map"></div>
 
     <!-- Bar List -->
     <div id="bar-list"></div>
@@ -37,9 +37,18 @@
     <div id="add-bar-form">
         <h3>Add a Bar</h3>
         <form id="new-bar-form">
-            <label>Name: <input type="text" name="name" required></label><br>
-            <label>Address: <input type="text" name="address"></label><br>
-            <label>Deal: <input type="text" name="deal" required></label><br>
+            <label>Name:
+                <input type="text" name="name" required>
+            </label>
+
+            <label>Address:
+                <input type="text" name="address">
+            </label>
+
+            <label>Deal:
+                <input type="text" name="deal" required>
+            </label>
+
             <label>Day:
                 <select name="day" required>
                     <option>Monday</option>
@@ -50,18 +59,26 @@
                     <option>Saturday</option>
                     <option>Sunday</option>
                 </select>
-            </label><br>
-            <input type="hidden" name="lat">
-            <input type="hidden" name="lng">
+            </label>
+
+            <!-- Hidden lat/lng fields -->
+            <input type="hidden" id="bar-lat" name="lat">
+            <input type="hidden" id="bar-lng" name="lng">
+
             <button type="submit">Add Bar</button>
         </form>
     </div>
 
-    <!-- OpenLayers JS -->
-    <script src="https://cdn.jsdelivr.net/npm/ol@v7.5.0/dist/ol.js"></script>
-    <!-- Your map logic -->
-    <script src="{{ url_for('static', filename='map.js') }}"></script>
-    <!-- Your app logic (fetch / API calls) -->
-    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</div>
+
+<!-- Google Maps API -->
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap" async defer></script>
+
+<!-- Your map logic -->
+<script src="{{ url_for('static', filename='map.js') }}"></script>
+
+<!-- Your app logic -->
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+
 </body>
 </html>
