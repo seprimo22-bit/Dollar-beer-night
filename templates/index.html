@@ -8,7 +8,7 @@
 </head>
 <body>
     <div id="splash">
-        <img src="{{ url_for('static', filename='1773978135981~2.png') }}" alt="Beer Dollars Logo">
+        <img src="{{ url_for('static', filename='1773978135981~2.png') }}" alt="Logo">
         <div class="loader"></div>
         <p>Anchoring System...</p>
     </div>
@@ -16,20 +16,17 @@
     <div id="auth" class="hidden">
         <div class="login-box">
             <h1>Beer Dollars</h1>
-            <p>Stretch Your Beer Money</p>
-            <input type="tel" id="phone" placeholder="Enter Phone Number">
+            <input type="tel" id="phone" placeholder="Phone Number">
             <button onclick="showCodeInput()">Send Code</button>
             <div id="code-section" class="hidden">
-                <input type="text" id="code" placeholder="Enter Code (0000)">
+                <input type="text" id="code" placeholder="0000">
                 <button onclick="verifyCode()">Verify Access</button>
             </div>
         </div>
     </div>
 
     <div id="main" class="hidden">
-        <header>
-            <h2 id="day-greet">Thank God It's Friday</h2>
-        </header>
+        <header><h2>Thank God It's Friday</h2></header>
         <div id="bar-list"></div>
         <div id="map"></div>
     </div>
