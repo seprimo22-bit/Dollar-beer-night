@@ -1,29 +1,36 @@
 async function loadAdminBars() {
-  try {
-    const res = await fetch("/api/admin/bars");
-    const data = await res.json();
-    if (!data.success) return;
+    const res = await fetch('/api/bars'); 
+    const bars = await res.json();
+    const tbody = document.getElementById('admin-bars-table').querySelector('tbody');
+    tbody.innerHTML = '';
 
-    const tbody = document.querySelector("#admin-bars-table tbody");
-    tbody.innerHTML = "";
-
-    data.bars.forEach((b) => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${b.id}</td>
-        <td>${b.name}</td>
-        <td>${b.deal}</td>
-        <td>${b.day_of_week}</td>
-        <td>${b.address}</td>
-        <td>${b.city || ""}</td>
-        <td>${b.state || ""}</td>
-        <td>${b.zip_code || ""}</td>
-      `;
-      tbody.appendChild(tr);
+    bars.forEach(bar => {
+        tbody.innerHTML += `
+            <tr>
+                <td>${bar.id || 'N/A'}</td>
+                <td>${bar.name}</td>
+                <td>${bar.deal}</td>
+                <td>${bar.day}</td>
+                <td>${bar.address}</td>
+                <td><button onclick="deleteBar(${bar.id})">Delete</button></td>
+            </tr>`;
     });
-  } catch (e) {
-    console.error(e);
-  }
 }
 
-document.addEventListener("DOMContentLoaded", loadAdminBars);
+async function addNewBar() {
+    const data = {
+        name: document.getElementById('admin-name').value,
+        deal: document.getElementById('admin-deal').value,
+        day: document.getElementById('admin-day').value,
+        address: document.getElementById('admin-address').value
+    };
+
+    await fetch('/api/add', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    });
+    location.reload();
+}
+
+window.onload = loadAdminBars;
