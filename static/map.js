@@ -1,131 +1,97 @@
+// Google Maps integration
+
 let map;
-let markers = [];
-let lastTapTime = 0;
-let holdTimer = null;
+let markers = {};
+let longPressTimeout = null;
 
-// Initialize Google Map
 function initMap() {
-    map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: 41.0998, lng: -80.6495 }, // Youngstown default
-        zoom: 11,
-        disableDoubleClickZoom: true,
-        gestureHandling: "greedy"
-    });
+  const mapEl = document.getElementById("map");
+  if (!mapEl) return;
 
-    setupLongPress();
-    loadBars("Monday"); // default
+  map = new google.maps.Map(mapEl, {
+    center: { lat: 39.8283, lng: -98.5795 }, // USA center
+    zoom: 4,
+    styles: [
+      {
+        featureType: "poi",
+        stylers: [{ visibility: "off" }],
+      },
+      {
+        featureType: "transit",
+        stylers: [{ visibility: "off" }],
+      },
+    ],
+  });
+
+  // Long press to add bar
+  map.addListener("mousedown", (e) => {
+    longPressTimeout = setTimeout(() => {
+      if (typeof addBarFromMap === "function") {
+        addBarFromMap(e.latLng.lat(), e.latLng.lng());
+      }
+    }, 700);
+  });
+
+  map.addListener("mouseup", () => {
+    if (longPressTimeout) {
+      clearTimeout(longPressTimeout);
+      longPressTimeout = null;
+    }
+  });
+
+  onMapReady();
 }
 
-// Load bars for selected day
-function loadBars(day) {
-    fetch(`/api/bars/${day}`)
-        .then(res => res.json())
-        .then(bars => {
-            clearMarkers();
-            renderBarList(bars);
-            bars.forEach(bar => addMarker(bar));
-        });
+function setMapCenter(lat, lng) {
+  if (!map) return;
+  map.setCenter({ lat, lng });
+  map.setZoom(12);
 }
 
-// Add marker with tap/double‑tap behavior
-function addMarker(bar) {
+function updateMapMarkers(bars) {
+  if (!map) return;
+
+  // Clear old markers
+  Object.values(markers).forEach((m) => m.setMap(null));
+  markers = {};
+
+  bars.forEach((bar) => {
     const marker = new google.maps.Marker({
-        position: { lat: bar.lat, lng: bar.lng },
-        map: map,
-        title: bar.name
+      position: { lat: bar.lat, lng: bar.lng },
+      map,
+      title: bar.name,
     });
 
-    let lastTap = 0;
+    const info = new google.maps.InfoWindow({
+      content: `
+        <div style="font-size: 13px;">
+          <strong>${bar.name}</strong><br/>
+          ${bar.deal}<br/>
+          ${bar.address || ""}
+        </div>
+      `,
+    });
 
     marker.addListener("click", () => {
-        const now = Date.now();
-        const timeSince = now - lastTap;
-
-        if (timeSince < 300) {
-            openInMaps(bar.lat, bar.lng);
-        } else {
-            selectBar(bar);
-            map.panTo({ lat: bar.lat, lng: bar.lng });
-        }
-
-        lastTap = now;
+      info.open(map, marker);
+      if (typeof highlightBarCard === "function") {
+        highlightBarCard(bar.id);
+      }
+      openNavigation(bar.lat, bar.lng);
     });
 
-    markers.push(marker);
+    markers[bar.id] = marker;
+  });
 }
 
-// Highlight bar in list
-function selectBar(bar) {
-    document.querySelectorAll(".bar").forEach(el => el.classList.remove("selected"));
-    const el = document.getElementById(`bar-${bar.id}`);
-    if (el) el.classList.add("selected");
+function focusMarkerOnBar(barId) {
+  const marker = markers[barId];
+  if (!marker || !map) return;
+  map.panTo(marker.getPosition());
+  map.setZoom(15);
 }
 
-// Open native Maps app
-function openInMaps(lat, lng) {
-    const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-    window.open(url, "_blank");
+function openNavigation(lat, lng) {
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+  window.open(url, "_blank");
 }
-
-// Render bar list
-function renderBarList(bars) {
-    const list = document.getElementById("bar-list");
-    list.innerHTML = "";
-
-    bars.forEach(bar => {
-        const div = document.createElement("div");
-        div.className = "bar" + (bar.paid ? " paid" : "");
-        div.id = `bar-${bar.id}`;
-        div.innerHTML = `
-            <strong>${bar.name}</strong><br>
-            ${bar.deal}<br>
-            <small>${bar.address}</small>
-        `;
-
-        div.onclick = () => {
-            map.panTo({ lat: bar.lat, lng: bar.lng });
-            selectBar(bar);
-        };
-
-        list.appendChild(div);
-    });
-}
-
-// Clear markers
-function clearMarkers() {
-    markers.forEach(m => m.setMap(null));
-    markers = [];
-}
-
-// Long‑press to drop a pin
-function setupLongPress() {
-    map.addListener("mousedown", (e) => {
-        holdTimer = setTimeout(() => {
-            dropPin(e.latLng);
-        }, 600);
-    });
-
-    map.addListener("mouseup", () => {
-        clearTimeout(holdTimer);
-    });
-}
-
-// Drop pin + auto‑fill form
-function dropPin(latLng) {
-    new google.maps.Marker({
-        position: latLng,
-        map: map
-    });
-
-    document.getElementById("bar-lat").value = latLng.lat();
-    document.getElementById("bar-lng").value = latLng.lng();
-}
-
-// Day button switching
-document.querySelectorAll("#days button").forEach(btn => {
-    btn.addEventListener("click", () => {
-        document.querySelectorAll("#days button").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        loadBars(btn.innerText);
-    });
-});
