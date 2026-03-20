@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, session
 from datetime import datetime
 import random
 import math
+import googlemaps  # <-- NEW
 
 from config import Config
 from models import db, User, VerificationCode, Bar
@@ -10,17 +11,18 @@ app = Flask(__name__)
 app.config.from_object(Config)
 db.init_app(app)
 
+# Google Maps client (server-side geocoding)
+gmaps = googlemaps.Client(key=app.config["GOOGLE_MAPS_API_KEY"])
+
 with app.app_context():
     db.create_all()
 
 # ---------- Helpers ----------
-
 def generate_code():
     return f"{random.randint(0, 9999):04d}"
 
 def haversine_distance(lat1, lng1, lat2, lng2):
-    # distance in miles
-    R = 3958.8
+    R = 3958.8  # Earth radius in miles
     phi1 = math.radians(lat1)
     phi2 = math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
@@ -32,18 +34,29 @@ def haversine_distance(lat1, lng1, lat2, lng2):
 def normalize_day(day_str):
     return day_str.strip().lower()
 
-# ---------- Routes ----------
+def geocode_address(address):
+    """Returns (lat, lng) or raises exception"""
+    try:
+        result = gmaps.geocode(address)
+        if not result:
+            raise ValueError("Address not found")
+        location = result[0]['geometry']['location']
+        return location['lat'], location['lng']
+    except Exception as e:
+        raise ValueError(f"Geocoding failed: {str(e)}")
 
+# ---------- Routes ----------
 @app.route("/")
 def index():
+    # This is your splash/loading screen entry point
+    # Put your big BEER DOLLARS logo + loading bar in index.html
     return render_template("index.html", google_maps_api_key=app.config["GOOGLE_MAPS_API_KEY"])
 
 @app.route("/admin")
 def admin():
     return render_template("admin.html")
 
-# --- Auth / Verification ---
-
+# --- Auth ---
 @app.route("/api/send_code", methods=["POST"])
 def send_code():
     data = request.get_json() or {}
@@ -56,10 +69,7 @@ def send_code():
     db.session.add(vc)
     db.session.commit()
 
-    # In production: send SMS here.
-    # For now, we just log it so you can see it in logs.
-    print(f"[DEBUG] Verification code for {phone}: {code}")
-
+    print(f"[DEBUG] CODE for {phone}: {code}")  # Replace with Twilio later
     return jsonify({"success": True})
 
 @app.route("/api/verify_code", methods=["POST"])
@@ -68,48 +78,26 @@ def verify_code():
     phone = data.get("phone", "").strip()
     code = data.get("code", "").strip()
 
-    if not phone or not code:
-        return jsonify({"success": False, "error": "Phone and code required"}), 400
-
-    vc = (
-        VerificationCode.query
-        .filter_by(phone=phone, code=code)
-        .order_by(VerificationCode.created_at.desc())
-        .first()
-    )
+    vc = VerificationCode.query.filter_by(phone=phone, code=code).order_by(VerificationCode.created_at.desc()).first()
     if not vc:
         return jsonify({"success": False, "error": "Invalid code"}), 400
 
-    user = User.query.filter_by(phone=phone).first()
-    now = datetime.utcnow()
-    if not user:
-        user = User(phone=phone, created_at=now, last_login=now, terms_accepted=True)
-        db.session.add(user)
-    else:
-        user.last_login = now
-
+    user = User.query.filter_by(phone=phone).first() or User(phone=phone, terms_accepted=True)
+    user.last_login = datetime.utcnow()
+    db.session.add(user)
     db.session.commit()
 
     session["phone"] = phone
     session["verified"] = True
-
     return jsonify({"success": True})
 
-@app.route("/api/session_status")
-def session_status():
-    return jsonify({
-        "verified": bool(session.get("verified")),
-        "phone": session.get("phone")
-    })
-
-# --- Bars API ---
-
+# --- Bars ---
 @app.route("/api/bars", methods=["GET"])
 def get_bars():
     day = normalize_day(request.args.get("day", ""))
     lat = request.args.get("lat", type=float)
     lng = request.args.get("lng", type=float)
-    radius = request.args.get("radius", default=45.0, type=float)
+    radius = request.args.get("radius", default=35.0, type=float)  # Your 35-mile default
 
     query = Bar.query
     if day:
@@ -119,30 +107,20 @@ def get_bars():
     result = []
 
     for b in bars:
-        if lat is not None and lng is not None:
-            dist = haversine_distance(lat, lng, b.lat, b.lng)
-            if dist > radius:
-                continue
-        else:
-            dist = None
+        dist = haversine_distance(lat, lng, b.lat, b.lng) if lat and lng else None
+        if dist is None or dist <= radius:
+            result.append({
+                "id": b.id,
+                "name": b.name,
+                "address": b.address,
+                "deal": b.deal,           # Drinks only!
+                "day_of_week": b.day_of_week,
+                "lat": b.lat,
+                "lng": b.lng,
+                "distance": round(dist, 1) if dist else None
+            })
 
-        result.append({
-            "id": b.id,
-            "name": b.name,
-            "address": b.address,
-            "city": b.city,
-            "state": b.state,
-            "zip_code": b.zip_code,
-            "deal": b.deal,
-            "day_of_week": b.day_of_week,
-            "lat": b.lat,
-            "lng": b.lng,
-            "distance": dist
-        })
-
-    # sort by distance if available
     result.sort(key=lambda x: x["distance"] if x["distance"] is not None else 999999)
-
     return jsonify({"success": True, "bars": result})
 
 @app.route("/api/bars", methods=["POST"])
@@ -152,14 +130,19 @@ def add_bar():
     address = data.get("address", "").strip()
     deal = data.get("deal", "").strip()
     day = normalize_day(data.get("day_of_week", ""))
-    lat = data.get("lat", None)
-    lng = data.get("lng", None)
-    city = data.get("city", "").strip()
-    state = data.get("state", "").strip()
-    zip_code = data.get("zip_code", "").strip()
 
-    if not all([name, address, deal, day]) or lat is None or lng is None:
-        return jsonify({"success": False, "error": "Missing required fields"}), 400
+    # DRINKS ONLY enforcement (you can make this stricter later)
+    if not all([name, address, deal, day]):
+        return jsonify({"success": False, "error": "Name, address, deal, and day required"}), 400
+
+    # NEW: Auto-geocode if lat/lng not provided (this fixes your Denny's Blue Angel issue)
+    lat = data.get("lat")
+    lng = data.get("lng")
+    if lat is None or lng is None:
+        try:
+            lat, lng = geocode_address(address)
+        except ValueError as e:
+            return jsonify({"success": False, "error": str(e)}), 400
 
     bar = Bar(
         name=name,
@@ -167,36 +150,17 @@ def add_bar():
         deal=deal,
         day_of_week=day,
         lat=lat,
-        lng=lng,
-        city=city,
-        state=state,
-        zip_code=zip_code
+        lng=lng
     )
     db.session.add(bar)
     db.session.commit()
 
-    return jsonify({"success": True, "bar_id": bar.id})
-
-# --- Simple admin list ---
+    return jsonify({"success": True, "bar_id": bar.id, "lat": lat, "lng": lng})
 
 @app.route("/api/admin/bars")
 def admin_bars():
     bars = Bar.query.order_by(Bar.created_at.desc()).all()
-    result = []
-    for b in bars:
-        result.append({
-            "id": b.id,
-            "name": b.name,
-            "address": b.address,
-            "deal": b.deal,
-            "day_of_week": b.day_of_week,
-            "lat": b.lat,
-            "lng": b.lng,
-            "city": b.city,
-            "state": b.state,
-            "zip_code": b.zip_code
-        })
-    return jsonify({"success": True, "bars": result})
+    return jsonify({"success": True, "bars": [b.__dict__ for b in bars if not "_sa_instance_state" in b.__dict__]})
 
 if __name__ == "__main__":
     app.run(debug=True)
