@@ -1,55 +1,19 @@
 body {
-    font-family: Arial, sans-serif;
-    background: #f4f6f9;
-    margin: 0;
-}
-
-header {
-    background: #222;
-    color: white;
+    font-family: Arial;
     text-align: center;
-    padding: 20px;
+    margin: 0;
+    padding: 0;
 }
 
-main {
-    max-width: 900px;
-    margin: auto;
-    padding: 20px;
+#map {
+    height: 500px;
+    width: 100%;
+    margin-top: 20px;
 }
 
 .card {
-    background: white;
-    padding: 20px;
-    margin-bottom: 20px;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-button {
-    background: #ff9800;
-    color: white;
-    border: none;
-    padding: 10px 18px;
-    border-radius: 8px;
-    cursor: pointer;
-    margin-top: 10px;
-}
-
-button:hover {
-    background: #e68900;
-}
-
-input {
-    width: 100%;
+    background: #eee;
+    margin: 10px;
     padding: 10px;
-    margin: 8px 0;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-}
-
-#specials-list div {
-    background: #fafafa;
-    padding: 10px;
-    margin-top: 10px;
-    border-radius: 6px;
+    border-radius: 10px;
 }

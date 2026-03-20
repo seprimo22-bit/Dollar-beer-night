@@ -1,160 +1,36 @@
+
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Beer Dollars</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f4f4f4;
-        }
-
-        header {
-            background: #1e1e1e;
-            color: white;
-            padding: 30px 20px;
-            text-align: center;
-        }
-
-        header h1 {
-            margin: 0;
-            font-size: 28px;
-        }
-
-        header p {
-            margin-top: 8px;
-            color: #ccc;
-        }
-
-        .container {
-            padding: 20px;
-        }
-
-        .card {
-            background: white;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-
-        button {
-            background: #f4a100;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background: #d98f00;
-        }
-
-        input {
-            padding: 10px;
-            margin: 5px 0;
-            width: 100%;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-        }
-
-        #map {
-            height: 300px;
-            background: #ddd;
-            border-radius: 10px;
-        }
-
-        ul {
-            padding-left: 20px;
-        }
-    </style>
+    <title>Admin</title>
 </head>
 <body>
 
-<header>
-    <h1>🍺 Beer Dollars</h1>
-    <p>Find the best drink specials near you.</p>
-</header>
+<h2>Add Special</h2>
 
-<div class="container">
+<form method="POST" action="/add">
+    <input name="name" placeholder="Bar Name" required><br>
+    <input name="deal" placeholder="Deal" required><br>
 
-    <div class="card">
-        <h2>Add Special</h2>
+    <select name="day">
+        <option>Mon</option>
+        <option>Tue</option>
+        <option>Wed</option>
+        <option>Thu</option>
+        <option>Fri</option>
+        <option>Sat</option>
+        <option>Sun</option>
+    </select><br>
 
-        <input id="barName" placeholder="Bar name">
-        <input id="deal" placeholder="Deal ($1.50 cans etc)">
-        <input id="location" placeholder="Location">
-        <input id="day" placeholder="Day">
+    <input name="address" placeholder="Full Address"><br>
 
-        <button onclick="addSpecial()">Add Special</button>
-    </div>
-
-    <div class="card">
-        <h2>Specials Near You</h2>
-
-        <button onclick="loadSpecials()">Find Specials</button>
-        <p id="status"></p>
-
-        <ul id="results"></ul>
-    </div>
-
-    <div class="card">
-        <h2>Map</h2>
-        <div id="map">Map coming soon</div>
-    </div>
-
-</div>
-
-<script>
-async function addSpecial() {
-    const barName = document.getElementById("barName").value;
-    const deal = document.getElementById("deal").value;
-    const location = document.getElementById("location").value;
-    const day = document.getElementById("day").value;
-
-    const response = await fetch("/api/specials", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ barName, deal, location, day })
-    });
-
-    alert("Special added!");
-}
-
-async function loadSpecials() {
-    const res = await fetch("/api/specials");
-    const specials = await res.json();
-
-    const today = new Date().toLocaleString('en-US', { weekday: 'long' });
-
-    const results = document.getElementById("results");
-    const status = document.getElementById("status");
-
-    results.innerHTML = "";
-
-    const filtered = specials.filter(s =>
-        !s.day || s.day.toLowerCase() === today.toLowerCase()
-    );
-
-    if (!filtered.length) {
-        status.innerText = "No specials listed for " + today + ".";
-        return;
-    }
-
-    status.innerText = "";
-
-    filtered.forEach(s => {
-        const li = document.createElement("li");
-        li.textContent =
-            `${s.barName} — ${s.deal} — ${s.location} (${s.day})`;
-        results.appendChild(li);
-    });
-}
-</script>
+    <button type="submit">Add</button>
+</form>
 
 </body>
 </html>
+<script>
+window.onload = function() {
+    load('Fri');  // default day so screen isn't empty
+};
+</script>
