@@ -8,9 +8,9 @@
 </head>
 <body>
     <div id="splash">
-        <img src="{{ url_for('static', filename='1773978135981~2.png') }}" alt="Beer Dollars Logo" id="splash-logo">
+        <img src="{{ url_for('static', filename='1773978135981~2.png') }}" alt="Beer Dollars Logo">
         <div class="loader"></div>
-        <p class="loading-text">Anchoring System...</p>
+        <p>Anchoring System...</p>
     </div>
 
     <div id="auth" class="hidden">
@@ -18,11 +18,10 @@
             <h1>Beer Dollars</h1>
             <p>Stretch Your Beer Money</p>
             <input type="tel" id="phone" placeholder="Enter Phone Number">
-            <button id="send-btn" onclick="showCodeInput()">Send Code</button>
-            
+            <button onclick="showCodeInput()">Send Code</button>
             <div id="code-section" class="hidden">
                 <input type="text" id="code" placeholder="Enter Code (0000)">
-                <button id="verify-btn" onclick="verifyCode()">Verify Access</button>
+                <button onclick="verifyCode()">Verify Access</button>
             </div>
         </div>
     </div>
@@ -31,20 +30,11 @@
         <header>
             <h2 id="day-greet">Thank God It's Friday</h2>
         </header>
-
-        <div id="bar-list-container">
-            <div id="bar-list"></div>
-        </div>
-
-        <div id="map-container">
-            <div id="map"></div>
-        </div>
-
-        <button id="add-bar-btn" onclick="openAddModal()" title="Add a New Bar">+</button>
+        <div id="bar-list"></div>
+        <div id="map"></div>
     </div>
 
     <script src="https://maps.googleapis.com/maps/api/js?key={{ google_key }}&callback=initMap" async defer></script>
     <script src="{{ url_for('static', filename='app.js') }}"></script>
-    <script src="{{ url_for('static', filename='map.js') }}"></script>
 </body>
 </html>
