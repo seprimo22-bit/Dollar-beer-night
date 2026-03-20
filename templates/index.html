@@ -1,99 +1,70 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Beer Dollars</title>
-    <style>
-        body { margin: 0; font-family: sans-serif; background: #000; color: white; }
-        #splash { height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        #auth, #main { display: none; text-align: center; }
-        .hidden { display: none !important; }
-        #map { height: 400px; width: 100%; border-top: 3px solid #ffcc00; position: fixed; bottom: 0; }
-        #bar-list { padding: 20px; padding-bottom: 420px; background: #111; }
-        .bar-card { background: #222; margin: 10px 0; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; }
-        input { padding: 10px; margin: 10px; width: 80%; }
-        button { padding: 10px 20px; background: #ffcc00; border: none; font-weight: bold; }
-    </style>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 </head>
 <body>
-    <div id="splash">
-        <h1>BEER DOLLARS</h1>
-        <p>Anchoring...</p>
-    </div>
 
-    <div id="auth">
-        <h2>Enter Access Code</h2>
-        <input type="text" id="code" placeholder="0000">
-        <button onclick="verify()">Login</button>
-    </div>
+<h2>Stretch Your Beer Money</h2>
 
-    <div id="main">
-        <header style="background:#0056b3; padding:10px;"><h2>Thank God It's Friday</h2></header>
-        <div id="bar-list">Loading local specials...</div>
-        <div id="map"></div>
-    </div>
+<div id="days">
+    <button onclick="load('Mon')">Mon</button>
+    <button onclick="load('Tue')">Tue</button>
+    <button onclick="load('Wed')">Wed</button>
+    <button onclick="load('Thu')">Thu</button>
+    <button onclick="load('Fri')">Fri</button>
+    <button onclick="load('Sat')">Sat</button>
+    <button onclick="load('Sun')">Sun</button>
+</div>
 
-    <script>
-        let map, userLoc, longPressTimeout;
+<div id="list"></div>
 
-        setTimeout(() => {
-            document.getElementById('splash').style.display = 'none';
-            document.getElementById('auth').style.display = 'block';
-        }, 2000);
+<div id="map"></div>
 
-        function verify() {
-            if(document.getElementById('code').value === '0000') {
-                document.getElementById('auth').style.display = 'none';
-                document.getElementById('main').style.display = 'block';
-                navigator.geolocation.getCurrentPosition(p => {
-                    userLoc = {lat: p.coords.latitude, lng: p.coords.longitude};
-                    initApp();
-                }, () => {
-                    userLoc = {lat: 41.10, lng: -80.65}; // Youngstown
-                    initApp();
-                });
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+let map = L.map('map').setView([40.4173, -82.9071], 7);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+}).addTo(map);
+
+let markers = [];
+
+function clearMarkers() {
+    markers.forEach(m => map.removeLayer(m));
+    markers = [];
+}
+
+function load(day) {
+    fetch(`/specials?day=${day}`)
+    .then(res => res.json())
+    .then(data => {
+        let list = document.getElementById("list");
+        list.innerHTML = "";
+        clearMarkers();
+
+        data.forEach(s => {
+            list.innerHTML += `
+                <div class="card">
+                    <h3>${s.name}</h3>
+                    <p>${s.deal}</p>
+                    <small>${s.address || "No address"}</small>
+                </div>
+            `;
+
+            if (s.lat && s.lng) {
+                let marker = L.marker([s.lat, s.lng])
+                    .addTo(map)
+                    .bindPopup(`<b>${s.name}</b><br>${s.deal}`);
+                markers.push(marker);
             }
-        }
+        });
+    });
+}
+</script>
 
-        async function initApp() {
-            const res = await fetch(`/api/bars?lat=${userLoc.lat}&lng=${userLoc.lng}`);
-            const bars = await res.json();
-            const list = document.getElementById('bar-list');
-            list.innerHTML = bars.length ? '' : 'No bars found within 40 miles.';
-
-            map = new google.maps.Map(document.getElementById('map'), {
-                zoom: 12, center: userLoc, disableDefaultUI: true
-            });
-
-            // Long Press (Blue Angel)
-            map.addListener("mousedown", (e) => {
-                longPressTimeout = setTimeout(() => {
-                    const name = prompt("Bar Name:");
-                    const deal = prompt("Friday Deal:");
-                    if(name && deal) saveBar(name, deal, e.latLng.lat(), e.latLng.lng());
-                }, 1000);
-            });
-            map.addListener("mouseup", () => clearTimeout(longPressTimeout));
-
-            bars.forEach(bar => {
-                const div = document.createElement('div');
-                div.className = 'bar-card';
-                div.innerHTML = `<div><strong>${bar.name}</strong><br>${bar.deal}</div><div>${bar.dist}mi</div>`;
-                div.onclick = () => { map.panTo({lat: bar.lat, lng: bar.lng}); map.setZoom(15); };
-                list.appendChild(div);
-                new google.maps.Marker({ position: {lat: bar.lat, lng: bar.lng}, map });
-            });
-        }
-
-        async function saveBar(name, deal, lat, lng) {
-            await fetch('/api/add', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({name, deal, lat, lng})
-            });
-            location.reload();
-        }
-    </script>
-    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_key }}"></script>
 </body>
 </html>
