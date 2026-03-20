@@ -1,30 +1,37 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Beer Dollars</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <div id="splash">
-        <img src="/static/4932.png" alt="Beer Dollars"> <div id="loading-bar"><div></div></div>
+        <img src="/static/4932.png" alt="Beer Dollars Logo">
+        <div class="loader"></div>
     </div>
 
     <div id="auth" class="hidden">
-        <h2>Enter Number</h2>
-        <input type="tel" id="phone" placeholder="330-555-0199">
-        <button onclick="sendCode()">Get Code</button>
-        <div id="code-input" class="hidden">
-            <input type="text" id="code" placeholder="0000">
-            <button onclick="verifyCode()">Login</button>
+        <div class="login-box">
+            <h1>Beer Dollars</h1>
+            <p>Stretch Your Beer Money</p>
+            <input type="tel" id="phone" placeholder="Phone Number">
+            <button onclick="showCodeInput()">Send Code</button>
+            <div id="code-section" class="hidden">
+                <input type="text" id="code" placeholder="Enter Code (0000)">
+                <button onclick="verifyCode()">Verify</button>
+            </div>
         </div>
     </div>
 
     <div id="main" class="hidden">
-        <header><h1>Thank God It's Friday</h1></header>
+        <header>
+            <h2 id="day-greet">Thank God It's Friday</h2>
+        </header>
         <div id="bar-list"></div>
         <div id="map"></div>
-        <button id="add-btn" onclick="showAddForm()">+</button>
+        <button id="add-bar-btn" onclick="openAddModal()">+</button>
     </div>
 
     <script src="https://maps.googleapis.com/maps/api/js?key={{ google_key }}"></script>
