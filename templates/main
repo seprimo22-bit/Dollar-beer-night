@@ -1,1 +1,97 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beer Dollars</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Google Maps JS if using -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap" async defer></script>
+    <style>
+        body { margin:0; font-family:sans-serif; background:#f0f4f8; }
+        header { background:#0066cc; color:white; padding:15px; text-align:center; }
+        #search { width:90%; padding:10px; margin:10px auto; display:block; border-radius:20px; border:none; }
+        .days { display:flex; overflow-x:auto; padding:10px; background:#fff; }
+        .day-tab { padding:10px 20px; margin:0 5px; background:#eee; border-radius:20px; white-space:nowrap; cursor:pointer; }
+        .day-tab.active { background:#0066cc; color:white; }
+        .bar-list { padding:10px; }
+        .bar-card { background:white; border-radius:10px; margin:10px 0; padding:15px; box-shadow:0 2px 8px rgba(0,0,0,0.1); display:flex; align-items:center; }
+        .beer-icon { font-size:2em; margin-right:15px; }
+        .map-container { height:300px; margin:20px; border-radius:10px; overflow:hidden; }
+        .add-btn { position:fixed; bottom:20px; right:20px; background:#ff6600; color:white; width:60px; height:60px; border-radius:50%; font-size:2em; text-align:center; line-height:60px; box-shadow:0 4px 12px rgba(0,0,0,0.3); cursor:pointer; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Beer Dollars</h1>
+    </header>
+    <input type="text" id="search" placeholder="Search bars or specials...">
+
+    <div class="days" id="dayTabs">
+        <!-- JS will populate -->
+    </div>
+
+    <div class="bar-list" id="barList">
+        <!-- Cards populated by JS fetch -->
+    </div>
+
+    <div id="map" class="map-container"></div>
+
+    <div class="add-btn" onclick="showAddForm()">+</div>
+
+    <script>
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const funLabels = ['Chill Vibes', 'Monday Blues Buster', 'Taco... wait no, Beer Tuesday', 'Hump Day', 'Thirsty Thursday', 'TGIF', 'Weekend Warrior'];
+        const todayIndex = new Date().getDay();  // 0=Sun, 6=Sat
+
+        // Populate day tabs
+        const tabs = document.getElementById('dayTabs');
+        days.forEach((day, i) => {
+            const tab = document.createElement('div');
+            tab.className = 'day-tab' + (i === todayIndex ? ' active' : '');
+            tab.textContent = `\( {day} ( \){funLabels[i]})`;
+            tab.onclick = () => loadBars(day.toLowerCase());
+            tabs.appendChild(tab);
+        });
+
+        // Fetch and display bars (call your /api/bars?day=thursday&lat=...&lng=...)
+        function loadBars(day) {
+            navigator.geolocation.getCurrentPosition(pos => {
+                fetch(`/api/bars?day=\( {day}&lat= \){pos.coords.latitude}&lng=${pos.coords.longitude}&radius=35`)
+                    .then(res => res.json())
+                    .then(data => {
+                        const list = document.getElementById('barList');
+                        list.innerHTML = '';
+                        data.bars.forEach(bar => {
+                            const card = document.createElement('div');
+                            card.className = 'bar-card';
+                            card.innerHTML = `
+                                <div class="beer-icon">🍺</div>
+                                <div>
+                                    <strong>${bar.name}</strong><br>
+                                    ${bar.deal}<br>
+                                    ${bar.distance ? bar.distance + ' miles away' : 'Nearby'}
+                                </div>
+                            `;
+                            list.appendChild(card);
+                        });
+                    });
+            });
+        }
+
+        // Init map (basic placeholder)
+        function initMap() {
+            // Add your map init with pins from bars
+        }
+
+        // Load today's bars on start
+        loadBars(days[todayIndex].toLowerCase());
+
+        function showAddForm() {
+            // Redirect or modal to add bar form
+            window.location.href = "/add";  // Or open modal
+        }
+    </script>
+</body>
+</html>
