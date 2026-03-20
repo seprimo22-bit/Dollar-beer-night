@@ -2,83 +2,52 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Beer Dollars</title>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beer Dollars - Stretch Your Beer Money</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body, html { margin:0; padding:0; height:100%; overflow:hidden; background:#0a1f44; font-family:Arial, sans-serif; color:white; }
+        .splash { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; background: linear-gradient(to bottom, #0a1f44, #001233); }
+        .logo-container { max-width:90%; margin-bottom:20px; }
+        .logo { width:100%; max-width:400px; height:auto; }
+        .tagline { font-size:1.4em; margin:20px 0; font-style:italic; }
+        .loading-bar { width:80%; max-width:400px; height:12px; background:#333; border-radius:6px; overflow:hidden; margin:20px 0; }
+        .bar { height:100%; width:0; background:linear-gradient(to right, #00bfff, #1e90ff); transition:width 4s ease-in-out; }
+        .footer { position:absolute; bottom:20px; font-size:0.8em; opacity:0.7; }
+    </style>
 </head>
-
 <body>
-<div class="container">
-
-    <!-- Splash Header -->
-    <div id="splash">
-        <h1>🍺 Beer Dollars</h1>
-        <p>Stretch your beer dollars</p>
+    <div class="splash">
+        <div class="logo-container">
+            <!-- Your middle logo here -->
+            <img src="{{ url_for('static', filename='images/beer-dollars-logo.png') }}" alt="Beer Dollars Logo" class="logo">
+        </div>
+        <div class="tagline">"STRETCH YOUR BEER MONEY"</div>
+        <div class="loading-bar">
+            <div class="bar" id="progress"></div>
+        </div>
+        <div class="footer">Crafted for Beer Lovers • Est. 2024<br>Follow us: @beer_dollars_app</div>
     </div>
 
-    <!-- Day Buttons -->
-    <div id="days">
-        <button data-day="Monday">Monday</button>
-        <button data-day="Tuesday">Tuesday</button>
-        <button data-day="Wednesday">Wednesday</button>
-        <button data-day="Thursday">Thursday</button>
-        <button data-day="Friday">Friday</button>
-        <button data-day="Saturday">Saturday</button>
-        <button data-day="Sunday">Sunday</button>
-    </div>
+    <script>
+        // Animate loading bar to \~65-100% then redirect
+        const bar = document.getElementById('progress');
+        let width = 0;
+        const interval = setInterval(() => {
+            if (width >= 100) {
+                clearInterval(interval);
+                // Redirect to login/main after loading (change to your phone entry route/page)
+                window.location.href = "/login";  // Or "/main" or whatever your next page is
+            } else {
+                width += 2;  // Adjust speed
+                bar.style.width = width + '%';
+            }
+        }, 80);  // \~8 seconds total; tweak as needed
 
-    <!-- Map -->
-    <div id="map"></div>
-
-    <!-- Bar List -->
-    <div id="bar-list"></div>
-
-    <!-- Add Bar Form -->
-    <div id="add-bar-form">
-        <h3>Add a Bar</h3>
-        <form id="new-bar-form">
-            <label>Name:
-                <input type="text" name="name" required>
-            </label>
-
-            <label>Address:
-                <input type="text" name="address">
-            </label>
-
-            <label>Deal:
-                <input type="text" name="deal" required>
-            </label>
-
-            <label>Day:
-                <select name="day" required>
-                    <option>Monday</option>
-                    <option>Tuesday</option>
-                    <option>Wednesday</option>
-                    <option>Thursday</option>
-                    <option>Friday</option>
-                    <option>Saturday</option>
-                    <option>Sunday</option>
-                </select>
-            </label>
-
-            <!-- Hidden lat/lng fields -->
-            <input type="hidden" id="bar-lat" name="lat">
-            <input type="hidden" id="bar-lng" name="lng">
-
-            <button type="submit">Add Bar</button>
-        </form>
-    </div>
-
-</div>
-
-<!-- Google Maps API -->
-<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap" async defer></script>
-
-<!-- Your map logic -->
-<script src="{{ url_for('static', filename='map.js') }}"></script>
-
-<!-- Your app logic -->
-<script src="{{ url_for('static', filename='app.js') }}"></script>
-
+        // Optional: Tap anywhere to skip loading
+        document.body.addEventListener('click', () => {
+            window.location.href = "/login";
+        });
+    </script>
 </body>
 </html>
