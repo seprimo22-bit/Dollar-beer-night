@@ -330,4 +330,4 @@ def admin_bars():
 
 if __name__ == "__main__":
     app.run(debug=True)
-Just replace your entire app.py on GitHub with this. When Render deploys it, the app will automatically write main.html into your templates folder on first run. That's it — no separate steps, no missing files.
+
