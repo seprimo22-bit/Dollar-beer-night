@@ -1,70 +1,31 @@
+
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Beer Dollars</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <title>Admin</title>
 </head>
 <body>
 
-<h2>Stretch Your Beer Money</h2>
+<h2>Add Special</h2>
 
-<div id="days">
-    <button onclick="load('Mon')">Mon</button>
-    <button onclick="load('Tue')">Tue</button>
-    <button onclick="load('Wed')">Wed</button>
-    <button onclick="load('Thu')">Thu</button>
-    <button onclick="load('Fri')">Fri</button>
-    <button onclick="load('Sat')">Sat</button>
-    <button onclick="load('Sun')">Sun</button>
-</div>
+<form method="POST" action="/add">
+    <input name="name" placeholder="Bar Name" required><br>
+    <input name="deal" placeholder="Deal" required><br>
 
-<div id="list"></div>
+    <select name="day">
+        <option>Mon</option>
+        <option>Tue</option>
+        <option>Wed</option>
+        <option>Thu</option>
+        <option>Fri</option>
+        <option>Sat</option>
+        <option>Sun</option>
+    </select><br>
 
-<div id="map"></div>
+    <input name="address" placeholder="Full Address"><br>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script>
-let map = L.map('map').setView([40.4173, -82.9071], 7);
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap'
-}).addTo(map);
-
-let markers = [];
-
-function clearMarkers() {
-    markers.forEach(m => map.removeLayer(m));
-    markers = [];
-}
-
-function load(day) {
-    fetch(`/specials?day=${day}`)
-    .then(res => res.json())
-    .then(data => {
-        let list = document.getElementById("list");
-        list.innerHTML = "";
-        clearMarkers();
-
-        data.forEach(s => {
-            list.innerHTML += `
-                <div class="card">
-                    <h3>${s.name}</h3>
-                    <p>${s.deal}</p>
-                    <small>${s.address || "No address"}</small>
-                </div>
-            `;
-
-            if (s.lat && s.lng) {
-                let marker = L.marker([s.lat, s.lng])
-                    .addTo(map)
-                    .bindPopup(`<b>${s.name}</b><br>${s.deal}`);
-                markers.push(marker);
-            }
-        });
-    });
-}
-</script>
+    <button type="submit">Add</button>
+</form>
 
 </body>
 </html>
