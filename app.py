@@ -1,109 +1,76 @@
-from flask import Flask, render_template, request, jsonify
+# app.py
+from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 import os
-import googlemaps
-from dotenv import load_dotenv
-from datetime import datetime
 
-load_dotenv()
-GOOGLE_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
-
+# ------------------------------
+# 1️⃣ Create Flask app
+# ------------------------------
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///beer.db'
+
+# Load config from environment variables or default
+app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY", "supersecretkey")
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
+    "DATABASE_URL", "sqlite:///beer_dollars.db"
+)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# ------------------------------
+# 2️⃣ Initialize database
+# ------------------------------
 db = SQLAlchemy(app)
 
-gmaps = googlemaps.Client(key=GOOGLE_API_KEY)
-
-# ---------------- DATABASE ----------------
-class Special(db.Model):
+# ------------------------------
+# 3️⃣ Define your database models
+# ------------------------------
+class Address(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100))
-    deal = db.Column(db.String(100))
-    day = db.Column(db.String(10))
-    address = db.Column(db.String(200))
-    lat = db.Column(db.Float)
-    lng = db.Column(db.Float)
-    promotion = db.Column(db.String(10), default='none')
+    name = db.Column(db.String(100), nullable=False)
+    street = db.Column(db.String(200), nullable=False)
+    city = db.Column(db.String(100), nullable=False)
+    state = db.Column(db.String(50), nullable=False)
+    zip_code = db.Column(db.String(20), nullable=False)
 
-db.create_all()
+    def __repr__(self):
+        return f"<Address {self.name}>"
 
-# ---------------- GEOCODE ----------------
-def geocode(address):
-    try:
-        result = gmaps.geocode(address)
-        if result:
-            loc = result[0]['geometry']['location']
-            return loc['lat'], loc['lng']
-    except Exception as e:
-        print("Geocode error:", e)
-    return None, None
+# ------------------------------
+# 4️⃣ Create tables safely
+# ------------------------------
+with app.app_context():
+    db.create_all()
 
-# ---------------- ROUTES ----------------
+# ------------------------------
+# 5️⃣ Define routes
+# ------------------------------
 @app.route("/")
 def index():
-    return render_template("index.html")
-
-@app.route("/admin")
-def admin():
-    return render_template("admin.html")
+    addresses = Address.query.all()
+    return render_template("index.html", addresses=addresses)
 
 @app.route("/add", methods=["POST"])
-def add():
-    data = request.get_json() or request.form
-    name = data.get("name")
-    deal = data.get("deal")
-    day = data.get("day")
-    address = data.get("address", "")
-    promotion = data.get("promotion", "none")
-    lat = data.get("lat")
-    lng = data.get("lng")
+def add_address():
+    name = request.form.get("name")
+    street = request.form.get("street")
+    city = request.form.get("city")
+    state = request.form.get("state")
+    zip_code = request.form.get("zip_code")
 
-    # Combine address fields if provided
-    if not lat or not lng:
-        street = data.get("street", "")
-        city = data.get("city", "")
-        state = data.get("state", "")
-        zip_code = data.get("zip", "")
-        full_address = f"{street}, {city}, {state} {zip_code}"
-        lat, lng = geocode(full_address)
-        if not address:
-            address = full_address
+    if name and street and city and state and zip_code:
+        new_address = Address(
+            name=name,
+            street=street,
+            city=city,
+            state=state,
+            zip_code=zip_code
+        )
+        db.session.add(new_address)
+        db.session.commit()
 
-    special = Special(
-        name=name,
-        deal=deal,
-        day=day,
-        address=address,
-        lat=lat,
-        lng=lng,
-        promotion=promotion
-    )
-    db.session.add(special)
-    db.session.commit()
-    return jsonify({"status": "success"})
+    return redirect(url_for("index"))
 
-@app.route("/specials")
-def specials():
-    day = request.args.get("day")
-    query = Special.query
-    if day:
-        query = query.filter_by(day=day)
-    specials_list = query.all()
-    results = []
-    for s in specials_list:
-        results.append({
-            "id": s.id,
-            "name": s.name,
-            "deal": s.deal,
-            "day": s.day,
-            "address": s.address,
-            "lat": s.lat,
-            "lng": s.lng,
-            "promotion": s.promotion
-        })
-    return jsonify(results)
-
-# ---------------- RUN ----------------
+# ------------------------------
+# 6️⃣ Run server locally
+# ------------------------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
