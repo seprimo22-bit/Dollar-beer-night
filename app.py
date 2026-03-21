@@ -1,80 +1,28 @@
-from flask import Flask, request, jsonify, render_template
-import os
-import json
 
+from flask import Flask, render_template, request, redirect, url_for
+from flask_sqlalchemy import SQLAlchemy
+import os
+
+# ------------------------------
+# 1️⃣ Create Flask app
+# ------------------------------
 app = Flask(__name__)
 
-# -------------------------
-# CONFIG
-# -------------------------
+# Load config from environment variables or default
+app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY", "supersecretkey")
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
+    "DATABASE_URL", "sqlite:///beer_dollars.db"
+)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-DATA_DIR = "data"
-DATA_FILE = os.path.join(DATA_DIR, "specials.json")
+# ------------------------------
+# 2️⃣ Initialize database
+# ------------------------------
+db = SQLAlchemy(app)
 
-# Ensure data folder exists
-os.makedirs(DATA_DIR, exist_ok=True)
-
-
-# -------------------------
-# DATA UTILITIES
-# -------------------------
-
-def load_specials():
-    """Load specials safely."""
-    if not os.path.exists(DATA_FILE):
-        return []
-
-    try:
-        with open(DATA_FILE, "r") as f:
-            return json.load(f)
-    except Exception:
-        return []
-
-
-def save_specials(data):
-    """Save specials safely."""
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f, indent=2)
-
-
-# -------------------------
-# ROUTES
-# -------------------------
-
-@app.route("/")
-def home():
-    return render_template("index.html")
-
-
-@app.route("/api/specials", methods=["GET"])
-def get_specials():
-    return jsonify(load_specials())
-
-
-@app.route("/api/specials", methods=["POST"])
-def add_special():
-    data = request.json
-
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
-
-    specials = load_specials()
-    specials.append(data)
-    save_specials(specials)
-
-    return jsonify({"status": "added", "data": data})
-
-
-@app.route("/api/specials/clear", methods=["POST"])
-def clear_specials():
-    save_specials([])
-    return jsonify({"status": "cleared"})
-
-
-# -------------------------
-# ENTRY POINT
-# -------------------------
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+# ------------------------------
+# 3️⃣ Define your database models
+# ------------------------------
+class Address(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    # ... rest of your model columns (Street, City, etc.)
