@@ -1,70 +1,39 @@
 from flask import Flask, render_template, request, redirect, url_for
-from flask_sqlalchemy import SQLAlchemy
 import os
 
-# ------------------------------
-# 1️⃣ Create Flask app
-# ------------------------------
 app = Flask(__name__)
 
-app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY", "supersecretkey")
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
-    "DATABASE_URL", "sqlite:///beer_dollars.db"
-)
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
 # ------------------------------
-# 2️⃣ Initialize database
+# HOME PAGE
 # ------------------------------
-db = SQLAlchemy(app)
-
-# ------------------------------
-# 3️⃣ Database Model
-# ------------------------------
-class Address(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100))
-    street = db.Column(db.String(200))
-    city = db.Column(db.String(100))
-
-# ------------------------------
-# 4️⃣ ROUTES (THIS IS WHAT YOU WERE MISSING)
-# ------------------------------
-
-# ✅ Homepage
 @app.route('/')
 def home():
-    return redirect(url_for('map_page'))
+    return render_template('index.html')
 
-# ✅ Map page
-@app.route('/map')
-def map_page():
-    addresses = Address.query.all()
-    return render_template('map.html', addresses=addresses)
-
-# ✅ Admin page
+# ------------------------------
+# ADMIN PAGE
+# ------------------------------
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
     if request.method == 'POST':
+        # just testing form submission for now
         name = request.form.get('name')
-        street = request.form.get('street')
-        city = request.form.get('city')
+        print(f"Added: {name}")
 
-        new_address = Address(name=name, street=street, city=city)
-        db.session.add(new_address)
-        db.session.commit()
+        return redirect('/admin')
 
-        return redirect(url_for('admin'))
-
-    addresses = Address.query.all()
-    return render_template('admin.html', addresses=addresses)
+    return render_template('admin.html')
 
 # ------------------------------
-# 5️⃣ Run app
+# TEST ROUTE (IMPORTANT)
+# ------------------------------
+@app.route('/test')
+def test():
+    return "APP IS WORKING"
+
+# ------------------------------
+# RUN
 # ------------------------------
 if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()
-
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
