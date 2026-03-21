@@ -1,16 +1,15 @@
-# app.py (place in root of repo, same level as templates and static folders)
+# app.py
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 import os
 import json
 
-# Explicitly define template and static folder locations
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-template_dir = os.path.join(BASE_DIR, 'templates')
-static_dir = os.path.join(BASE_DIR, 'static')
-app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
+# ------------------------------
+# App Initialization
+# ------------------------------
+app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'supersecretkey')
 
-SPECIALS_FILE = os.path.join(BASE_DIR, 'specials.json')
+SPECIALS_FILE = 'specials.json'
 
 # ------------------------------
 # Helper Functions
@@ -36,8 +35,10 @@ def splash():
         # Admin override
         if code == '0000':
             return redirect(url_for('index'))
-        # Stubbed Twilio verification: accept any code for now
+        # Stubbed verification: accept any code for now
         return redirect(url_for('index'))
+
+    # Render splash.html with correct static paths
     return render_template('splash.html')
 
 # ------------------------------
@@ -66,15 +67,25 @@ def admin():
         address = request.form.get('address')
         lat = request.form.get('lat')
         lng = request.form.get('lng')
-        entry = {'name': name, 'deal': deal, 'address': address, 'lat': lat, 'lng': lng}
+
+        entry = {
+            'name': name,
+            'deal': deal,
+            'address': address,
+            'lat': lat,
+            'lng': lng
+        }
+
         specials.setdefault(day, []).append(entry)
         save_specials(specials)
-        return redirect('/admin')
+        return redirect(url_for('admin'))
+
     return render_template('admin.html', specials=specials)
 
 # ------------------------------
-# Run
+# Run the App
 # ------------------------------
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
+    # Host 0.0.0.0 allows Render to expose the app externally
     app.run(host="0.0.0.0", port=port, debug=True)
