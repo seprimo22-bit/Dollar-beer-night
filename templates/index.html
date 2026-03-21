@@ -1,14 +1,46 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Dollar Beer Home</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beer Dollars</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+<script src="https://maps.googleapis.com/maps/api/js?key={{ os.environ.get('GOOGLE_MAPS_API_KEY') }}"></script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
 </head>
 <body>
-    <h1>🍺 Welcome to Dollar Beer!</h1>
-    <nav>
-        <a href="/map">View Map</a> |
-        <a href="/admin">Admin Panel</a>
-    </nav>
+    <header>
+        <h1>Beer Dollars</h1>
+        <h2>(Stretch Your Beer Money)</h2>
+        <div class="day-selector">
+            <button data-day="Monday">Mon</button>
+            <button data-day="Tuesday">Tue</button>
+            <button data-day="Wednesday">Wed</button>
+            <button data-day="Thursday">Thu</button>
+            <button data-day="Friday">Fri</button>
+            <button data-day="Saturday">Sat</button>
+            <button data-day="Sunday">Sun</button>
+        </div>
+    </header>
+
+    <main>
+        <div class="bar-list" id="bar-list">
+            <!-- dynamically loaded -->
+        </div>
+
+        <div class="map-container" id="map"></div>
+
+        <div class="manual-entry">
+            <h3>Add a Bar</h3>
+            <form id="manual-form">
+                <input type="text" id="bar-name" placeholder="Bar Name" required>
+                <input type="text" id="bar-deal" placeholder="Deal" required>
+                <input type="text" id="bar-address" placeholder="Address" required>
+                <input type="hidden" id="bar-lat">
+                <input type="hidden" id="bar-lng">
+                <button type="submit">Add Bar</button>
+            </form>
+        </div>
+    </main>
 </body>
 </html>
