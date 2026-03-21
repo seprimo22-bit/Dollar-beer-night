@@ -11,6 +11,13 @@ def home():
     return render_template('index.html')
 
 # ------------------------------
+# MAP PAGE
+# ------------------------------
+@app.route('/map')
+def map_page():
+    return render_template('map.html')
+
+# ------------------------------
 # ADMIN PAGE
 # ------------------------------
 @app.route('/admin', methods=['GET', 'POST'])
