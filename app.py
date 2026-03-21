@@ -1,66 +1,77 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 import os
 import json
+from datetime import datetime
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'supersecretkey')
 
-# ------------------------------
-# CONFIG
-# ------------------------------
-app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY", "supersecretkey")
 SPECIALS_FILE = 'specials.json'
 
 # ------------------------------
-# DATA FUNCTIONS
+# Helper Functions
 # ------------------------------
 def load_specials():
     if not os.path.exists(SPECIALS_FILE):
-        return []
+        return {}
     with open(SPECIALS_FILE, 'r') as f:
         return json.load(f)
 
-def save_special(name, address, price):
-    specials = load_specials()
-    specials.append({'name': name, 'address': address, 'price': price})
+def save_specials(data):
     with open(SPECIALS_FILE, 'w') as f:
-        json.dump(specials, f, indent=4)
+        json.dump(data, f, indent=2)
 
 # ------------------------------
-# ROUTES
+# Splash / Phone Verification
 # ------------------------------
+@app.route('/', methods=['GET', 'POST'])
+def splash():
+    if request.method == 'POST':
+        phone = request.form.get('phone')
+        code = request.form.get('code')
+        # Admin override
+        if code == '0000':
+            return redirect(url_for('index'))
+        # Stubbed Twilio verification: accept any code for now
+        # You can integrate Twilio here
+        return redirect(url_for('index'))
+    return render_template('splash.html')
 
-# HOME PAGE
-@app.route('/')
-def home():
+# ------------------------------
+# Main App
+# ------------------------------
+@app.route('/index')
+def index():
     return render_template('index.html')
 
-# MAP PAGE
-@app.route('/map')
-def map_page():
+@app.route('/get_specials')
+def get_specials():
+    day = request.args.get('day')
     specials = load_specials()
-    api_key = os.environ.get('GOOGLE_MAPS_API_KEY')
-    return render_template('map.html', specials=specials, api_key=api_key)
+    return jsonify(specials.get(day, []))
 
-# ADMIN PAGE
+# ------------------------------
+# Admin Panel
+# ------------------------------
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
-    if request.method == 'POST':
-        name = request.form.get('name')
-        address = request.form.get('address')
-        price = request.form.get('price')
-        save_special(name, address, price)
-        return redirect('/admin')
     specials = load_specials()
+    if request.method == 'POST':
+        day = request.form.get('day')
+        name = request.form.get('name')
+        deal = request.form.get('deal')
+        address = request.form.get('address')
+        lat = request.form.get('lat')
+        lng = request.form.get('lng')
+        entry = {'name': name, 'deal': deal, 'address': address, 'lat': lat, 'lng': lng}
+        specials.setdefault(day, []).append(entry)
+        save_specials(specials)
+        return redirect('/admin')
     return render_template('admin.html', specials=specials)
 
-# TEST ROUTE
-@app.route('/test')
-def test():
-    return "APP IS WORKING"
-
 # ------------------------------
-# RUN
+# Run
 # ------------------------------
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
