@@ -8,13 +8,11 @@ app = Flask(__name__)
 # CONFIG
 # ------------------------------
 app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY", "supersecretkey")
-STATIC_FOLDER = 'static'
-
-# ------------------------------
-# PATH TO DATA (for map pins / specials)
-# ------------------------------
 SPECIALS_FILE = 'specials.json'
 
+# ------------------------------
+# DATA FUNCTIONS
+# ------------------------------
 def load_specials():
     if not os.path.exists(SPECIALS_FILE):
         return []
@@ -31,18 +29,19 @@ def save_special(name, address, price):
 # ROUTES
 # ------------------------------
 
-# HOME
+# HOME PAGE
 @app.route('/')
 def home():
     return render_template('index.html')
 
-# MAP
+# MAP PAGE
 @app.route('/map')
 def map_page():
     specials = load_specials()
-    return render_template('map.html', specials=specials)
+    api_key = os.environ.get('GOOGLE_MAPS_API_KEY')
+    return render_template('map.html', specials=specials, api_key=api_key)
 
-# ADMIN
+# ADMIN PAGE
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
     if request.method == 'POST':
@@ -51,7 +50,6 @@ def admin():
         price = request.form.get('price')
         save_special(name, address, price)
         return redirect('/admin')
-    
     specials = load_specials()
     return render_template('admin.html', specials=specials)
 
