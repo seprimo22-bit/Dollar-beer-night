@@ -1,12 +1,16 @@
+# app.py (place in root of repo, same level as templates and static folders)
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 import os
 import json
-from datetime import datetime
 
-app = Flask(__name__)
+# Explicitly define template and static folder locations
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+template_dir = os.path.join(BASE_DIR, 'templates')
+static_dir = os.path.join(BASE_DIR, 'static')
+app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'supersecretkey')
 
-SPECIALS_FILE = 'specials.json'
+SPECIALS_FILE = os.path.join(BASE_DIR, 'specials.json')
 
 # ------------------------------
 # Helper Functions
@@ -33,7 +37,6 @@ def splash():
         if code == '0000':
             return redirect(url_for('index'))
         # Stubbed Twilio verification: accept any code for now
-        # You can integrate Twilio here
         return redirect(url_for('index'))
     return render_template('splash.html')
 
