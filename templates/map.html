@@ -1,7 +1,9 @@
+
 <!DOCTYPE html>
 <html>
 <head>
     <title>Dollar Beer Map</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
     <h1>🍺 Dollar Beer Map</h1>
@@ -9,8 +11,15 @@
     <a href="/">Home</a>
     <a href="/admin">Admin</a>
 
-    <div style="height:500px; width:100%; background:#eee;">
+    <div id="map" style="height:500px; width:100%; background:#eee;">
         Map will go here
     </div>
+
+    <h2>Current Specials:</h2>
+    <ul>
+        {% for bar in specials %}
+            <li>{{ bar.name }} — {{ bar.address }} — {{ bar.price }}</li>
+        {% endfor %}
+    </ul>
 </body>
 </html>
