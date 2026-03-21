@@ -1,85 +1,66 @@
 body {
     font-family: Arial, sans-serif;
-    text-align: center;
+    background-color: #f0f8ff;
+    color: #003366;
     margin: 0;
     padding: 0;
-    background-color: #1E90FF;
+}
+
+header {
+    text-align: center;
+    padding: 20px;
+}
+
+.day-selector button {
+    margin: 2px;
+    padding: 5px 10px;
+    border: 1px solid #003366;
+    background-color: white;
+    color: #003366;
+    cursor: pointer;
+}
+
+.day-selector button:hover {
+    background-color: #003366;
     color: white;
 }
 
-#splash-image {
-    max-width: 250px;
-    width: 50%;
-    margin: 40px auto 20px auto;
-    display: block;
-}
-
-#splash-banner {
-    font-size: 36px;
-    font-weight: bold;
-    margin-top: 20px;
-}
-
-#splash-subtitle {
-    font-size: 18px;
-    margin-top: 5px;
-    color: #FFFACD;
-}
-
-input, select, button {
-    padding: 10px;
-    margin: 5px 0;
-    border-radius: 5px;
-    border: none;
-    font-size: 16px;
-}
-
-input, select {
-    width: 250px;
-}
-
-button {
-    cursor: pointer;
-    background-color: #FFD700;
-    font-weight: bold;
-}
-
-#map {
-    height: 300px;
-    width: 90%;
+.bar-list {
     margin: 20px auto;
-    border-radius: 10px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.5);
-}
-
-.card {
-    background: #eee;
-    color: #000;
-    margin: 10px auto;
-    padding: 15px;
-    border-radius: 10px;
     width: 90%;
-    text-align: left;
+    max-width: 600px;
 }
 
-.card.paid-gold {
-    border: 2px solid gold;
-    font-weight: bold;
+.bar-item {
+    border-bottom: 1px solid #003366;
+    padding: 10px 0;
 }
 
-.card.paid-silver {
-    border: 2px solid silver;
+.map-container {
+    width: 90%;
+    max-width: 600px;
+    height: 300px;
+    margin: 20px auto;
+    border: 2px solid #003366;
 }
 
-#add-bar-btn {
-    position: fixed;
-    bottom: 30px;
-    right: 30px;
-    background-color: #FFD700;
-    color: #000;
-    padding: 15px;
-    border-radius: 50%;
-    font-size: 24px;
-    cursor: pointer;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+.manual-entry {
+    width: 90%;
+    max-width: 600px;
+    margin: 20px auto;
+}
+
+.splash-body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.splash-container {
+    text-align: center;
+}
+
+.splash-image {
+    max-width: 300px;
 }
