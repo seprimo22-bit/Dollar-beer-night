@@ -1,78 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Admin - Beer Dollars</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Admin Panel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
+    <h1>Admin Panel</h1>
 
-<h2>Add Special</h2>
+    <form method="POST">
+        <input name="name" placeholder="Bar Name" required><br>
+        <input name="address" placeholder="Address" required><br>
+        <input name="price" placeholder="$1" required><br>
+        <button type="submit">Add</button>
+    </form>
 
-<div class="admin-form">
-  <input type="text" id="name" placeholder="Bar Name">
-  <input type="text" id="deal" placeholder="Deal (e.g. $1.00 Drafts)">
-  <select id="day_of_week">
-    <option value="Sun">Sunday</option><option value="Mon">Monday</option>
-    <option value="Tue">Tuesday</option><option value="Wed">Wednesday</option>
-    <option value="Thu">Thursday</option><option value="Fri">Friday</option>
-    <option value="Sat">Saturday</option>
-  </select>
-  <input type="text" id="street" placeholder="Street Address">
-  <input type="text" id="city" placeholder="City (e.g. Youngstown)">
-  <input type="text" id="state" placeholder="State (e.g. OH)">
-  <input type="text" id="zip" placeholder="Zip">
-  <button onclick="submitBar()">Deploy to Map</button>
-</div>
+    <h2>Existing Specials</h2>
+    <ul>
+        {% for bar in specials %}
+            <li>{{ bar.name }} — {{ bar.address }} — {{ bar.price }}</li>
+        {% endfor %}
+    </ul>
 
-<div id="map"></div>
-
-<script>
-let map;
-let marker;
-
-function initMap() {
-    map = new google.maps.Map(document.getElementById("map"), {
-        center: {lat:40.975,lng:-80.612},
-        zoom: 12
-    });
-
-    map.addListener("click", (event) => {
-        if(marker) marker.setMap(null);
-        marker = new google.maps.Marker({
-            position: event.latLng,
-            map: map
-        });
-    });
-}
-
-function submitBar() {
-    const data = {
-        name: document.getElementById("name").value,
-        deal: document.getElementById("deal").value,
-        day: document.getElementById("day_of_week").value,
-        street: document.getElementById("street").value,
-        city: document.getElementById("city").value,
-        state: document.getElementById("state").value,
-        zip: document.getElementById("zip").value
-    };
-
-    if(marker) {
-        data.lat = marker.getPosition().lat();
-        data.lng = marker.getPosition().lng();
-    }
-
-    fetch("/add", {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify(data)
-    }).then(res => alert("Bar added!"))
-      .catch(err => alert("Error"));
-}
-
-window.onload = initMap;
-</script>
-<script async
-    src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&callback=initMap">
-</script>
+    <a href="/">Home</a>
+    <a href="/map">Map</a>
 </body>
 </html>
