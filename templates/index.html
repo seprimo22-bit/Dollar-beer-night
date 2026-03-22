@@ -1,46 +1,40 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Beer Dollars</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-<script src="https://maps.googleapis.com/maps/api/js?key={{ os.environ.get('GOOGLE_MAPS_API_KEY') }}"></script>
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+    <title>Beer Dollars</title>
+
+    <link rel="stylesheet" href="/static/style.css">
+
+    <!-- Google Maps -->
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ config['GOOGLE_MAPS_API_KEY'] }}"></script>
 </head>
 <body>
-    <header>
-        <h1>Beer Dollars</h1>
-        <h2>(Stretch Your Beer Money)</h2>
-        <div class="day-selector">
-            <button data-day="Monday">Mon</button>
-            <button data-day="Tuesday">Tue</button>
-            <button data-day="Wednesday">Wed</button>
-            <button data-day="Thursday">Thu</button>
-            <button data-day="Friday">Fri</button>
-            <button data-day="Saturday">Sat</button>
-            <button data-day="Sunday">Sun</button>
-        </div>
-    </header>
 
-    <main>
-        <div class="bar-list" id="bar-list">
-            <!-- dynamically loaded -->
-        </div>
+<div class="container">
 
-        <div class="map-container" id="map"></div>
+    <h1>🍺 Beer Dollars</h1>
+    <h2>Stretch Your Beer Money</h2>
 
-        <div class="manual-entry">
-            <h3>Add a Bar</h3>
-            <form id="manual-form">
-                <input type="text" id="bar-name" placeholder="Bar Name" required>
-                <input type="text" id="bar-deal" placeholder="Deal" required>
-                <input type="text" id="bar-address" placeholder="Address" required>
-                <input type="hidden" id="bar-lat">
-                <input type="hidden" id="bar-lng">
-                <button type="submit">Add Bar</button>
-            </form>
-        </div>
-    </main>
+    <!-- DAY SELECTOR -->
+    <div class="days">
+        <button onclick="loadDay('Monday')">Mon</button>
+        <button onclick="loadDay('Tuesday')">Tue</button>
+        <button onclick="loadDay('Wednesday')">Wed</button>
+        <button onclick="loadDay('Thursday')">Thu</button>
+        <button onclick="loadDay('Friday')">Fri</button>
+        <button onclick="loadDay('Saturday')">Sat</button>
+        <button onclick="loadDay('Sunday')">Sun</button>
+    </div>
+
+    <!-- LIST -->
+    <div id="list"></div>
+
+    <!-- MAP -->
+    <div id="map"></div>
+
+</div>
+
+<script src="/static/script.js"></script>
+
 </body>
 </html>
