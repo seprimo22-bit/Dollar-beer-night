@@ -1,91 +1,76 @@
-# app.py
-from flask import Flask, render_template, request, redirect, url_for, jsonify
 import os
-import json
+from flask import Flask, render_template, request, jsonify
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
-# ------------------------------
-# App Initialization
-# ------------------------------
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'supersecretkey')
 
-SPECIALS_FILE = 'specials.json'
+# Database connection (Render)
+DB_URL = os.getenv('RENDER_DB_URL', 'dpg-d6e37ipr0fns73d6scc0-a')
 
-# ------------------------------
-# Helper Functions
-# ------------------------------
-def load_specials():
-    if not os.path.exists(SPECIALS_FILE):
-        return {}
-    with open(SPECIALS_FILE, 'r') as f:
-        return json.load(f)
+def get_db_connection():
+    conn = psycopg2.connect(DB_URL, cursor_factory=RealDictCursor)
+    return conn
 
-def save_specials(data):
-    with open(SPECIALS_FILE, 'w') as f:
-        json.dump(data, f, indent=2)
+# --- Routes ---
 
-# ------------------------------
-# Splash / Phone Verification
-# ------------------------------
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
 def splash():
-    if request.method == 'POST':
-        phone = request.form.get('phone')
-        code = request.form.get('code')
-        # Admin override
-        if code == '0000':
-            return redirect(url_for('index'))
-        # Stubbed verification: accept any code for now
-        return redirect(url_for('index'))
-
-    # Render splash.html with correct static paths
     return render_template('splash.html')
 
-# ------------------------------
-# Main App
-# ------------------------------
 @app.route('/index')
 def index():
-    return render_template('index.html')
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM bars;")
+    bars = cur.fetchall()
+    cur.close()
+    conn.close()
+    return render_template('index.html', bars=bars)
 
-@app.route('/get_specials')
-def get_specials():
-    day = request.args.get('day')
-    specials = load_specials()
-    return jsonify(specials.get(day, []))
-
-# ------------------------------
-# Admin Panel
-# ------------------------------
-@app.route('/admin', methods=['GET', 'POST'])
+@app.route('/admin')
 def admin():
-    specials = load_specials()
-    if request.method == 'POST':
-        day = request.form.get('day')
-        name = request.form.get('name')
-        deal = request.form.get('deal')
-        address = request.form.get('address')
-        lat = request.form.get('lat')
-        lng = request.form.get('lng')
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM bars ORDER BY id DESC;")
+    bars = cur.fetchall()
+    cur.close()
+    conn.close()
+    return render_template('admin.html', bars=bars)
 
-        entry = {
-            'name': name,
-            'deal': deal,
-            'address': address,
-            'lat': lat,
-            'lng': lng
-        }
+@app.route('/add_bar', methods=['POST'])
+def add_bar():
+    data = request.get_json()
+    name = data.get('name')
+    lat = data.get('lat')
+    lng = data.get('lng')
+    description = data.get('description')
+    verified = False
 
-        specials.setdefault(day, []).append(entry)
-        save_specials(specials)
-        return redirect(url_for('admin'))
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO bars (name, lat, lng, description, verified) VALUES (%s,%s,%s,%s,%s)",
+        (name, lat, lng, description, verified)
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({'status': 'success'})
 
-    return render_template('admin.html', specials=specials)
+@app.route('/verify_bar/<int:bar_id>', methods=['POST'])
+def verify_bar(bar_id):
+    code = request.json.get('code')
+    if code == '1616':
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("UPDATE bars SET verified = TRUE WHERE id = %s", (bar_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({'status': 'verified'})
+    else:
+        return jsonify({'status': 'failed'}), 403
 
-# ------------------------------
-# Run the App
-# ------------------------------
-if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 5000))
-    # Host 0.0.0.0 allows Render to expose the app externally
-    app.run(host="0.0.0.0", port=port, debug=True)
+if __name__ == '__main__':
+    app.run(debug=True)
