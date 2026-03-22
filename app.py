@@ -1,8 +1,8 @@
 import os
 import json
 import requests
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import psycopg
+from psycopg.rows import dict_row
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from twilio.rest import Client
 
@@ -23,34 +23,28 @@ DATABASE_URL = os.environ.get("DATABASE_URL")
 # DB CONNECTION
 # -----------------------------
 def get_db_conn():
-    if not DATABASE_URL:
-        raise RuntimeError("DATABASE_URL not set")
-    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+    return psycopg.connect(DATABASE_URL, row_factory=dict_row)
 
 def init_db():
-    conn = get_db_conn()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS specials (
-            id SERIAL PRIMARY KEY,
-            name TEXT NOT NULL,
-            address TEXT,
-            deal TEXT NOT NULL,
-            day TEXT NOT NULL,
-            lat DOUBLE PRECISION NOT NULL,
-            lng DOUBLE PRECISION NOT NULL
-        );
-        """
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
+    with get_db_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS specials (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    address TEXT,
+                    deal TEXT NOT NULL,
+                    day TEXT NOT NULL,
+                    lat DOUBLE PRECISION NOT NULL,
+                    lng DOUBLE PRECISION NOT NULL
+                );
+            """)
+        conn.commit()
 
 init_db()
 
 # -----------------------------
-# UTILITY: GEOCODE ADDRESS
+# GEOCODING
 # -----------------------------
 def geocode_address(address):
     if not address or not GOOGLE_MAPS_KEY:
@@ -65,18 +59,18 @@ def geocode_address(address):
     if r.get("status") != "OK":
         return None, None
 
-    location = r["results"][0]["geometry"]["location"]
-    return location["lat"], location["lng"]
+    loc = r["results"][0]["geometry"]["location"]
+    return loc["lat"], loc["lng"]
 
 # -----------------------------
-# SPLASH SCREEN
+# SPLASH
 # -----------------------------
 @app.route("/")
 def splash():
     return render_template("splash.html")
 
 # -----------------------------
-# PHONE VERIFICATION (SEND CODE)
+# SEND CODE
 # -----------------------------
 @app.route("/send_code", methods=["POST"])
 def send_code():
@@ -97,12 +91,11 @@ def send_code():
             )
     except Exception as e:
         print("Twilio error:", e)
-        return jsonify({"error": "Failed to send code"}), 500
 
     return jsonify({"success": True})
 
 # -----------------------------
-# VERIFY CODE (WITH MASTER OVERRIDE)
+# VERIFY CODE
 # -----------------------------
 @app.route("/verify_code", methods=["POST"])
 def verify_code():
@@ -119,7 +112,7 @@ def verify_code():
     return jsonify({"success": False}), 401
 
 # -----------------------------
-# MAIN MAP PAGE
+# MAIN PAGE
 # -----------------------------
 @app.route("/index")
 def index():
@@ -135,20 +128,18 @@ def admin():
     return render_template("admin.html")
 
 # -----------------------------
-# API: GET SPECIALS
+# GET SPECIALS
 # -----------------------------
 @app.route("/get_specials")
 def get_specials():
-    conn = get_db_conn()
-    cur = conn.cursor()
-    cur.execute("SELECT name, address, deal, day, lat, lng FROM specials ORDER BY id DESC;")
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
+    with get_db_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT name, address, deal, day, lat, lng FROM specials ORDER BY id DESC;")
+            rows = cur.fetchall()
     return jsonify(rows)
 
 # -----------------------------
-# API: ADD SPECIAL
+# ADD SPECIAL
 # -----------------------------
 @app.route("/add_special", methods=["POST"])
 def add_special():
@@ -170,18 +161,13 @@ def add_special():
     if not lat or not lng:
         return jsonify({"error": "Could not determine location"}), 400
 
-    conn = get_db_conn()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        INSERT INTO specials (name, address, deal, day, lat, lng)
-        VALUES (%s, %s, %s, %s, %s, %s);
-        """,
-        (name, address or "", deal, day, float(lat), float(lng))
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
+    with get_db_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO specials (name, address, deal, day, lat, lng)
+                VALUES (%s, %s, %s, %s, %s, %s);
+            """, (name, address or "", deal, day, float(lat), float(lng)))
+        conn.commit()
 
     return jsonify({"success": True})
 
@@ -190,4 +176,3 @@ def add_special():
 # -----------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
-
