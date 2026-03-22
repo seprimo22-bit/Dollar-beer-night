@@ -3,7 +3,6 @@ import json
 import requests
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from twilio.rest import Client
-from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev_secret")
@@ -15,6 +14,7 @@ GOOGLE_MAPS_KEY = os.environ.get("GOOGLE_MAPS_KEY")
 TWILIO_SID = os.environ.get("TWILIO_SID")
 TWILIO_AUTH = os.environ.get("TWILIO_AUTH")
 TWILIO_NUMBER = os.environ.get("TWILIO_NUMBER")
+MASTER_CODE = os.environ.get("MASTER_CODE", "9999")
 
 SPECIALS_FILE = "specials.json"
 
@@ -51,7 +51,7 @@ def geocode_address(address):
 
     r = requests.get(url).json()
 
-    if r["status"] != "OK":
+    if r.get("status") != "OK":
         return None, None
 
     location = r["results"][0]["geometry"]["location"]
@@ -76,34 +76,44 @@ def send_code():
     if not phone:
         return jsonify({"error": "Missing phone"}), 400
 
-    # Generate a simple 4-digit code
-    code = "0000"  # For now, always 0000 (you can randomize later)
+    # Simple 4-digit code (for now)
+    code = "0000"
     session["verify_code"] = code
 
-    # Send via Twilio
+    # Send via Twilio (if configured)
     try:
-        client = Client(TWILIO_SID, TWILIO_AUTH)
-        client.messages.create(
-            body=f"Your Beer Dollars verification code is: {code}",
-            from_=TWILIO_NUMBER,
-            to=phone
-        )
+        if TWILIO_SID and TWILIO_AUTH and TWILIO_NUMBER:
+            client = Client(TWILIO_SID, TWILIO_AUTH)
+            client.messages.create(
+                body=f"Your Beer Dollars verification code is: {code}",
+                from_=TWILIO_NUMBER,
+                to=phone
+            )
     except Exception as e:
         print("Twilio error:", e)
+        # Still return success so dev can test
         return jsonify({"error": "Failed to send code"}), 500
 
     return jsonify({"success": True})
 
 
 # -----------------------------
-# VERIFY CODE
+# VERIFY CODE (WITH MASTER OVERRIDE)
 # -----------------------------
 @app.route("/verify_code", methods=["POST"])
 def verify_code():
     code = request.json.get("code")
+
+    # Developer override
+    if code == MASTER_CODE:
+        session["verified"] = True
+        return jsonify({"success": True, "override": True})
+
+    # Normal Twilio-style verification
     if code == session.get("verify_code"):
         session["verified"] = True
         return jsonify({"success": True})
+
     return jsonify({"success": False}), 401
 
 
@@ -139,7 +149,7 @@ def get_specials():
 # -----------------------------
 @app.route("/add_special", methods=["POST"])
 def add_special():
-    data = request.json
+    data = request.json or {}
 
     name = data.get("name")
     address = data.get("address")
