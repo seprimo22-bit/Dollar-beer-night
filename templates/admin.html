@@ -1,42 +1,55 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Admin Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <title>Beer Dollars Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <style>
+        body {
+            background: #0A3D62;
+            color: white;
+            font-family: Arial;
+            padding: 20px;
+        }
+
+        .special {
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+        }
+    </style>
 </head>
+
 <body>
-    <h1>Admin Dashboard</h1>
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Lat</th>
-                <th>Lng</th>
-                <th>Description</th>
-                <th>Verified</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for bar in bars %}
-            <tr>
-                <td>{{ bar.id }}</td>
-                <td>{{ bar.name }}</td>
-                <td>{{ bar.lat }}</td>
-                <td>{{ bar.lng }}</td>
-                <td>{{ bar.description }}</td>
-                <td>{{ 'Yes' if bar.verified else 'No' }}</td>
-                <td>
-                    {% if not bar.verified %}
-                    <button onclick="verifyBar({{ bar.id }})">Verify</button>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+
+<h1>Beer Dollars Admin</h1>
+
+<div id="list"></div>
+
+<script>
+    async function load() {
+        const res = await fetch("/get_specials");
+        const data = await res.json();
+
+        const list = document.getElementById("list");
+        list.innerHTML = "";
+
+        data.forEach(s => {
+            const div = document.createElement("div");
+            div.className = "special";
+            div.innerHTML = `
+                <b>${s.name}</b><br>
+                ${s.deal}<br>
+                ${s.address}<br>
+                <i>${s.day}</i>
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    load();
+</script>
+
 </body>
 </html>
