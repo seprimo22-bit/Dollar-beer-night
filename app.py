@@ -1,6 +1,8 @@
 import os
 import json
 import requests
+import psycopg2
+from psycopg2.extras import RealDictCursor
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from twilio.rest import Client
 
@@ -15,48 +17,56 @@ TWILIO_SID = os.environ.get("TWILIO_SID")
 TWILIO_AUTH = os.environ.get("TWILIO_AUTH")
 TWILIO_NUMBER = os.environ.get("TWILIO_NUMBER")
 MASTER_CODE = os.environ.get("MASTER_CODE", "9999")
-
-SPECIALS_FILE = "specials.json"
-
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 # -----------------------------
-# UTILITY: LOAD / SAVE SPECIALS
+# DB CONNECTION
 # -----------------------------
-def load_specials():
-    if not os.path.exists(SPECIALS_FILE):
-        return []
-    with open(SPECIALS_FILE, "r") as f:
-        try:
-            return json.load(f)
-        except:
-            return []
+def get_db_conn():
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL not set")
+    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
 
+def init_db():
+    conn = get_db_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS specials (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            address TEXT,
+            deal TEXT NOT NULL,
+            day TEXT NOT NULL,
+            lat DOUBLE PRECISION NOT NULL,
+            lng DOUBLE PRECISION NOT NULL
+        );
+        """
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
 
-def save_specials(data):
-    with open(SPECIALS_FILE, "w") as f:
-        json.dump(data, f, indent=4)
-
+init_db()
 
 # -----------------------------
 # UTILITY: GEOCODE ADDRESS
 # -----------------------------
 def geocode_address(address):
-    if not address:
+    if not address or not GOOGLE_MAPS_KEY:
         return None, None
 
     url = (
-        f"https://maps.googleapis.com/maps/api/geocode/json"
+        "https://maps.googleapis.com/maps/api/geocode/json"
         f"?address={address}&key={GOOGLE_MAPS_KEY}"
     )
 
     r = requests.get(url).json()
-
     if r.get("status") != "OK":
         return None, None
 
     location = r["results"][0]["geometry"]["location"]
     return location["lat"], location["lng"]
-
 
 # -----------------------------
 # SPLASH SCREEN
@@ -65,22 +75,18 @@ def geocode_address(address):
 def splash():
     return render_template("splash.html")
 
-
 # -----------------------------
 # PHONE VERIFICATION (SEND CODE)
 # -----------------------------
 @app.route("/send_code", methods=["POST"])
 def send_code():
     phone = request.json.get("phone")
-
     if not phone:
         return jsonify({"error": "Missing phone"}), 400
 
-    # Simple 4-digit code (for now)
     code = "0000"
     session["verify_code"] = code
 
-    # Send via Twilio (if configured)
     try:
         if TWILIO_SID and TWILIO_AUTH and TWILIO_NUMBER:
             client = Client(TWILIO_SID, TWILIO_AUTH)
@@ -91,11 +97,9 @@ def send_code():
             )
     except Exception as e:
         print("Twilio error:", e)
-        # Still return success so dev can test
         return jsonify({"error": "Failed to send code"}), 500
 
     return jsonify({"success": True})
-
 
 # -----------------------------
 # VERIFY CODE (WITH MASTER OVERRIDE)
@@ -104,18 +108,15 @@ def send_code():
 def verify_code():
     code = request.json.get("code")
 
-    # Developer override
     if code == MASTER_CODE:
         session["verified"] = True
         return jsonify({"success": True, "override": True})
 
-    # Normal Twilio-style verification
     if code == session.get("verify_code"):
         session["verified"] = True
         return jsonify({"success": True})
 
     return jsonify({"success": False}), 401
-
 
 # -----------------------------
 # MAIN MAP PAGE
@@ -126,7 +127,6 @@ def index():
         return redirect(url_for("splash"))
     return render_template("index.html", GOOGLE_MAPS_KEY=GOOGLE_MAPS_KEY)
 
-
 # -----------------------------
 # ADMIN PAGE
 # -----------------------------
@@ -134,15 +134,18 @@ def index():
 def admin():
     return render_template("admin.html")
 
-
 # -----------------------------
 # API: GET SPECIALS
 # -----------------------------
 @app.route("/get_specials")
 def get_specials():
-    data = load_specials()
-    return jsonify(data)
-
+    conn = get_db_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT name, address, deal, day, lat, lng FROM specials ORDER BY id DESC;")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(rows)
 
 # -----------------------------
 # API: ADD SPECIAL
@@ -161,32 +164,30 @@ def add_special():
     if not name or not deal or not day:
         return jsonify({"error": "Missing required fields"}), 400
 
-    # If no lat/lng, geocode from address
     if (not lat or not lng) and address:
         lat, lng = geocode_address(address)
 
     if not lat or not lng:
         return jsonify({"error": "Could not determine location"}), 400
 
-    specials = load_specials()
-
-    new_entry = {
-        "name": name,
-        "address": address or "",
-        "deal": deal,
-        "day": day,
-        "lat": lat,
-        "lng": lng
-    }
-
-    specials.append(new_entry)
-    save_specials(specials)
+    conn = get_db_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO specials (name, address, deal, day, lat, lng)
+        VALUES (%s, %s, %s, %s, %s, %s);
+        """,
+        (name, address or "", deal, day, float(lat), float(lng))
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
 
     return jsonify({"success": True})
-
 
 # -----------------------------
 # RUN
 # -----------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
