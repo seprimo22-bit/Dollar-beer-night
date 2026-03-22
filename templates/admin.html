@@ -1,33 +1,43 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin - Beer Dollars</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </head>
 <body>
-<h1>Admin Panel</h1>
-<form method="POST">
-    <input type="text" name="day" placeholder="Day" required>
-    <input type="text" name="name" placeholder="Bar Name" required>
-    <input type="text" name="deal" placeholder="Deal" required>
-    <input type="text" name="address" placeholder="Address" required>
-    <input type="text" name="lat" placeholder="Latitude">
-    <input type="text" name="lng" placeholder="Longitude">
-    <button type="submit">Add Special</button>
-</form>
-<h2>Current Specials:</h2>
-<ul>
-{% for day, entries in specials.items() %}
-    <li>{{ day }}
-        <ul>
-        {% for entry in entries %}
-            <li>{{ entry.name }} - {{ entry.deal }} - {{ entry.address }}</li>
-        {% endfor %}
-        </ul>
-    </li>
-{% endfor %}
-</ul>
+    <h1>Admin Dashboard</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Lat</th>
+                <th>Lng</th>
+                <th>Description</th>
+                <th>Verified</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for bar in bars %}
+            <tr>
+                <td>{{ bar.id }}</td>
+                <td>{{ bar.name }}</td>
+                <td>{{ bar.lat }}</td>
+                <td>{{ bar.lng }}</td>
+                <td>{{ bar.description }}</td>
+                <td>{{ 'Yes' if bar.verified else 'No' }}</td>
+                <td>
+                    {% if not bar.verified %}
+                    <button onclick="verifyBar({{ bar.id }})">Verify</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </body>
 </html>
