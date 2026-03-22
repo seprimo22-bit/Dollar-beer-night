@@ -1,67 +1,80 @@
 let map;
 let markers = [];
 
+// INIT MAP
 function initMap() {
-    map = new google.maps.Map(document.getElementById('map'), {
-        center: {lat: 40.4406, lng: -79.9959}, // default: Pittsburgh
-        zoom: 12
+    map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 41.0814, lng: -81.5190 }, // Akron default
+        zoom: 12,
     });
-    loadSpecials(getToday());
+
+    loadToday();
 }
 
-function clearMarkers() {
-    markers.forEach(m => m.setMap(null));
-    markers = [];
+// LOAD TODAY AUTOMATICALLY
+function loadToday() {
+    const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const today = days[new Date().getDay()];
+    loadDay(today);
 }
 
-function loadSpecials(day) {
+// LOAD DATA
+function loadDay(day) {
     fetch(`/get_specials?day=${day}`)
         .then(res => res.json())
         .then(data => {
-            const barList = document.getElementById('bar-list');
-            barList.innerHTML = '';
-            clearMarkers();
-            data.forEach(bar => {
-                const div = document.createElement('div');
-                div.className = 'bar-item';
-                div.innerHTML = `<strong>${bar.name}</strong> - ${bar.deal} - ${bar.address}`;
-                div.onclick = () => {
-                    map.setCenter({lat: parseFloat(bar.lat), lng: parseFloat(bar.lng)});
-                    map.setZoom(15);
-                };
-                barList.appendChild(div);
-
-                const marker = new google.maps.Marker({
-                    position: {lat: parseFloat(bar.lat), lng: parseFloat(bar.lng)},
-                    map: map,
-                    title: bar.name
-                });
-                marker.addListener('click', () => {
-                    window.open(`https://www.google.com/maps/dir/?api=1&destination=${bar.lat},${bar.lng}`);
-                });
-                markers.push(marker);
-            });
+            renderList(data);
+            renderMap(data);
         });
 }
 
-function getToday() {
-    const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-    return days[new Date().getDay()];
+// RENDER LIST
+function renderList(data) {
+    const list = document.getElementById("list");
+    list.innerHTML = "";
+
+    data.forEach((bar, index) => {
+        const div = document.createElement("div");
+        div.className = "card";
+
+        div.innerHTML = `
+            <strong>${bar.name}</strong><br>
+            ${bar.deal}<br>
+            <small>${bar.address}</small>
+        `;
+
+        div.onclick = () => focusMarker(index);
+
+        list.appendChild(div);
+    });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    initMap();
+// RENDER MAP
+function renderMap(data) {
+    markers.forEach(m => m.setMap(null));
+    markers = [];
 
-    // Day selector buttons
-    document.querySelectorAll('.day-selector button').forEach(btn => {
-        btn.addEventListener('click', () => {
-            loadSpecials(btn.getAttribute('data-day'));
+    data.forEach((bar, index) => {
+        const marker = new google.maps.Marker({
+            position: { lat: parseFloat(bar.lat), lng: parseFloat(bar.lng) },
+            map: map,
+            title: bar.name
         });
-    });
 
-    // Manual bar entry
-    document.getElementById('manual-form').addEventListener('submit', e => {
-        e.preventDefault();
-        alert('Manual bar addition not yet connected to backend. Admin panel can be used.');
+        marker.addListener("click", () => {
+            window.open(`https://www.google.com/maps/search/?api=1&query=${bar.lat},${bar.lng}`);
+        });
+
+        markers.push(marker);
     });
-});
+}
+
+// CLICK LIST → FOCUS MAP
+function focusMarker(index) {
+    const marker = markers[index];
+    map.panTo(marker.getPosition());
+    map.setZoom(15);
+}
+
+// START
+window.onload = initMap;
