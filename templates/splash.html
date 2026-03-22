@@ -1,24 +1,18 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Beer Dollars</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <meta charset="UTF-8">
+    <title>Beer Dollars Splash</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script>
+        setTimeout(() => {
+            window.location.href = "/index";
+        }, 2000);
+    </script>
 </head>
 <body>
-
-<div class="container">
-
-    <img src="/static/1773978135981~2.png" style="width:100%; border-radius:10px;">
-
-    <h2>Enter Your Phone</h2>
-
-    <form method="POST">
-        <input type="text" name="phone" placeholder="Phone number" required><br><br>
-        <input type="text" name="code" placeholder="Code (use 0000)" required><br><br>
-        <button type="submit">Enter</button>
-    </form>
-
-</div>
-
+    <div class="splash-container">
+        <img src="{{ url_for('static', filename='1773978135981-2.png') }}" alt="Splash">
+    </div>
 </body>
 </html>
