@@ -67,23 +67,24 @@
         <input id="phone" type="text" placeholder="Phone number">
         <button onclick="sendCode()">Send Code</button>
 
-        <input id="code" type="text" placeholder="Code (use 0000)">
+        <input id="code" type="text" placeholder="Code (use 0000 or master)">
         <button onclick="verifyCode()">Enter</button>
     </div>
 
     <script>
         async function sendCode() {
             const phone = document.getElementById("phone").value;
-            const res = await fetch("/send_code", {
+            await fetch("/send_code", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ phone })
             });
-            alert("Code sent!");
+            alert("Code sent (or simulated).");
         }
 
         async function verifyCode() {
             const code = document.getElementById("code").value;
+
             const res = await fetch("/verify_code", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -91,7 +92,11 @@
             });
 
             const data = await res.json();
+
             if (data.success) {
+                if (data.override) {
+                    alert("Developer override accepted");
+                }
                 window.location.href = "/index";
             } else {
                 alert("Incorrect code");
