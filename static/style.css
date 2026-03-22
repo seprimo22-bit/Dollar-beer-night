@@ -1,66 +1,66 @@
 body {
-    font-family: Arial, sans-serif;
-    background-color: #f0f8ff;
-    color: #003366;
     margin: 0;
-    padding: 0;
+    font-family: Arial;
+    background: #f4f8fb;
+    color: #0b3c5d;
 }
 
-header {
+.container {
+    max-width: 800px;
+    margin: auto;
+    padding: 15px;
+}
+
+h1 {
     text-align: center;
-    padding: 20px;
+    color: #0b3c5d;
 }
 
-.day-selector button {
+h2 {
+    text-align: center;
+    font-weight: normal;
+    margin-bottom: 20px;
+}
+
+.days {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+}
+
+.days button {
+    flex: 1;
     margin: 2px;
-    padding: 5px 10px;
-    border: 1px solid #003366;
-    background-color: white;
-    color: #003366;
+    padding: 10px;
+    border: none;
+    background: #0b3c5d;
+    color: white;
+    border-radius: 5px;
     cursor: pointer;
 }
 
-.day-selector button:hover {
-    background-color: #003366;
-    color: white;
+.days button:hover {
+    background: #145d85;
 }
 
-.bar-list {
-    margin: 20px auto;
-    width: 90%;
-    max-width: 600px;
+#list {
+    margin-bottom: 15px;
 }
 
-.bar-item {
-    border-bottom: 1px solid #003366;
-    padding: 10px 0;
+.card {
+    background: white;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-left: 5px solid #0b3c5d;
+    cursor: pointer;
 }
 
-.map-container {
-    width: 90%;
-    max-width: 600px;
+.card:hover {
+    background: #eef6fb;
+}
+
+#map {
     height: 300px;
-    margin: 20px auto;
-    border: 2px solid #003366;
-}
-
-.manual-entry {
-    width: 90%;
-    max-width: 600px;
-    margin: 20px auto;
-}
-
-.splash-body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-}
-
-.splash-container {
-    text-align: center;
-}
-
-.splash-image {
-    max-width: 300px;
+    border: 3px solid #0b3c5d;
+    border-radius: 10px;
 }
