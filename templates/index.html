@@ -1,40 +1,26 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>Beer Dollars</title>
-
-    <link rel="stylesheet" href="/static/style.css">
-
-    <!-- Google Maps -->
-    <script src="https://maps.googleapis.com/maps/api/js?key={{ config['GOOGLE_MAPS_API_KEY'] }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </head>
 <body>
-
-<div class="container">
-
-    <h1>🍺 Beer Dollars</h1>
-    <h2>Stretch Your Beer Money</h2>
-
-    <!-- DAY SELECTOR -->
-    <div class="days">
-        <button onclick="loadDay('Monday')">Mon</button>
-        <button onclick="loadDay('Tuesday')">Tue</button>
-        <button onclick="loadDay('Wednesday')">Wed</button>
-        <button onclick="loadDay('Thursday')">Thu</button>
-        <button onclick="loadDay('Friday')">Fri</button>
-        <button onclick="loadDay('Saturday')">Sat</button>
-        <button onclick="loadDay('Sunday')">Sun</button>
+    <div class="top-bar">
+        <h1>Beer Dollars</h1>
+        <input type="text" id="filter" placeholder="Filter bars">
     </div>
 
-    <!-- LIST -->
-    <div id="list"></div>
-
-    <!-- MAP -->
     <div id="map"></div>
 
-</div>
-
-<script src="/static/script.js"></script>
-
+    <div class="add-bar-form">
+        <h2>Add a Bar</h2>
+        <input id="bar-name" placeholder="Name">
+        <input id="bar-lat" placeholder="Latitude">
+        <input id="bar-lng" placeholder="Longitude">
+        <input id="bar-desc" placeholder="Description">
+        <button onclick="submitBar()">Submit</button>
+    </div>
 </body>
 </html>
