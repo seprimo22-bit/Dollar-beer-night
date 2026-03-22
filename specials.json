@@ -8,3 +8,15 @@
         "verified": true
     }
 ]
+
+
+[
+    {
+        "id": 2
+        "name": "Sample Bar",
+        "lat": 40.7128,
+        "lng": -74.0060,
+        "description": "Happy hour specials",
+        "verified": true
+    }
+]
