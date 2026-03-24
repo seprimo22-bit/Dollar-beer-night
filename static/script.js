@@ -3,10 +3,13 @@
 // ===============================
 
 // ------- CONFIG -------
-const API_GET_SPECIALS = "/api/specials"; // Updated to match standard Flask patterns
+const API_GET_SPECIALS = "/api/specials"; 
 const API_ADD_SPECIAL  = "/api/add_special";
 const MAP_DEFAULT_ZOOM = 11;
 const MAP_DEFAULT_CENTER = { lat: 40.75, lng: -80.75 }; 
+
+// This ensures your script is looking for the exact key name from your Render Environment
+const GOOGLE_MAPS_API_KEY = "{{ GOOGLE_MAPS_KEY }}"; 
 
 // ------- GLOBAL STATE -------
 let map;
@@ -26,7 +29,6 @@ function getBeerDollarsDay() {
     const hour = now.getHours();
     const minute = now.getMinutes();
 
-    // After midnight but before 2:30 AM → treat as previous day
     if (hour < 2 || (hour === 2 && minute <= 30)) {
         now.setDate(now.getDate() - 1);
     }
@@ -46,33 +48,31 @@ const greetings = {
 };
 
 // ===============================
-// MAIN INITIALIZATION (The "Entry Point")
+// MAIN INITIALIZATION
 // ===============================
 function initBeerDollars() {
-    console.log("System Initializing...");
+    console.log("System Initializing with GOOGLE_MAPS_API_KEY...");
     
-    // 1. Setup DOM References
     listContainer     = document.getElementById("bar-list");
     dayTabsContainer  = document.getElementById("day-tabs");
-    greetingBanner    = document.getElementById("greeting-text"); // Matches your HTML ID
+    greetingBanner    = document.getElementById("greeting-text"); 
     addButton         = document.getElementById("add-special-btn");
     addModal          = document.getElementById("add-modal");
     addForm           = document.getElementById("add-form");
     addCloseBtn       = document.getElementById("add-close");
 
-    // 2. Initialize the Map
+    // Initialize Map using the Google library
     map = new google.maps.Map(document.getElementById("map"), {
         center: MAP_DEFAULT_CENTER,
         zoom: MAP_DEFAULT_ZOOM,
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,
-        styles: [ { "featureType": "poi.business", "stylers": [{ "visibility": "off" }] } ] // Cleaner look
+        styles: [ { "featureType": "poi.business", "stylers": [{ "visibility": "off" }] } ]
     });
 
     infoWindow = new google.maps.InfoWindow();
 
-    // 3. Event Listeners
     if (addButton) addButton.onclick = () => openAddModalWithLocation(null, null);
     if (addCloseBtn) addCloseBtn.onclick = closeAddModal;
     if (addForm) addForm.onsubmit = handleAddFormSubmit;
@@ -81,7 +81,6 @@ function initBeerDollars() {
         openAddModalWithLocation(e.latLng.lat(), e.latLng.lng());
     });
 
-    // 4. Setup Content
     const today = getBeerDollarsDay();
     initDayTabs();
     setSelectedDay(today);
@@ -93,7 +92,6 @@ function initBeerDollars() {
     loadSpecials();
 }
 
-// Make sure it's globally accessible for the Google Script Callback
 window.initBeerDollars = initBeerDollars;
 
 // ===============================
@@ -105,7 +103,7 @@ async function loadSpecials() {
         specials = await res.json();
         renderSpecials();
     } catch (err) {
-        console.error("Error loading specials:", err);
+        console.error("Error loading specials with GOOGLE_MAPS_API_KEY context:", err);
     }
 }
 
