@@ -6,10 +6,10 @@
 const API_GET_SPECIALS = "/api/specials"; 
 const API_ADD_SPECIAL  = "/api/add_special";
 const MAP_DEFAULT_ZOOM = 11;
-const MAP_DEFAULT_CENTER = { lat: 40.75, lng: -80.75 }; 
+const MAP_DEFAULT_CENTER = { lat: 41.1009, lng: -80.6495 }; 
 
-// This ensures your script is looking for the exact key name from your Render Environment
-const GOOGLE_MAPS_API_KEY = "{{ GOOGLE_MAPS_KEY }}"; 
+// EXACT MATCH TO YOUR RENDER ENVIRONMENT VARIABLE
+const GOOGLE_MAPS_API_KEY = "{{ GOOGLE_MAPS_API_KEY }}"; 
 
 // ------- GLOBAL STATE -------
 let map;
@@ -18,7 +18,7 @@ let specials = [];
 let selectedDay = null;
 let infoWindow = null;
 
-// DOM refs
+// DOM references
 let listContainer, dayTabsContainer, greetingBanner, addButton, addModal, addForm, addCloseBtn;
 
 // ===============================
@@ -61,7 +61,7 @@ function initBeerDollars() {
     addForm           = document.getElementById("add-form");
     addCloseBtn       = document.getElementById("add-close");
 
-    // Initialize Map using the Google library
+    // Initialize Map using the Google Library
     map = new google.maps.Map(document.getElementById("map"), {
         center: MAP_DEFAULT_CENTER,
         zoom: MAP_DEFAULT_ZOOM,
@@ -103,23 +103,25 @@ async function loadSpecials() {
         specials = await res.json();
         renderSpecials();
     } catch (err) {
-        console.error("Error loading specials with GOOGLE_MAPS_API_KEY context:", err);
+        console.error("Error loading specials with GOOGLE_MAPS_API_KEY:", err);
     }
 }
 
 function renderSpecials() {
     if (!map || !listContainer) return;
+    
     markers.forEach(m => m.setMap(null));
     markers = [];
     listContainer.innerHTML = "";
 
     const filtered = specials.filter(s => s.day === selectedDay);
-    document.getElementById("deal-count").innerText = `${filtered.length} deals`;
+    const countBadge = document.getElementById("deal-count");
+    if (countBadge) countBadge.innerText = `${filtered.length} deals`;
 
     filtered.forEach((special) => {
         const marker = new google.maps.Marker({
             position: { lat: parseFloat(special.lat), lng: parseFloat(special.lng) },
-            map,
+            map: map,
             title: special.name,
             animation: google.maps.Animation.DROP
         });
@@ -152,8 +154,8 @@ function openInfoWindowForSpecial(marker, special) {
             <span style="color: #1B6FFC; font-weight: bold;">${special.deal}</span><br>
             <small>${special.address || ''}</small><br><br>
             <button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${special.lat},${special.lng}', '_blank')" 
-                    style="background: #FFC312; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-weight: bold;">
-                Navigate
+                    style="background: #FFC312; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%;">
+                Get Directions
             </button>
         </div>
     `;
@@ -166,6 +168,7 @@ function openInfoWindowForSpecial(marker, special) {
 // ===============================
 function initDayTabs() {
     const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    if (!dayTabsContainer) return;
     dayTabsContainer.innerHTML = "";
     days.forEach(day => {
         const btn = document.createElement("button");
@@ -179,20 +182,20 @@ function initDayTabs() {
 
 function setSelectedDay(day) {
     selectedDay = day;
-    const buttons = dayTabsContainer.querySelectorAll(".day-tab");
+    const buttons = document.querySelectorAll(".day-tab");
     buttons.forEach(btn => btn.classList.toggle("active-day", btn.dataset.day === day));
     renderSpecials();
 }
 
 function openAddModalWithLocation(lat, lng) {
-    window.pendingLat = lat;
-    window.pendingLng = lng;
-    addModal.classList.add("visible");
+    window.pendingLat = lat || MAP_DEFAULT_CENTER.lat;
+    window.pendingLng = lng || MAP_DEFAULT_CENTER.lng;
+    if (addModal) addModal.classList.add("visible");
 }
 
 function closeAddModal() {
-    addModal.classList.remove("visible");
-    addForm.reset();
+    if (addModal) addModal.classList.remove("visible");
+    if (addForm) addForm.reset();
 }
 
 async function handleAddFormSubmit(e) {
@@ -203,18 +206,22 @@ async function handleAddFormSubmit(e) {
         address: formData.get("address"),
         deal: formData.get("deal"),
         day: formData.get("day"),
-        lat: window.pendingLat || MAP_DEFAULT_CENTER.lat,
-        lng: window.pendingLng || MAP_DEFAULT_CENTER.lng
+        lat: window.pendingLat,
+        lng: window.pendingLng
     };
 
-    const res = await fetch(API_ADD_SPECIAL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-    });
+    try {
+        const res = await fetch(API_ADD_SPECIAL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
 
-    if (res.ok) {
-        await loadSpecials();
-        closeAddModal();
+        if (res.ok) {
+            await loadSpecials();
+            closeAddModal();
+        }
+    } catch (err) {
+        console.error("Submit error with GOOGLE_MAPS_API_KEY logic:", err);
     }
 }
