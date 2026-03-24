@@ -1,13 +1,12 @@
-
 // ===============================
 // BEER DOLLARS - script.js
 // ===============================
 
 // ------- CONFIG -------
-const API_GET_SPECIALS = "/get_specials";
-const API_ADD_SPECIAL  = "/add_special";
+const API_GET_SPECIALS = "/api/specials"; // Updated to match standard Flask patterns
+const API_ADD_SPECIAL  = "/api/add_special";
 const MAP_DEFAULT_ZOOM = 11;
-const MAP_DEFAULT_CENTER = { lat: 40.75, lng: -80.75 }; // adjust to your region
+const MAP_DEFAULT_CENTER = { lat: 40.75, lng: -80.75 }; 
 
 // ------- GLOBAL STATE -------
 let map;
@@ -17,13 +16,7 @@ let selectedDay = null;
 let infoWindow = null;
 
 // DOM refs
-let listContainer;
-let dayTabsContainer;
-let greetingBanner;
-let addButton;
-let addModal;
-let addForm;
-let addCloseBtn;
+let listContainer, dayTabsContainer, greetingBanner, addButton, addModal, addForm, addCloseBtn;
 
 // ===============================
 // DAY / TIME LOGIC
@@ -52,104 +45,63 @@ const greetings = {
     "Sunday": "Sunday Funday — One More Round!"
 };
 
-function showGreeting(day) {
-    if (!greetingBanner) return;
-    greetingBanner.innerText = greetings[day] || "Stretch Your Beer Money!";
-    greetingBanner.classList.add("pop-animation");
-}
-
 // ===============================
-// MAP INIT
+// MAIN INITIALIZATION (The "Entry Point")
 // ===============================
-function initMap() {
-    map = new google.maps.Map(document.getElementById("map"), {
-        center: MAP_DEFAULT_CENTER,
-        zoom: MAP_DEFAULT_ZOOM,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false
-    });
-
-    infoWindow = new google.maps.InfoWindow();
-
-    // Click on map to add a bar at that location
-    map.addListener("click", (e) => {
-        openAddModalWithLocation(e.latLng.lat(), e.latLng.lng());
-    });
-}
-
-// ===============================
-// DOM REFERENCES & EVENTS
-// ===============================
-function initDOMRefs() {
+function initBeerDollars() {
+    console.log("System Initializing...");
+    
+    // 1. Setup DOM References
     listContainer     = document.getElementById("bar-list");
     dayTabsContainer  = document.getElementById("day-tabs");
-    greetingBanner    = document.getElementById("greeting");
+    greetingBanner    = document.getElementById("greeting-text"); // Matches your HTML ID
     addButton         = document.getElementById("add-special-btn");
     addModal          = document.getElementById("add-modal");
     addForm           = document.getElementById("add-form");
     addCloseBtn       = document.getElementById("add-close");
 
-    if (addButton) {
-        addButton.addEventListener("click", () => openAddModalWithLocation(null, null));
-    }
+    // 2. Initialize the Map
+    map = new google.maps.Map(document.getElementById("map"), {
+        center: MAP_DEFAULT_CENTER,
+        zoom: MAP_DEFAULT_ZOOM,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        styles: [ { "featureType": "poi.business", "stylers": [{ "visibility": "off" }] } ] // Cleaner look
+    });
 
-    if (addCloseBtn) {
-        addCloseBtn.addEventListener("click", closeAddModal);
-    }
+    infoWindow = new google.maps.InfoWindow();
 
-    if (addForm) {
-        addForm.addEventListener("submit", handleAddFormSubmit);
-    }
+    // 3. Event Listeners
+    if (addButton) addButton.onclick = () => openAddModalWithLocation(null, null);
+    if (addCloseBtn) addCloseBtn.onclick = closeAddModal;
+    if (addForm) addForm.onsubmit = handleAddFormSubmit;
+    
+    map.addListener("click", (e) => {
+        openAddModalWithLocation(e.latLng.lat(), e.latLng.lng());
+    });
 
+    // 4. Setup Content
+    const today = getBeerDollarsDay();
     initDayTabs();
+    setSelectedDay(today);
+    
+    if (greetingBanner) {
+        greetingBanner.innerText = greetings[today] || "Stretch Your Beer Money!";
+    }
+
+    loadSpecials();
 }
 
-function initDayTabs() {
-    if (!dayTabsContainer) return;
-    const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-    dayTabsContainer.innerHTML = "";
-
-    days.forEach(day => {
-        const btn = document.createElement("button");
-        btn.className = "day-tab";
-        btn.innerText = day.slice(0,3);
-        btn.dataset.day = day;
-        btn.addEventListener("click", () => {
-            setSelectedDay(day);
-        });
-        dayTabsContainer.appendChild(btn);
-    });
-}
+// Make sure it's globally accessible for the Google Script Callback
+window.initBeerDollars = initBeerDollars;
 
 // ===============================
-// DAY SELECTION
-// ===============================
-function setSelectedDay(day) {
-    selectedDay = day;
-    highlightSelectedDayTab();
-    renderSpecials();
-}
-
-function highlightSelectedDayTab() {
-    if (!dayTabsContainer) return;
-    const buttons = dayTabsContainer.querySelectorAll(".day-tab");
-    buttons.forEach(btn => {
-        if (btn.dataset.day === selectedDay) {
-            btn.classList.add("active-day");
-        } else {
-            btn.classList.remove("active-day");
-        }
-    });
-}
-
-// ===============================
-// FETCH SPECIALS
+// RENDER LOGIC
 // ===============================
 async function loadSpecials() {
     try {
         const res = await fetch(API_GET_SPECIALS);
-        if (!res.ok) throw new Error("Failed to load specials");
         specials = await res.json();
         renderSpecials();
     } catch (err) {
@@ -157,58 +109,52 @@ async function loadSpecials() {
     }
 }
 
-// ===============================
-// RENDER SPECIALS (LIST + MAP)
-// ===============================
-function clearMarkers() {
-    markers.forEach(m => m.setMap(null));
-    markers = [];
-}
-
 function renderSpecials() {
     if (!map || !listContainer) return;
-    clearMarkers();
+    markers.forEach(m => m.setMap(null));
+    markers = [];
     listContainer.innerHTML = "";
 
     const filtered = specials.filter(s => s.day === selectedDay);
+    document.getElementById("deal-count").innerText = `${filtered.length} deals`;
 
     filtered.forEach((special) => {
         const marker = new google.maps.Marker({
-            position: { lat: special.lat, lng: special.lng },
+            position: { lat: parseFloat(special.lat), lng: parseFloat(special.lng) },
             map,
-            title: special.name
+            title: special.name,
+            animation: google.maps.Animation.DROP
         });
 
-        marker.addListener("click", () => {
-            openInfoWindowForSpecial(marker, special);
-        });
-
+        marker.addListener("click", () => openInfoWindowForSpecial(marker, special));
         markers.push(marker);
 
         const item = document.createElement("div");
         item.className = "bar-item";
         item.innerHTML = `
-            <div class="bar-name">${special.name}</div>
-            <div class="bar-deal">${special.deal}</div>
-            <div class="bar-address">${special.address}</div>
+            <div class="bar-info">
+                <div class="bar-name">${special.name}</div>
+                <div class="bar-deal">${special.deal}</div>
+                <div class="bar-address">${special.address || ''}</div>
+            </div>
         `;
-        item.addEventListener("click", () => {
+        item.onclick = () => {
             map.panTo(marker.getPosition());
-            map.setZoom(14);
+            map.setZoom(15);
             openInfoWindowForSpecial(marker, special);
-        });
-
+        };
         listContainer.appendChild(item);
     });
 }
 
 function openInfoWindowForSpecial(marker, special) {
     const content = `
-        <div class="info-window">
-            <div class="info-name">${special.name}</div>
-            <div class="info-deal">${special.deal}</div>
-            <div class="info-address">${special.address}</div>
-            <button class="nav-btn" onclick="openNavigation(${special.lat}, ${special.lng})">
+        <div style="color: #1a1a2e; padding: 10px;">
+            <strong style="font-size: 16px;">${special.name}</strong><br>
+            <span style="color: #1B6FFC; font-weight: bold;">${special.deal}</span><br>
+            <small>${special.address || ''}</small><br><br>
+            <button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${special.lat},${special.lng}', '_blank')" 
+                    style="background: #FFC312; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-weight: bold;">
                 Navigate
             </button>
         </div>
@@ -218,87 +164,59 @@ function openInfoWindowForSpecial(marker, special) {
 }
 
 // ===============================
-// NAVIGATION
+// TABS & MODAL
 // ===============================
-function openNavigation(lat, lng) {
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-    window.open(url, "_blank");
+function initDayTabs() {
+    const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    dayTabsContainer.innerHTML = "";
+    days.forEach(day => {
+        const btn = document.createElement("button");
+        btn.className = "day-tab";
+        btn.innerText = day.slice(0,3);
+        btn.onclick = () => setSelectedDay(day);
+        btn.dataset.day = day;
+        dayTabsContainer.appendChild(btn);
+    });
 }
-window.openNavigation = openNavigation;
 
-// ===============================
-// ADD SPECIAL MODAL
-// ===============================
-let pendingLat = null;
-let pendingLng = null;
+function setSelectedDay(day) {
+    selectedDay = day;
+    const buttons = dayTabsContainer.querySelectorAll(".day-tab");
+    buttons.forEach(btn => btn.classList.toggle("active-day", btn.dataset.day === day));
+    renderSpecials();
+}
 
 function openAddModalWithLocation(lat, lng) {
-    pendingLat = lat;
-    pendingLng = lng;
-    if (!addModal) return;
+    window.pendingLat = lat;
+    window.pendingLng = lng;
     addModal.classList.add("visible");
 }
 
 function closeAddModal() {
-    if (!addModal) return;
     addModal.classList.remove("visible");
-    pendingLat = null;
-    pendingLng = null;
-    if (addForm) addForm.reset();
+    addForm.reset();
 }
 
 async function handleAddFormSubmit(e) {
     e.preventDefault();
     const formData = new FormData(addForm);
-
-    const name    = formData.get("name")?.toString().trim();
-    const address = formData.get("address")?.toString().trim();
-    const deal    = formData.get("deal")?.toString().trim();
-    const day     = formData.get("day")?.toString().trim();
-
-    if (!name || !deal || !day) {
-        alert("Please fill in at least name, deal, and day.");
-        return;
-    }
-
     const payload = {
-        name,
-        address,
-        deal,
-        day,
-        lat: pendingLat,
-        lng: pendingLng
+        name: formData.get("name"),
+        address: formData.get("address"),
+        deal: formData.get("deal"),
+        day: formData.get("day"),
+        lat: window.pendingLat || MAP_DEFAULT_CENTER.lat,
+        lng: window.pendingLng || MAP_DEFAULT_CENTER.lng
     };
 
-    try {
-        const res = await fetch(API_ADD_SPECIAL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
+    const res = await fetch(API_ADD_SPECIAL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
 
-        if (!res.ok) throw new Error("Failed to add special");
-
+    if (res.ok) {
         await loadSpecials();
         closeAddModal();
-    } catch (err) {
-        console.error("Error adding special:", err);
-        alert("Could not add special. Try again.");
     }
 }
-
-// ===============================
-// INITIALIZATION
-// ===============================
-async function initBeerDollars() {
-    initDOMRefs();
-    initMap();
-
-    const today = getBeerDollarsDay();
-    setSelectedDay(today);
-    showGreeting(today);
-
-    await loadSpecials();
-}
-
-window.initBeerDollars = initBeerDollars;
