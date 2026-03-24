@@ -13,23 +13,27 @@ app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "brick_truth_secret_99") 
 
 # 2. Config & Credentials 
-# MATCHED TO YOUR RENDER DASHBOARD: GOOGLE_MAPS_API_KEY
-GOOGLE_MAPS_KEY = os.getenv("GOOGLE_MAPS_API_KEY") 
+# MATCHED TO YOUR RENDER DASHBOARD EXACTLY: GOOGLE_MAPS_API_KEY
+GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY") 
 TWILIO_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_VERIFY_SERVICE = os.getenv("TWILIO_VERIFY_SERVICE_SID")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Log verification for the Render console
-if not GOOGLE_MAPS_KEY:
-    print("⚠️ WARNING: GOOGLE_MAPS_API_KEY is missing from environment!")
+# Log verification for the Render console to confirm the anchor is set
+if not GOOGLE_MAPS_API_KEY:
+    print("❌ ERROR: GOOGLE_MAPS_API_KEY is missing from Render environment!")
 else:
     print("✅ GOOGLE_MAPS_API_KEY detected successfully.")
 
 # --- DATABASE CONNECTION HELPER ---
 def get_db_connection():
-    # Render usually provides DATABASE_URL; ensuring it connects via psycopg
-    return psycopg.connect(DATABASE_URL)
+    # Render's DATABASE_URL often needs 'postgresql://' instead of 'postgres://' for psycopg 3
+    if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+        conn_url = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    else:
+        conn_url = DATABASE_URL
+    return psycopg.connect(conn_url)
 
 # --- ROUTES ---
 
@@ -69,17 +73,19 @@ def verify_code():
 def index():
     """
     The Money Maker UI. 
-    Crucial: Passes the API key so the Map actually turns on.
+    Crucial: Passes the exact GOOGLE_MAPS_API_KEY so the Map turns on.
     """
     if not session.get('authenticated'):
         return redirect(url_for('home'))
         
-    return render_template('index.html', GOOGLE_MAPS_KEY=GOOGLE_MAPS_KEY)
+    # Injecting the variable into index.html
+    return render_template('index.html', GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY)
 
-# --- API ENDPOINTS ---
+# --- API ENDPOINTS (The Data Feed) ---
 
 @app.route('/api/specials', methods=['GET'])
 def get_specials():
+    """Fetches the beer deals from your Postgres DB."""
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
@@ -93,6 +99,7 @@ def get_specials():
 
 @app.route('/api/add_special', methods=['POST'])
 def add_special():
+    """Saves a new deal to the pipeline."""
     data = request.json
     try:
         with get_db_connection() as conn:
@@ -108,5 +115,7 @@ def add_special():
         return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == '__main__':
+    # Use Render's dynamic port
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+    
