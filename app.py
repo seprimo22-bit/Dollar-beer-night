@@ -9,44 +9,40 @@ from twilio.rest import Client
 load_dotenv()
 
 app = Flask(__name__)
-# Secure the session for your redirect logic
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "brick_truth_secret_99") 
+# Secure the session
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "brick_truth_99") 
 
 # 2. Config & Credentials 
-# MATCHED TO YOUR RENDER DASHBOARD EXACTLY: GOOGLE_MAPS_API_KEY
+# CALLED EXACTLY AS IN RENDER: GOOGLE_MAPS_API_KEY
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY") 
 TWILIO_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_VERIFY_SERVICE = os.getenv("TWILIO_VERIFY_SERVICE_SID")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Log verification for the Render console to confirm the anchor is set
-if not GOOGLE_MAPS_API_KEY:
-    print("❌ ERROR: GOOGLE_MAPS_API_KEY is missing from Render environment!")
-else:
-    print("✅ GOOGLE_MAPS_API_KEY detected successfully.")
-
 # --- DATABASE CONNECTION HELPER ---
 def get_db_connection():
-    # Render's DATABASE_URL often needs 'postgresql://' instead of 'postgres://' for psycopg 3
-    if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
-        conn_url = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-    else:
-        conn_url = DATABASE_URL
+    """
+    Render provides 'postgres://', but psycopg3 REQUIRES 'postgresql://'.
+    This fix prevents the 500 error on DB connection.
+    """
+    if not DATABASE_URL:
+        return None
+    
+    conn_url = DATABASE_URL
+    if conn_url.startswith("postgres://"):
+        conn_url = conn_url.replace("postgres://", "postgresql://", 1)
+    
     return psycopg.connect(conn_url)
 
 # --- ROUTES ---
 
 @app.route('/')
 def home():
-    """Initial landing page - likely your login/SMS entry."""
     return render_template('login.html')
 
 @app.route('/verify_code', methods=['POST'])
 def verify_code():
-    """
-    Handles the Paper Zero pipeline verification.
-    """
     data = request.json
     phone = data.get('phone')
     code = data.get('code')
@@ -61,61 +57,41 @@ def verify_code():
 
         if verification_check.status == 'approved':
             session['authenticated'] = True
-            session['user_phone'] = phone
             return jsonify({"success": True, "redirect": url_for('index')})
         else:
             return jsonify({"success": False, "error": "Invalid Code"}), 401
     except Exception as e:
-        print(f"Verification Error: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        print(f"Twilio Error: {e}")
+        return jsonify({"success": False, "error": "SMS Verification Failed"}), 500
 
 @app.route('/index')
 def index():
     """
-    The Money Maker UI. 
-    Crucial: Passes the exact GOOGLE_MAPS_API_KEY so the Map turns on.
+    The main map page.
+    Passes GOOGLE_MAPS_API_KEY to the index.html.
     """
     if not session.get('authenticated'):
         return redirect(url_for('home'))
         
-    # Injecting the variable into index.html
+    # PASSING THE EXACT KEY NAME
     return render_template('index.html', GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY)
 
-# --- API ENDPOINTS (The Data Feed) ---
+# --- API ENDPOINTS ---
 
 @app.route('/api/specials', methods=['GET'])
 def get_specials():
-    """Fetches the beer deals from your Postgres DB."""
     try:
-        with get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT name, address, deal, day, lat, lng FROM specials")
-                columns = [desc[0] for desc in cur.description]
-                results = [dict(zip(columns, row)) for row in cur.fetchall()]
-                return jsonify(results)
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute("SELECT name, address, deal, day, lat, lng FROM specials")
+            columns = [desc[0] for desc in cur.description]
+            results = [dict(zip(columns, row)) for row in cur.fetchall()]
+            return jsonify(results)
     except Exception as e:
-        print(f"DB Fetch Error: {e}")
+        print(f"Database Error: {e}")
         return jsonify([]), 500
 
-@app.route('/api/add_special', methods=['POST'])
-def add_special():
-    """Saves a new deal to the pipeline."""
-    data = request.json
-    try:
-        with get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "INSERT INTO specials (name, address, deal, day, lat, lng) VALUES (%s, %s, %s, %s, %s, %s)",
-                    (data['name'], data['address'], data['deal'], data['day'], data['lat'], data['lng'])
-                )
-            conn.commit()
-        return jsonify({"success": True})
-    except Exception as e:
-        print(f"DB Insert Error: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
-
 if __name__ == '__main__':
-    # Use Render's dynamic port
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
     
