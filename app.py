@@ -23,8 +23,19 @@ def home():
     # Calling splash.html as seen in your templates folder
     return render_template('splash.html')
 
+# --- MASTER OVERRIDE ADDED HERE ---
+@app.route('/9999')
+def master_override():
+    """Forces the session to authenticated and redirects to the map."""
+    session['authenticated'] = True
+    return redirect(url_for('index'))
+
 @app.route('/index')
 def index():
+    # Only allows access if authenticated via splash or the 9999 override
+    if not session.get('authenticated'):
+        return redirect(url_for('home'))
+    
     # Pass the ALL CAPS variable to the template
     return render_template('index.html', GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY)
 
