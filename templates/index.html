@@ -1,505 +1,105 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Beer Dollars</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --navy: #0A2540;
-    --navy2: #0d3060;
-    --blue: #1B6FFC;
-    --blue2: #1558d6;
-    --gold: #FFC312;
-    --gold2: #e6b000;
-    --white: #ffffff;
-    --offwhite: #f5f7fa;
-    --text: #1a1a2e;
-    --muted: #8a9bb0;
-    --border: #e2e8f0;
-    --shadow: 0 4px 24px rgba(10,37,64,0.12);
-    --shadow-lg: 0 8px 40px rgba(10,37,64,0.18);
-    --font: 'Nunito', Arial, sans-serif;
-    --mono: 'Share Tech Mono', monospace;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body, html {
-    height: 100%;
-    overflow: hidden;
-    font-family: var(--font);
-    background: var(--navy);
-  }
-
-  /* ── MAP ── */
-  #map {
-    width: 100%; height: 100%;
-    position: absolute; top: 0; left: 0; z-index: 1;
-  }
-
-  /* ── TOP BAR ── */
-  #topbar {
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    z-index: 20;
-    background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 100%);
-    padding: 0 16px;
-    box-shadow: 0 2px 20px rgba(0,0,0,0.4);
-  }
-
-  .topbar-main {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 0 8px;
-  }
-
-  .app-logo {
-    width: 38px; height: 38px;
-    background: var(--gold);
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 20px;
-    flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(255,195,18,0.4);
-  }
-
-  .app-titles { flex: 1; }
-
-  .app-name {
-    font-size: 18px;
-    font-weight: 900;
-    color: var(--white);
-    letter-spacing: .01em;
-    line-height: 1;
-  }
-
-  .app-name span { color: var(--gold); }
-
-  .app-sub {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: rgba(255,255,255,0.5);
-    letter-spacing: .08em;
-    margin-top: 2px;
-  }
-
-  #greeting-text {
-    font-size: 12px;
-    color: var(--gold);
-    font-weight: 700;
-    text-align: right;
-    flex-shrink: 0;
-  }
-
-  /* search */
-  .search-wrap {
-    padding: 0 0 10px;
-    position: relative;
-  }
-
-  .search-wrap input {
-    width: 100%;
-    padding: 10px 14px 10px 38px;
-    background: rgba(255,255,255,0.1);
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 8px;
-    color: var(--white);
-    font-family: var(--font);
-    font-size: 14px;
-    outline: none;
-    transition: background .2s, border-color .2s;
-  }
-
-  .search-wrap input::placeholder { color: rgba(255,255,255,0.4); }
-  .search-wrap input:focus { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.3); }
-
-  .search-icon {
-    position: absolute;
-    left: 12px; top: 50%; transform: translateY(-50%);
-    font-size: 15px; opacity: 0.5;
-  }
-
-  /* DAY TABS */
-  #day-tabs {
-    display: flex;
-    gap: 6px;
-    padding: 0 0 12px;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  #day-tabs::-webkit-scrollbar { display: none; }
-
-  .day-tab {
-    padding: 6px 14px;
-    background: rgba(255,255,255,0.1);
-    color: rgba(255,255,255,0.6);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: 700;
-    font-family: var(--font);
-    white-space: nowrap;
-    cursor: pointer;
-    transition: all .15s;
-    flex-shrink: 0;
-  }
-
-  .day-tab:hover { background: rgba(255,255,255,0.18); color: var(--white); }
-
-  .day-tab.active-day {
-    background: var(--gold);
-    color: var(--navy);
-    border-color: var(--gold);
-    box-shadow: 0 2px 12px rgba(255,195,18,0.4);
-  }
-
-  /* ── BOTTOM PANEL ── */
-  #bottom-panel {
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    z-index: 20;
-    background: var(--white);
-    border-radius: 20px 20px 0 0;
-    box-shadow: 0 -4px 30px rgba(0,0,0,0.2);
-    max-height: 42%;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .panel-handle {
-    width: 40px; height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    margin: 10px auto 0;
-    flex-shrink: 0;
-  }
-
-  .panel-header {
-    padding: 10px 16px 8px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-shrink: 0;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .panel-title {
-    font-size: 15px;
-    font-weight: 900;
-    color: var(--navy);
-  }
-
-  .deal-count {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--muted);
-    background: var(--offwhite);
-    padding: 3px 8px;
-    border-radius: 10px;
-  }
-
-  /* BAR LIST */
-  #bar-list {
-    overflow-y: auto;
-    flex: 1;
-    padding: 8px 12px 12px;
-    scrollbar-width: thin;
-  }
-
-  .bar-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px;
-    border-radius: 10px;
-    margin-bottom: 6px;
-    cursor: pointer;
-    transition: background .15s;
-    border: 1px solid transparent;
-  }
-
-  .bar-item:hover { background: var(--offwhite); border-color: var(--border); }
-  .bar-item.active { background: #EFF6FF; border-color: #BFDBFE; }
-
-  .bar-icon {
-    width: 42px; height: 42px;
-    background: linear-gradient(135deg, var(--blue) 0%, var(--navy2) 100%);
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 20px;
-    flex-shrink: 0;
-  }
-
-  .bar-info { flex: 1; min-width: 0; }
-
-  .bar-name {
-    font-size: 15px;
-    font-weight: 800;
-    color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .bar-deal {
-    font-size: 13px;
-    color: var(--blue);
-    font-weight: 700;
-    margin-top: 2px;
-  }
-
-  .bar-address {
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 2px;
-  }
-
-  .bar-dist {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--muted);
-    text-align: right;
-    flex-shrink: 0;
-  }
-
-  .empty-state {
-    text-align: center;
-    padding: 30px 20px;
-    color: var(--muted);
-  }
-
-  .empty-state .empty-icon { font-size: 36px; margin-bottom: 8px; }
-  .empty-state p { font-size: 14px; font-weight: 600; }
-
-  /* ── ADD BUTTON ── */
-  #add-special-btn {
-    position: absolute;
-    bottom: calc(42% + 16px);
-    right: 20px;
-    width: 56px; height: 56px;
-    background: linear-gradient(135deg, var(--gold) 0%, var(--gold2) 100%);
-    color: var(--navy);
-    border: none;
-    border-radius: 50%;
-    font-size: 26px;
-    font-weight: 900;
-    z-index: 25;
-    box-shadow: 0 4px 20px rgba(255,195,18,0.5);
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: transform .15s, box-shadow .15s;
-  }
-
-  #add-special-btn:hover {
-    transform: scale(1.08);
-    box-shadow: 0 6px 28px rgba(255,195,18,0.65);
-  }
-
-  /* ── MODAL ── */
-  #add-modal {
-    position: fixed;
-    inset: 0;
-    background: rgba(10,37,64,0.7);
-    display: none;
-    justify-content: center;
-    align-items: flex-end;
-    z-index: 40;
-    backdrop-filter: blur(4px);
-  }
-
-  #add-modal.visible { display: flex; }
-
-  #add-modal-content {
-    background: var(--white);
-    padding: 24px 20px 32px;
-    width: 100%;
-    max-width: 480px;
-    border-radius: 20px 20px 0 0;
-    animation: slideUp .25s ease;
-  }
-
-  @keyframes slideUp {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
-  }
-
-  .modal-handle {
-    width: 40px; height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    margin: 0 auto 16px;
-  }
-
-  .modal-title {
-    font-size: 20px;
-    font-weight: 900;
-    color: var(--navy);
-    margin-bottom: 4px;
-  }
-
-  .modal-sub {
-    font-size: 13px;
-    color: var(--muted);
-    margin-bottom: 20px;
-  }
-
-  .modal-field { margin-bottom: 12px; }
-
-  .modal-field label {
-    display: block;
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    margin-bottom: 5px;
-  }
-
-  .modal-field input,
-  .modal-field select {
-    width: 100%;
-    padding: 11px 14px;
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    font-family: var(--font);
-    font-size: 14px;
-    color: var(--text);
-    outline: none;
-    transition: border-color .2s;
-    background: var(--white);
-  }
-
-  .modal-field input:focus,
-  .modal-field select:focus { border-color: var(--blue); }
-
-  .modal-btns { display: flex; gap: 10px; margin-top: 16px; }
-
-  .btn-save {
-    flex: 1; padding: 13px;
-    background: linear-gradient(135deg, var(--blue) 0%, var(--blue2) 100%);
-    color: var(--white);
-    border: none; border-radius: 10px;
-    font-family: var(--font); font-size: 15px; font-weight: 800;
-    cursor: pointer;
-    box-shadow: 0 4px 14px rgba(27,111,252,0.35);
-    transition: transform .15s;
-  }
-
-  .btn-save:hover { transform: translateY(-1px); }
-
-  .btn-cancel {
-    padding: 13px 20px;
-    background: var(--offwhite);
-    color: var(--muted);
-    border: 1.5px solid var(--border); border-radius: 10px;
-    font-family: var(--font); font-size: 15px; font-weight: 700;
-    cursor: pointer;
-  }
-
-  /* ── POP ANIMATION ── */
-  .pop-animation { animation: popIn .5s ease-out; }
-
-  @keyframes popIn {
-    0% { transform: translateX(-50%) scale(0.7); opacity: 0; }
-    100% { transform: translateX(-50%) scale(1); opacity: 1; }
-  }
-
-  /* Scrollbar */
-  #bar-list::-webkit-scrollbar { width: 4px; }
-  #bar-list::-webkit-scrollbar-track { background: transparent; }
-  #bar-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-</style>
-</head>
-<body>
-
-<!-- MAP -->
-<div id="map"></div>
-
-<!-- TOP BAR -->
-<div id="topbar">
-  <div class="topbar-main">
-    <div class="app-logo">🍺</div>
-    <div class="app-titles">
-      <div class="app-name"><span>Beer</span> Dollars</div>
-      <div class="app-sub">STRETCH YOUR BEER MONEY</div>
-    </div>
-    <div id="greeting-text"></div>
-  </div>
-
-  <div class="search-wrap">
-    <span class="search-icon">🔍</span>
-    <input type="text" id="search-input" placeholder="Search bars or specials...">
-  </div>
-
-  <div id="day-tabs"></div>
-</div>
-
-<!-- BOTTOM PANEL -->
-<div id="bottom-panel">
-  <div class="panel-handle"></div>
-  <div class="panel-header">
-    <div class="panel-title">Tonight's Deals</div>
-    <span class="deal-count" id="deal-count">0 deals</span>
-  </div>
-  <div id="bar-list"></div>
-</div>
-
-<!-- ADD BUTTON -->
-<button id="add-special-btn" title="Add a special">+</button>
-
-<!-- MODAL -->
-<div id="add-modal">
-  <div id="add-modal-content">
-    <div class="modal-handle"></div>
-    <div class="modal-title">Add a Special 🍺</div>
-    <div class="modal-sub">Share a deal with the community</div>
-
-    <form id="add-form">
-      <div class="modal-field">
-        <label>Bar Name</label>
-        <input type="text" name="name" placeholder="e.g. Jake's Tavern" required>
-      </div>
-      <div class="modal-field">
-        <label>Address (optional)</label>
-        <input type="text" name="address" placeholder="e.g. 123 Main St.">
-      </div>
-      <div class="modal-field">
-        <label>The Deal</label>
-        <input type="text" name="deal" placeholder="e.g. $1 Bud Lights all night" required>
-      </div>
-      <div class="modal-field">
-        <label>Day of Week</label>
-        <select name="day" required>
-          <option value="">Select Day</option>
-          <option>Sunday</option>
-          <option>Monday</option>
-          <option>Tuesday</option>
-          <option>Wednesday</option>
-          <option>Thursday</option>
-          <option>Friday</option>
-          <option>Saturday</option>
-        </select>
-      </div>
-      <div class="modal-btns">
-        <button type="submit" class="btn-save">Save Special</button>
-        <button type="button" id="add-close" class="btn-cancel">Cancel</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- SCRIPTS — identical to original, no logic changes -->
-<script src="{{ url_for('static', filename='script.js') }}"></script>
-
-<script
-  src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_KEY }}&callback=initBeerDollars"
-  async defer>
-</script>
-
-</body>
-</html>
+// This name MUST match the 'callback=' in your HTML script tag
+let map;
+let markers = [];
+
+function initBeerDollars() {
+    console.log("Google Maps API loaded. Initializing map...");
+
+    // Default center (e.g., Chicago) - Change to your preferred starting point
+    const defaultCenter = { lat: 41.8781, lng: -87.6298 };
+
+    map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 13,
+        center: defaultCenter,
+        mapId: "YOUR_MAP_ID", // Optional: Use a custom Map ID for advanced styling
+        disableDefaultUI: true,
+        zoomControl: true,
+    });
+
+    // Load existing specials from your Flask API
+    fetchSpecials();
+}
+
+// Function to fetch specials from the backend
+async function fetchSpecials() {
+    try {
+        const response = await fetch('/api/specials');
+        const specials = await response.json();
+        
+        const listContainer = document.getElementById('bar-list');
+        const countBadge = document.getElementById('deal-count');
+        
+        listContainer.innerHTML = ''; // Clear list
+        countBadge.innerText = `${specials.length} deals`;
+
+        if (specials.length === 0) {
+            listContainer.innerHTML = '<div class="empty-state"><p>No deals found for today.</p></div>';
+            return;
+        }
+
+        specials.forEach(special => {
+            createMarker(special);
+            addToList(special);
+        });
+    } catch (err) {
+        console.error("Error fetching specials:", err);
+    }
+}
+
+// Create a map marker for a bar
+function createMarker(special) {
+    if (!special.lat || !special.lng) return;
+
+    const marker = new google.maps.Marker({
+        position: { lat: parseFloat(special.lat), lng: parseFloat(special.lng) },
+        map: map,
+        title: special.name,
+        icon: {
+            url: "http://maps.google.com/mapfiles/ms/icons/beer.png", // Fun beer icon
+            scaledSize: new google.maps.Size(40, 40)
+        }
+    });
+
+    markers.push(marker);
+}
+
+// --- UI Logic for Modal & Form ---
+
+const modal = document.getElementById('add-modal');
+const addBtn = document.getElementById('add-special-btn');
+const closeBtn = document.getElementById('add-close');
+const addForm = document.getElementById('add-form');
+
+// Open Modal
+addBtn.addEventListener('click', () => {
+    modal.classList.add('visible');
+});
+
+// Close Modal
+closeBtn.addEventListener('click', () => {
+    modal.classList.remove('visible');
+});
+
+// Handle Form Submission
+addForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData(addForm);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+        const response = await fetch('/api/add_special', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            modal.classList.remove('visible');
+            addForm.reset();
+            fetchSpecials(); // Refresh the list and map
+        }
+    } catch (err) {
+        alert("Failed to save special. Check console.");
+    }
+});
