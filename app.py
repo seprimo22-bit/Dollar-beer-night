@@ -27,35 +27,16 @@ def get_db_connection():
 def home():
     return render_template('splash.html')
 
-# 🔑 MASTER OVERRIDE URL
-@app.route('/9999')
-def master_override():
-    session['authenticated'] = True
-    return redirect(url_for('index'))
-
-# POST verification (Twilio-style splash)
+# Master code override (9999)
 @app.route('/verify_code', methods=['POST'])
 def verify_code():
-    try:
-        data = request.get_json()
-        code = data.get("code")
-        print("CODE RECEIVED:", code)
-
-        # Master override
-        if code == "9999":
-            session['authenticated'] = True
-            return jsonify({"success": True, "override": True})
-
-        # Default test code
-        if code == "0000":
-            session['authenticated'] = True
-            return jsonify({"success": True, "override": False})
-
-        return jsonify({"success": False})
-
-    except Exception as e:
-        print("VERIFY ERROR:", e)
-        return jsonify({"success": False}), 500
+    data = request.get_json()
+    code = data.get("code", "")
+    if code == "9999" or code == "0000":  # Master codes
+        session['authenticated'] = True
+        return jsonify({"success": True, "override": True})
+    # Here you could add real Twilio verification logic
+    return jsonify({"success": False})
 
 @app.route('/index')
 def index():
@@ -76,7 +57,7 @@ def get_specials():
                 results = [dict(zip(columns, row)) for row in cur.fetchall()]
                 return jsonify(results)
     except Exception as e:
-        print("Database Error:", e)
+        print(f"Database Error: {e}")
         return jsonify([]), 500
 
 @app.route('/api/add_special', methods=['POST'])
@@ -88,12 +69,18 @@ def add_special():
                 cur.execute("""
                     INSERT INTO specials (name, address, deal, day, lat, lng)
                     VALUES (%s, %s, %s, %s, %s, %s)
-                """, (data.get('name'), data.get('address'), data.get('deal'),
-                      data.get('day'), data.get('lat'), data.get('lng')))
+                """, (
+                    data.get('name'),
+                    data.get('address'),
+                    data.get('deal'),
+                    data.get('day'),
+                    data.get('lat'),
+                    data.get('lng')
+                ))
                 conn.commit()
         return jsonify({"status": "success"}), 201
     except Exception as e:
-        print("Insert Error:", e)
+        print(f"Insert Error: {e}")
         return jsonify({"error": "failed"}), 500
 
 # ===============================
