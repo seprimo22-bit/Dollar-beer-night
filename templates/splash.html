@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Beer Dollars - Splash</title>
+    <title>Beer Dollars - Stretch Your Beer Money</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { margin: 0; font-family: Arial; background:#0A3D62; color:white; text-align:center; }
-        #container { margin-top: 60px; padding:20px; }
-        #logo { width:200px; margin-bottom:20px; }
-        input { width:80%; padding:12px; margin:10px 0; border-radius:6px; border:none; font-size:16px; }
-        button { width:84%; padding:12px; margin:10px 0; background:#FFC312; color:black; border:none; border-radius:6px; font-size:18px; font-weight:bold; cursor:pointer; }
+        body { margin:0; padding:0; font-family: Arial; background:#0A3D62; color:white; text-align:center; }
+        #container { margin-top: 60px; padding: 20px; }
+        #logo { width: 200px; margin-bottom: 20px; }
+        input { width: 80%; padding:12px; margin-top:10px; border-radius:6px; border:none; font-size:16px; }
+        button { width:84%; padding:12px; margin-top:15px; background:#FFC312; color:black; border:none; border-radius:6px; font-size:18px; font-weight:bold; }
     </style>
 </head>
 <body>
@@ -17,31 +17,26 @@
         <img id="logo" src="{{ url_for('static', filename='1773978135981~2.png') }}">
         <h1>BEER DOLLARS</h1>
         <h3>Stretch Your Beer Money</h3>
-        <input id="phone" type="text" placeholder="Phone number">
-        <button onclick="sendCode()">Send Code</button>
-        <input id="code" type="text" placeholder="Code (use 0000 or 9999)">
+
+        <input id="code" type="text" placeholder="Enter Code (0000 or 9999)">
         <button onclick="verifyCode()">Enter</button>
     </div>
 
     <script>
-        async function sendCode() {
-            const phone = document.getElementById("phone").value;
-            await fetch("/send_code", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({phone}) });
-            alert("Code sent (simulated).");
-        }
-
         async function verifyCode() {
             const code = document.getElementById("code").value;
             const res = await fetch("/verify_code", {
-                method:"POST",
-                headers:{"Content-Type":"application/json"},
-                body:JSON.stringify({code})
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({code})
             });
             const data = await res.json();
             if (data.success) {
-                if (data.override) alert("Developer override accepted");
+                alert("Welcome! Master code accepted.");
                 window.location.href = "/index";
-            } else alert("Incorrect code");
+            } else {
+                alert("Incorrect code");
+            }
         }
     </script>
 </body>
