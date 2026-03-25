@@ -17,7 +17,6 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 def get_db_connection():
     if not DATABASE_URL:
         raise Exception("DATABASE_URL is not set")
-
     conn_url = DATABASE_URL.replace("postgres://", "postgresql://", 1)
     return psycopg.connect(conn_url)
 
@@ -28,32 +27,41 @@ def get_db_connection():
 def home():
     return render_template('splash.html')
 
-# 🔑 MASTER OVERRIDE
+# 🔑 MASTER OVERRIDE URL
 @app.route('/9999')
 def master_override():
     session['authenticated'] = True
     return redirect(url_for('index'))
 
-# Optional POST version (for Twilio form)
-@app.route('/unlock', methods=['POST'])
-def unlock():
-    code = request.form.get("code")
+# POST verification (Twilio-style splash)
+@app.route('/verify_code', methods=['POST'])
+def verify_code():
+    try:
+        data = request.get_json()
+        code = data.get("code")
+        print("CODE RECEIVED:", code)
 
-    if code == "9999":
-        session['authenticated'] = True
-        return redirect(url_for('index'))
+        # Master override
+        if code == "9999":
+            session['authenticated'] = True
+            return jsonify({"success": True, "override": True})
 
-    return redirect(url_for('home'))
+        # Default test code
+        if code == "0000":
+            session['authenticated'] = True
+            return jsonify({"success": True, "override": False})
+
+        return jsonify({"success": False})
+
+    except Exception as e:
+        print("VERIFY ERROR:", e)
+        return jsonify({"success": False}), 500
 
 @app.route('/index')
 def index():
     if not session.get('authenticated'):
         return redirect(url_for('home'))
-
-    return render_template(
-        'index.html',
-        GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY
-    )
+    return render_template('index.html', GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY)
 
 # ===============================
 # API ROUTES
@@ -63,45 +71,30 @@ def get_specials():
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("""
-                    SELECT name, address, deal, day, lat, lng 
-                    FROM specials
-                """)
+                cur.execute("SELECT name, address, deal, day, lat, lng FROM specials")
                 columns = [desc[0] for desc in cur.description]
                 results = [dict(zip(columns, row)) for row in cur.fetchall()]
                 return jsonify(results)
-
     except Exception as e:
-        print(f"Database Error: {e}")
+        print("Database Error:", e)
         return jsonify([]), 500
-
 
 @app.route('/api/add_special', methods=['POST'])
 def add_special():
     try:
         data = request.get_json()
-
         with get_db_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO specials (name, address, deal, day, lat, lng)
                     VALUES (%s, %s, %s, %s, %s, %s)
-                """, (
-                    data.get('name'),
-                    data.get('address'),
-                    data.get('deal'),
-                    data.get('day'),
-                    data.get('lat'),
-                    data.get('lng')
-                ))
+                """, (data.get('name'), data.get('address'), data.get('deal'),
+                      data.get('day'), data.get('lat'), data.get('lng')))
                 conn.commit()
-
         return jsonify({"status": "success"}), 201
-
     except Exception as e:
-        print(f"Insert Error: {e}")
+        print("Insert Error:", e)
         return jsonify({"error": "failed"}), 500
-
 
 # ===============================
 # RUN
