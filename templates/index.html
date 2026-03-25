@@ -1,172 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Beer Dollars</title>
+    <style>
+        body { margin: 0; font-family: Arial; }
+        #map { height: 60vh; width: 100%; }
+
+        .controls {
+            padding: 10px;
+            background: #111;
+            color: white;
+        }
+
+        .bar-item {
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+            cursor: pointer;
+        }
+
+        .bar-item:hover {
+            background: #f5f5f5;
+        }
+
+        #add-modal {
+            display: none;
+            position: fixed;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        #add-modal.visible {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<div class="controls">
+    <button onclick="findMe()">📍 Near Me</button>
+
+    <select id="day-filter" onchange="fetchSpecials()">
+        <option value="">All Days</option>
+        <option>Monday</option>
+        <option>Tuesday</option>
+        <option>Wednesday</option>
+        <option>Thursday</option>
+        <option>Friday</option>
+        <option>Saturday</option>
+        <option>Sunday</option>
+    </select>
+
+    <span id="deal-count"></span>
+</div>
+
+<div id="map"></div>
+<div id="bar-list"></div>
+
+<!-- MODAL -->
+<div id="add-modal">
+    <form id="add-form">
+        <input name="name" placeholder="Bar Name" required><br>
+        <input name="address" placeholder="Address"><br>
+        <input name="deal" placeholder="Deal" required><br>
+
+        <select name="day">
+            <option>Monday</option>
+            <option>Tuesday</option>
+            <option>Wednesday</option>
+            <option>Thursday</option>
+            <option>Friday</option>
+            <option>Saturday</option>
+            <option>Sunday</option>
+        </select><br><br>
+
+        <button type="submit">Save</button>
+        <button type="button" id="add-close">Cancel</button>
+    </form>
+</div>
+
 <script src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&callback=initBeerDollars" async defer></script>
 
 <script>
-// ===============================
-// GLOBAL STATE
-// ===============================
 let map;
 let markers = [];
 let infoWindow;
+let tempMarker;
 
-// ===============================
-// MAP INITIALIZATION
-// ===============================
 function initBeerDollars() {
-    console.log("GOOGLE_MAPS_API_KEY verified. Initializing map...");
+    if (!window.google) {
+        console.error("Google Maps failed to load.");
+        return;
+    }
 
-    // Set center to your local area (Austintown/Youngstown)
     const defaultCenter = { lat: 41.1009, lng: -80.6495 };
 
     map = new google.maps.Map(document.getElementById("map"), {
         zoom: 13,
-        center: defaultCenter,
-        disableDefaultUI: false, // Set to false so you can use zoom/pan controls
-        zoomControl: true,
+        center: defaultCenter
     });
 
     infoWindow = new google.maps.InfoWindow();
 
-    // Listener: Click on the map to open the 'Add Special' modal at that location
     map.addListener("click", (e) => {
-        openAddModalWithLocation(e.latLng.lat(), e.latLng.lng());
+        openAddModal(e.latLng.lat(), e.latLng.lng());
     });
 
     fetchSpecials();
 }
 
-// Make sure the Google callback can find the function
 window.initBeerDollars = initBeerDollars;
 
-// ===============================
-// DATA FETCHING & RENDERING
-// ===============================
 async function fetchSpecials() {
-    try {
-        const response = await fetch('/api/specials');
-        const specials = await response.json();
-        
-        const listContainer = document.getElementById('bar-list');
-        const countBadge = document.getElementById('deal-count');
-        
-        // Clear old data
-        if (listContainer) listContainer.innerHTML = ''; 
-        if (countBadge) countBadge.innerText = `${specials.length} deals found`;
+    const day = document.getElementById("day-filter").value;
 
-        // Clear existing markers
-        markers.forEach(m => m.setMap(null));
-        markers = [];
+    const res = await fetch('/api/specials');
+    let data = await res.json();
 
-        specials.forEach(special => {
-            createMarker(special);
-            addToList(special);
-        });
-    } catch (err) {
-        console.error("Error fetching specials with GOOGLE_MAPS_API_KEY active:", err);
+    if (day) {
+        data = data.filter(d => d.day === day);
     }
+
+    document.getElementById("deal-count").innerText = `${data.length} deals`;
+
+    markers.forEach(m => m.setMap(null));
+    markers = [];
+
+    document.getElementById("bar-list").innerHTML = "";
+
+    data.forEach(s => {
+        createMarker(s);
+        addToList(s);
+    });
 }
 
-function createMarker(special) {
-    if (!special.lat || !special.lng) return;
+function createMarker(s) {
+    if (!s.lat || !s.lng) return;
 
     const marker = new google.maps.Marker({
-        position: { lat: parseFloat(special.lat), lng: parseFloat(special.lng) },
-        map: map,
-        title: special.name,
-        animation: google.maps.Animation.DROP
+        position: { lat: parseFloat(s.lat), lng: parseFloat(s.lng) },
+        map
     });
 
     marker.addListener("click", () => {
-        const content = `
-            <div style="color: #333; padding: 5px;">
-                <strong>${special.name}</strong><br>
-                <span style="color: #1B6FFC;">${special.deal}</span><br>
-                <small>${special.address || ''}</small>
-            </div>
-        `;
-        infoWindow.setContent(content);
+        infoWindow.setContent(`<b>${s.name}</b><br>${s.deal}`);
         infoWindow.open(map, marker);
     });
 
     markers.push(marker);
 }
 
-function addToList(special) {
-    const listContainer = document.getElementById('bar-list');
-    if (!listContainer) return;
+function addToList(s) {
+    const div = document.createElement("div");
+    div.className = "bar-item";
+    div.innerHTML = `<b>${s.name}</b><br>${s.deal}`;
 
-    const item = document.createElement("div");
-    item.className = "bar-item";
-    item.innerHTML = `
-        <div class="bar-info">
-            <div class="bar-name">${special.name}</div>
-            <div class="bar-deal">${special.deal}</div>
-            <div class="bar-address">${special.address || ''}</div>
-        </div>
-    `;
-    item.onclick = () => {
-        map.panTo({ lat: parseFloat(special.lat), lng: parseFloat(special.lng) });
+    div.onclick = () => {
+        map.panTo({ lat: parseFloat(s.lat), lng: parseFloat(s.lng) });
         map.setZoom(15);
     };
-    listContainer.appendChild(item);
+
+    document.getElementById("bar-list").appendChild(div);
 }
 
-// ===============================
-// MODAL & FORM UI LOGIC
-// ===============================
-const modal = document.getElementById('add-modal');
-const addForm = document.getElementById('add-form');
-const addCloseBtn = document.getElementById('add-close');
-
-// Function to handle map clicks
-function openAddModalWithLocation(lat, lng) {
-    // Store coordinates in temporary window variables for the form submit
+function openAddModal(lat, lng) {
     window.pendingLat = lat;
     window.pendingLng = lng;
-    
-    if (modal) modal.classList.add('visible');
+
+    if (tempMarker) tempMarker.setMap(null);
+
+    tempMarker = new google.maps.Marker({
+        position: { lat, lng },
+        map
+    });
+
+    document.getElementById("add-modal").classList.add("visible");
 }
 
-// Close Modal
-if (addCloseBtn) {
-    addCloseBtn.onclick = () => {
-        modal.classList.remove('visible');
-        addForm.reset();
+document.getElementById("add-close").onclick = () => {
+    document.getElementById("add-modal").classList.remove("visible");
+};
+
+document.getElementById("add-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const form = new FormData(e.target);
+
+    const payload = {
+        name: form.get("name"),
+        address: form.get("address"),
+        deal: form.get("deal"),
+        day: form.get("day"),
+        lat: window.pendingLat,
+        lng: window.pendingLng
     };
-}
 
-// Handle Form Submission
-if (addForm) {
-    addForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+    await fetch('/api/add_special', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
 
-        const formData = new FormData(addForm);
-        const payload = {
-            name: formData.get("name"),
-            address: formData.get("address"),
-            deal: formData.get("deal"),
-            day: formData.get("day"),
-            lat: window.pendingLat,
-            lng: window.pendingLng
+    document.getElementById("add-modal").classList.remove("visible");
+    fetchSpecials();
+});
+
+function findMe() {
+    navigator.geolocation.getCurrentPosition(pos => {
+        const loc = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
         };
-
-        try {
-            const response = await fetch('/api/add_special', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (response.ok) {
-                modal.classList.remove('visible');
-                addForm.reset();
-                fetchSpecials(); // Refresh the data
-            } else {
-                alert("Error saving special. Check logs.");
-            }
-        } catch (err) {
-            console.error("Submit Error:", err);
-        }
+        map.setCenter(loc);
+        map.setZoom(14);
     });
 }
-        </script>
-        
+</script>
+
+</body>
+</html>        
