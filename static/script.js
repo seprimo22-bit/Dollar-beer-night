@@ -1,6 +1,6 @@
 let map;
 let markers = [];
-let userLocation = { lat: 41.0998, lng: -80.6495 }; // fallback
+let userLocation = { lat: 41.0998, lng: -80.6495 };
 let barData = [];
 let selectedDay = null;
 
@@ -16,7 +16,6 @@ function initDayBubbles() {
     bubble.addEventListener("click", () => selectDay(day));
     container.appendChild(bubble);
   });
-  // auto-select today
   const today = new Date();
   const todayName = daysOfWeek[today.getDay() === 0 ? 6 : today.getDay()-1];
   selectDay(todayName);
@@ -35,7 +34,8 @@ async function loadBarsFromDatabase() {
     const res = await fetch('/get-bars');
     if(!res.ok) throw new Error("Failed fetching bars");
     barData = await res.json();
-    initDayBubbles(); // triggers render
+    initDayBubbles();
+    initAddBarForm();
   } catch(err) {
     console.error(err);
     document.getElementById("deals-list").innerText = "Failed to load deals.";
@@ -89,6 +89,54 @@ document.getElementById("nearMeBtn").addEventListener("click", () => {
       userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       map.setCenter(userLocation);
       new google.maps.Marker({ position: userLocation, map: map, title: "You are here" });
+      document.getElementById("lat").value = userLocation.lat;
+      document.getElementById("lng").value = userLocation.lng;
     }, () => alert("Could not get location."));
   } else alert("Geolocation not supported.");
 });
+
+function initAddBarForm() {
+  const dealDiv = document.getElementById("dealInputs");
+  dealDiv.innerHTML = "";
+  daysOfWeek.forEach(day => {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = `${day} deal`;
+    input.id = `deal-${day}`;
+    dealDiv.appendChild(input);
+  });
+
+  document.getElementById("addBarForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const bar = document.getElementById("barName").value;
+    const lat = parseFloat(document.getElementById("lat").value);
+    const lng = parseFloat(document.getElementById("lng").value);
+    const deals = {};
+    daysOfWeek.forEach(day => {
+      const val = document.getElementById(`deal-${day}`).value.trim();
+      if(val) deals[day] = val;
+    });
+    if(!bar || !lat || !lng || Object.keys(deals).length === 0){
+      alert("Please fill in bar name, coordinates, and at least one deal.");
+      return;
+    }
+
+    try {
+      const res = await fetch("/add-bar", {
+        method:"POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({bar,lat,lng,deals})
+      });
+      const data = await res.json();
+      if(data.success){
+        barData.push({bar,lat,lng,deals});
+        loadDeals();
+        document.getElementById("addBarForm").reset();
+        alert("Bar added! Will be visible immediately.");
+      } else alert("Failed to add bar: "+data.error);
+    } catch(err){
+      console.error(err);
+      alert("Error adding bar");
+    }
+  });
+}
