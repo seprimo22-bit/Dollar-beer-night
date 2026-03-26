@@ -23,16 +23,16 @@
   <h3>Add a Bar</h3>
   <form id="addBarForm">
     <input type="text" id="barName" placeholder="Bar Name" required>
-    <input type="number" step="0.000001" id="lat" placeholder="Latitude" required>
-    <input type="number" step="0.000001" id="lng" placeholder="Longitude" required>
+    <input type="text" id="address" placeholder="Address (Google will locate it)" required>
     <div id="dealInputs"></div>
+    <p>Or click on the map to drop a pin.</p>
     <button type="submit">Add Bar</button>
   </form>
 </div>
 
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 <script async
-src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiEK4CduUBr7EWeqtSsFhG1nQyqON6QYI&callback=initMap">
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiEK4CduUBr7EWeqtSsFhG1nQyqON6QYI&callback=initMap&libraries=places">
 </script>
 
 </body>
