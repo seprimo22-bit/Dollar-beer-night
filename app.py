@@ -1,102 +1,47 @@
+from flask import Flask, jsonify, send_from_directory
+import psycopg2
 import os
-from flask import Flask, render_template, session, redirect, url_for, jsonify, request
-from dotenv import load_dotenv
 
-load_dotenv()
+app = Flask(__name__, static_folder="static", static_url_path="")
 
-app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "brick_truth_99")
+# PostgreSQL connection string
+DB_URL = "postgresql://beer_dollars_db_user:vbldLdTI705VOj3B1e4IphF7X9GK3pZw@dpg-d6e37ipr0fns73d6scc0-a/beer_dollars_db"
 
-GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
-DATABASE_URL = os.getenv("DATABASE_URL")
+def get_connection():
+    return psycopg2.connect(DB_URL)
 
-# ===============================
-# DATABASE CONNECTION (optional)
-# ===============================
-def get_db_connection():
-    if not DATABASE_URL:
-        return None  # fallback to mock
-    conn_url = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-    import psycopg
-    return psycopg.connect(conn_url)
+@app.route("/get-bars")
+def get_bars():
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT bar_name, latitude, longitude, thursday_deal, friday_deal, saturday_deal
+            FROM bars;
+        """)
+        bars = []
+        for row in cur.fetchall():
+            bars.append({
+                "bar": row[0],
+                "lat": float(row[1]),
+                "lng": float(row[2]),
+                "deals": {
+                    "Thursday": row[3],
+                    "Friday": row[4],
+                    "Saturday": row[5]
+                }
+            })
+        cur.close()
+        conn.close()
+        return jsonify(bars)
+    except Exception as e:
+        print("DB error:", e)
+        return jsonify([]), 500
 
-# ===============================
-# ROUTES
-# ===============================
-@app.route('/')
-def splash():
-    return render_template('splash.html')
-
-@app.route('/verify_code', methods=['POST'])
-def verify_code():
-    data = request.get_json()
-    code = data.get("code")
-
-    # Master override
-    if code == "9999" or code.lower() == "master":
-        session['authenticated'] = True
-        return jsonify({"success": True, "override": True})
-
-    # Phone verification logic placeholder
-    # In real Twilio, you'd check code against sent code
-    if code == "0000":  # temporary test code
-        session['authenticated'] = True
-        return jsonify({"success": True, "override": False})
-
-    return jsonify({"success": False})
-
-@app.route('/index')
+# Serve index.html
+@app.route("/")
 def index():
-    if not session.get('authenticated'):
-        return redirect(url_for('splash'))
-    return render_template('index.html', GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY)
+    return send_from_directory("static", "index.html")
 
-# ===============================
-# API ROUTES
-# ===============================
-@app.route('/api/specials', methods=['GET'])
-def get_specials():
-    # Try DB first
-    conn = get_db_connection()
-    if conn:
-        try:
-            with conn.cursor() as cur:
-                cur.execute("SELECT name,address,deal,day,lat,lng FROM specials")
-                columns = [desc[0] for desc in cur.description]
-                return jsonify([dict(zip(columns, row)) for row in cur.fetchall()])
-        except Exception as e:
-            print(f"DB error: {e}")
-    # Fallback mock data
-    return jsonify([
-        {"name":"Test Bar","address":"123 Main St","deal":"$2 beers","day":"Monday","lat":41.101,"lng":-80.649},
-        {"name":"Sample Pub","address":"456 Elm St","deal":"Half-price wings","day":"Tuesday","lat":41.103,"lng":-80.647},
-        {"name":"Local Tap","address":"789 Oak St","deal":"Buy 1 get 1","day":"Friday","lat":41.102,"lng":-80.650}
-    ])
-
-@app.route('/api/add_special', methods=['POST'])
-def add_special():
-    data = request.get_json()
-    conn = get_db_connection()
-    if conn:
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "INSERT INTO specials (name,address,deal,day,lat,lng) VALUES (%s,%s,%s,%s,%s,%s)",
-                    (data.get("name"), data.get("address"), data.get("deal"), data.get("day"),
-                     data.get("lat"), data.get("lng"))
-                )
-                conn.commit()
-            return jsonify({"status":"success"}), 201
-        except Exception as e:
-            print(f"Insert Error: {e}")
-            return jsonify({"status":"fail"}), 500
-    else:
-        print("Mock add_special:", data)
-        return jsonify({"status":"success"}), 201
-
-# ===============================
-# RUN
-# ===============================
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+if __name__ == "__main__":
+    app.run(debug=True)
