@@ -1,113 +1,92 @@
-// ===============================
-// BEER DOLLARS - script.js (FULL WORKING VERSION)
-// ===============================
 
 let map;
 let markers = [];
-let infoWindow;
-let selectedDay = null;
+let userLocation = { lat: 41.0998, lng: -80.6495 }; // fallback Youngstown
+let barData = [];
 
-const MAP_DEFAULT_CENTER = { lat: 41.1009, lng: -80.6495 };
+window.gm_authFailure = function() {
+  document.getElementById("map-error").innerText =
+    "Google Maps failed to load. Check your API key or API settings.";
+};
 
-function initBeerDollars() {
-    console.log("System Initializing with GOOGLE_MAPS_API_KEY...");
-
-    const mapElement = document.getElementById("map");
-    
-    // IF WE ARE ON THE MAP PAGE
-    if (mapElement) {
-        map = new google.maps.Map(mapElement, {
-            center: MAP_DEFAULT_CENTER,
-            zoom: 12,
-            mapTypeControl: false,
-            streetViewControl: false,
-            fullscreenControl: false
-        });
-
-        infoWindow = new google.maps.InfoWindow();
-
-        map.addListener("click", (e) => {
-            openAddModal(e.latLng.lat(), e.latLng.lng());
-        });
-
-        const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-        selectedDay = days[new Date().getDay()];
-        loadSpecials();
-    }
-
-    // --- THE MASTER OVERRIDE TRIGGER ---
-    // This looks for the input box and the enter button on your splash screen
-    const loginBtn = document.getElementById('login-button');
-    const codeInput = document.getElementById('code-input');
-
-    if (loginBtn && codeInput) {
-        loginBtn.addEventListener('click', function() {
-            const enteredCode = codeInput.value.trim();
-            
-            if (enteredCode === '9999') {
-                console.log("Master Override Accepted.");
-                window.location.href = '/9999'; // Kicks you to the override route in app.py
-            } else {
-                alert("Use the Master Override code to enter.");
-            }
-        });
-
-        // Makes it so hitting the actual 'Enter' key on your keyboard works too
-        codeInput.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                loginBtn.click();
-            }
-        });
-    }
+async function loadBarsFromDatabase() {
+  try {
+    const response = await fetch('/get-bars');
+    if (!response.ok) throw new Error("Network response not ok");
+    barData = await response.json();
+    loadDeals();
+  } catch (err) {
+    console.error("Failed to load bar data:", err);
+    document.getElementById("deals-list").innerText = "Failed to load deals.";
+  }
 }
 
-window.initBeerDollars = initBeerDollars;
-
-async function loadSpecials() {
-    try {
-        const response = await fetch('/api/specials');
-        const specials = await response.json();
-        renderMarkers(specials);
-    } catch (err) {
-        console.error("Failed to load specials with GOOGLE_MAPS_API_KEY active:", err);
-    }
+function initMap() {
+  map = new google.maps.Map(document.getElementById("map"), {
+    center: userLocation,
+    zoom: 13
+  });
+  loadBarsFromDatabase();
 }
 
-function renderMarkers(specials) {
-    markers.forEach(m => m.setMap(null));
-    markers = [];
+function loadDeals(selectedDay = null) {
+  const day = selectedDay || document.getElementById("daySelect").value;
+  clearMarkers();
 
-    specials.forEach(special => {
-        if (special.day === selectedDay) {
-            const marker = new google.maps.Marker({
-                position: { lat: parseFloat(special.lat), lng: parseFloat(special.lng) },
-                map: map,
-                title: special.name,
-                animation: google.maps.Animation.DROP
-            });
-
-            marker.addListener("click", () => {
-                const content = `
-                    <div style="color: #333; padding: 10px;">
-                        <strong>${special.name}</strong><br>
-                        <span style="color: #1B6FFC;">${special.deal}</span><br>
-                        <small>${special.address || ''}</small>
-                    </div>
-                `;
-                infoWindow.setContent(content);
-                infoWindow.open(map, marker);
-            });
-            markers.push(marker);
-        }
+  barData.forEach(bar => {
+    const marker = new google.maps.Marker({
+      position: { lat: bar.lat, lng: bar.lng },
+      map: map,
+      title: bar.bar
     });
+
+    marker.addListener("click", () => {
+      renderDeals([bar], day);
+    });
+
+    markers.push(marker);
+  });
+
+  renderDeals(barData, day);
 }
 
-function openAddModal(lat, lng) {
-    const modal = document.getElementById('add-modal');
-    if (modal) {
-        window.pendingLat = lat;
-        window.pendingLng = lng;
-        modal.classList.add('visible');
-    }
+function renderDeals(bars, day) {
+  const list = document.getElementById("deals-list");
+  list.innerHTML = "";
+
+  bars.forEach(bar => {
+    const div = document.createElement("div");
+    div.className = "deal";
+    div.innerHTML = `
+      <h3>${bar.bar}</h3>
+      <p><strong>${day}:</strong> ${bar.deals[day] || "No deal"}</p>
+    `;
+    list.appendChild(div);
+  });
 }
 
+function clearMarkers() {
+  markers.forEach(m => m.setMap(null));
+  markers = [];
+}
+
+document.getElementById("nearMeBtn").addEventListener("click", () => {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      map.setCenter(userLocation);
+
+      new google.maps.Marker({
+        position: userLocation,
+        map: map,
+        title: "You are here"
+      });
+    }, () => alert("Could not get your location."));
+  } else {
+    alert("Geolocation is not supported by your browser.");
+  }
+});
+
+document.getElementById("daySelect").addEventListener("change", function() {
+  loadDeals(this.value);
+});
