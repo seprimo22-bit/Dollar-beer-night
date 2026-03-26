@@ -1,49 +1,54 @@
 body, html {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+  margin:0;
+  padding:0;
+  height:100%;
   font-family: Arial, sans-serif;
+  display:flex;
+  flex-direction:column;
 }
 
 #top-bar {
-  background: #ffffff;
-  padding: 10px;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  z-index: 2;
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:center;
+  padding:10px;
+  background:#fff;
 }
 
-button, select {
-  padding: 8px 12px;
-  font-size: 16px;
-  cursor: pointer;
+.day-bubble {
+  padding:6px 10px;
+  border-radius:20px;
+  border:1px solid #145A86;
+  background:#fff;
+  color:#145A86;
+  font-size:14px;
+  cursor:pointer;
+  transition: all 0.2s;
 }
 
-#map {
-  height: 50%;
-  width: 100%;
+.day-bubble.active {
+  background:#145A86;
+  color:#fff;
 }
 
-#map-error {
-  color: red;
-  text-align: center;
-  padding: 10px;
-}
+button {padding:6px 12px; font-size:14px; cursor:pointer;}
+
+#map {height:60%; width:100%;}
+
+#map-error {color:red;text-align:center;padding:5px;}
 
 #deals-panel {
-  height: 50%;
-  overflow-y: auto;
-  background: #0A3D62;
-  color: white;
-  padding: 10px;
+  height:40%;
+  overflow-y:auto;
+  background:#0A3D62;
+  color:white;
+  padding:10px;
 }
 
 .deal {
-  background: #145A86;
-  margin-bottom: 10px;
-  padding: 10px;
-  border-radius: 8px;
+  background:#145A86;
+  margin-bottom:8px;
+  padding:8px;
+  border-radius:6px;
 }
