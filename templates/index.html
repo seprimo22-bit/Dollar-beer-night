@@ -17,7 +17,7 @@ body,html { margin:0; padding:0; height:100%; font-family:Arial; overflow:hidden
 #add-modal-content input, select { width:100%; padding:10px; margin-top:8px; border-radius:6px; border:1px solid #ccc; }
 #add-modal-content button { width:100%; padding:12px; margin-top:12px; background:#1B9CFC;color:white;border:none;border-radius:6px;font-size:16px; }
 #add-close { background:#aaa; }
-#controls { position:absolute; top:10px; left:10px; z-index:10; }
+#controls { position:absolute; top:10px; left:10px; z-index:10; color:white; }
 #controls button, #controls select { padding:6px 10px; margin-right:6px; border-radius:6px; border:none; }
 </style>
 </head>
@@ -31,6 +31,8 @@ body,html { margin:0; padding:0; height:100%; font-family:Arial; overflow:hidden
         <option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
     </select>
 </div>
+
+<h1 style="position:absolute; top:10px; right:10px; z-index:10; color:white;">Beer Dollars</h1>
 
 <div id="map"></div>
 <div id="bar-list"></div>
@@ -61,25 +63,43 @@ function initBeerDollars() {
     map=new google.maps.Map(document.getElementById("map"),{zoom:13,center:defaultCenter});
     infoWindow=new google.maps.InfoWindow();
     map.addListener("click", e=>{openAddModal(e.latLng.lat(),e.latLng.lng());});
+
+    // Auto-set day to today
+    const daySelector = document.getElementById("day-filter");
+    const today = new Date();
+    const weekday = today.toLocaleDateString('en-US', { weekday: 'long' });
+    if(Array.from(daySelector.options).some(opt=>opt.value===weekday)){
+        daySelector.value = weekday;
+    }
+
     fetchSpecials();
 }
-
 window.initBeerDollars=initBeerDollars;
 
 async function fetchSpecials() {
     let day=document.getElementById("day-filter").value;
-    const res=await fetch('/api/specials'); let data=await res.json();
+    const res=await fetch('/api/specials'); 
+    let data=await res.json();
     if(day) data=data.filter(d=>d.day===day);
 
+    // Clear previous markers
     markers.forEach(m=>m.setMap(null)); markers=[];
     document.getElementById("bar-list").innerHTML="";
 
     data.forEach(s=>{
-        if(s.lat&&s.lng){
-            const marker=new google.maps.Marker({position:{lat:parseFloat(s.lat),lng:parseFloat(s.lng)},map});
-            marker.addListener("click",()=>{infoWindow.setContent(`<b>${s.name}</b><br>${s.deal}<br>${s.address||""}`); infoWindow.open(map,marker);});
+        if(s.lat && s.lng){
+            const marker=new google.maps.Marker({
+                position:{lat:parseFloat(s.lat),lng:parseFloat(s.lng)},
+                map,
+                title:`${s.name}: ${s.deal}`
+            });
+            marker.addListener("click",()=>{
+                infoWindow.setContent(`<b>${s.name}</b><br>${s.deal}<br>${s.address||""}`);
+                infoWindow.open(map,marker);
+            });
             markers.push(marker);
         }
+
         const div=document.createElement("div");
         div.className="bar-item";
         div.innerHTML=`<div class="bar-name">${s.name}</div><div class="bar-deal">${s.deal}</div><div class="bar-address">${s.address||""}</div>`;
