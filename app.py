@@ -1,3 +1,4 @@
+
 from flask import Flask, render_template, jsonify, request
 import os
 import psycopg2
@@ -6,7 +7,10 @@ import json
 
 app = Flask(__name__)
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://beer_dollars_db_user:vbldLdTI705VOj3B1e4IphF7X9GK3pZw@dpg-d6e37ipr0fns73d6scc0-a/beer_dollars_db")
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL",
+    "postgresql://beer_dollars_db_user:vbldLdTI705VOj3B1e4IphF7X9GK3pZw@dpg-d6e37ipr0fns73d6scc0-a/beer_dollars_db"
+)
 
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
@@ -38,7 +42,6 @@ def add_bar():
     required_fields = ["bar", "lat", "lng", "deals"]
     if not all(field in data for field in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
-
     try:
         conn = get_db_connection()
         cur = conn.cursor()
