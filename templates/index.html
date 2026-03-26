@@ -1,54 +1,49 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Beer Dollars</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Beer Dollars</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY"></script>
 </head>
 <body>
-  <!-- Splash Page -->
-  <div id="splash">
-    <img src="{{ url_for('static', filename='177397813598135981_squigglyline2.png') }}" alt="Beer Dollars Logo">
-    <div>
-      <input type="text" id="phone" placeholder="Enter phone number">
-      <button id="sendCode">Send Code</button>
+    <div class="main-container">
+        <h1>Beer Dollars</h1>
+
+        <!-- Day buttons -->
+        <div id="day-buttons">
+            <button onclick="loadBars('Monday')">Monday</button>
+            <button onclick="loadBars('Tuesday')">Tuesday</button>
+            <button onclick="loadBars('Wednesday')">Wednesday</button>
+            <button onclick="loadBars('Thursday')">Thursday</button>
+            <button onclick="loadBars('Friday')">Friday</button>
+            <button onclick="loadBars('Saturday')">Saturday</button>
+            <button onclick="loadBars('Sunday')">Sunday</button>
+        </div>
+
+        <!-- Bar list -->
+        <div id="bar-list"></div>
+
+        <!-- Map -->
+        <div id="map"></div>
+
+        <!-- Add bar floating icon -->
+        <button id="add-bar-btn" onclick="showAddBarForm()">＋ Add Bar</button>
+
+        <!-- Add bar form modal -->
+        <div id="add-bar-form" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeAddBarForm()">&times;</span>
+                <h2>Add New Bar</h2>
+                <input type="text" id="bar-name" placeholder="Bar Name">
+                <input type="text" id="bar-address" placeholder="Address">
+                <input type="text" id="bar-lat" placeholder="Latitude">
+                <input type="text" id="bar-lng" placeholder="Longitude">
+                <input type="text" id="bar-day" placeholder="Day (Monday–Sunday)">
+                <input type="text" id="bar-special" placeholder="Special">
+                <button onclick="submitBar()">Submit</button>
+            </div>
+        </div>
     </div>
-    <div>
-      <input type="text" id="codeInput" placeholder="Enter code">
-      <button id="verifyCode">Verify</button>
-    </div>
-  </div>
-
-  <!-- Main App -->
-  <div id="app" style="display:none">
-    <div id="days">
-      <button class="dayBtn" data-day="Monday">Mon</button>
-      <button class="dayBtn" data-day="Tuesday">Tue</button>
-      <button class="dayBtn" data-day="Wednesday">Wed</button>
-      <button class="dayBtn" data-day="Thursday">Thu</button>
-      <button class="dayBtn" data-day="Friday">Fri</button>
-      <button class="dayBtn" data-day="Saturday">Sat</button>
-      <button class="dayBtn" data-day="Sunday">Sun</button>
-    </div>
-
-    <div id="bars-list"></div>
-
-    <div id="map"></div>
-
-    <button id="addBarBtn">➕ Add Bar</button>
-
-    <div id="addBarForm" style="display:none">
-      <input id="barName" placeholder="Bar Name">
-      <input id="barAddress" placeholder="Address">
-      <input id="barSpecials" placeholder="Specials JSON e.g. { 'Monday': '$2 beers' }">
-      <button id="submitBar">Add Bar</button>
-    </div>
-  </div>
-
-  <script>
-    const GOOGLE_MAPS_KEY = "{{ google_maps_key }}";
-  </script>
-  <script src="{{ url_for('static', filename='script.js') }}"></script>
-  <script async src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_key }}&callback=initMap"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
