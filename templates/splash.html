@@ -2,42 +2,29 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Beer Dollars - Splash</title>
+<title>Beer Dollars Login</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-body { font-family: Arial; text-align:center; background:#0A3D62; color:white; }
-#container { margin-top:80px; }
-input, button { padding:10px; margin:5px; border-radius:6px; border:none; font-size:16px; }
-button { background:#FFC312; color:black; font-weight:bold; cursor:pointer; }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-<div id="container">
-    <h1>BEER DOLLARS</h1>
-    <h3>Stretch Your Beer Money</h3>
-    <input id="phone" type="text" placeholder="Phone number">
-    <button onclick="sendCode()">Send Code</button><br>
-    <input id="code" type="text" placeholder="Code (0000 or master)">
-    <button onclick="verifyCode()">Enter</button>
+<div id="splash">
+  <img src="{{ url_for('static', filename='177397813598135981_squigglyline2.png') }}" alt="Beer Dollars" id="splash-image">
 </div>
 
-<script>
-async function sendCode() {
-    const phone = document.getElementById("phone").value;
-    alert("Code sent (simulated Twilio).");
-}
+<div id="login-form">
+  <form id="phoneForm" method="POST" action="/send-code">
+    <input type="tel" name="phone" placeholder="Enter your phone" required>
+    <button type="submit">Send Code</button>
+  </form>
 
-async function verifyCode() {
-    const code = document.getElementById("code").value;
-    const res = await fetch("/verify_code", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({code})
-    });
-    const data = await res.json();
-    if(data.success){ window.location.href="/index"; }
-    else{ alert("Incorrect code"); }
-}
-</script>
+  <form id="codeForm" method="POST" action="/verify-code">
+    <input type="text" name="code" placeholder="Enter code" required>
+    <button type="submit">Verify</button>
+  </form>
+
+  {% if error %}
+    <p style="color:red;">{{ error }}</p>
+  {% endif %}
+</div>
 </body>
 </html>
