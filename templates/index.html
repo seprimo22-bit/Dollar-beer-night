@@ -17,15 +17,14 @@
 <div id="map-error"></div>
 
 <div id="deals-panel">
-  <h2>Deals</h2>
+  <h2>Today's Drink Specials</h2>
   <div id="deals-list"></div>
 
   <h3>Add a Bar</h3>
   <form id="addBarForm">
     <input type="text" id="barName" placeholder="Bar Name" required>
-    <input type="text" id="address" placeholder="Address (Google will locate it)" required>
+    <input type="text" id="address" placeholder="Address or drop pin" required>
     <div id="dealInputs"></div>
-    <p>Or click on the map to drop a pin.</p>
     <button type="submit">Add Bar</button>
   </form>
 </div>
@@ -34,6 +33,5 @@
 <script async
 src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiEK4CduUBr7EWeqtSsFhG1nQyqON6QYI&callback=initMap&libraries=places">
 </script>
-
 </body>
 </html>
