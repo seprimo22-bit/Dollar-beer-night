@@ -1,7 +1,6 @@
-
 let map;
 let markers = [];
-let userLocation = { lat: 41.0998, lng: -80.6495 }; // fallback Youngstown
+let userLocation = { lat: 41.0998, lng: -80.6495 }; // fallback
 let barData = [];
 
 window.gm_authFailure = function() {
