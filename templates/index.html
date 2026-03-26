@@ -1,138 +1,188 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Beer Dollars</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-body,html { margin:0; padding:0; height:100%; font-family:Arial; overflow:hidden; background:#0A3D62; }
-#map { width:100%; height:65%; z-index:1; }
-#bar-list { height:35%; overflow-y:auto; background:rgba(0,0,0,0.75); color:white; padding:10px; }
-.bar-item { padding:10px; border-bottom:1px solid #555; cursor:pointer; }
-.bar-name { font-size:18px; font-weight:bold; }
-.bar-deal { color:#FFC312; }
-#add-special-btn { position:absolute; bottom:50%; right:20px; background:#FFC312;color:black;border:none;padding:14px 18px;border-radius:50%;font-size:22px;font-weight:bold;z-index:20; }
-#add-modal { position:fixed; top:0; left:0;width:100%;height:100%;background:rgba(0,0,0,0.7); display:none; justify-content:center; align-items:center; z-index:30; }
-#add-modal.visible { display:flex; }
-#add-modal-content { background:white;padding:20px;width:90%;max-width:400px;border-radius:10px; }
-#add-modal-content input, select { width:100%; padding:10px; margin-top:8px; border-radius:6px; border:1px solid #ccc; }
-#add-modal-content button { width:100%; padding:12px; margin-top:12px; background:#1B9CFC;color:white;border:none;border-radius:6px;font-size:16px; }
-#add-close { background:#aaa; }
-#controls { position:absolute; top:10px; left:10px; z-index:10; color:white; }
-#controls button, #controls select { padding:6px 10px; margin-right:6px; border-radius:6px; border:none; }
-</style>
-</head>
-<body>
+  <title>Beer Dollars</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<div id="controls">
-    <button onclick="findMe()">📍 Near Me</button>
-    <select id="day-filter" onchange="fetchSpecials()">
-        <option value="">All Days</option>
-        <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
-        <option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
-    </select>
-</div>
-
-<h1 style="position:absolute; top:10px; right:10px; z-index:10; color:white;">Beer Dollars</h1>
-
-<div id="map"></div>
-<div id="bar-list"></div>
-<button id="add-special-btn" onclick="openAddModal()">＋</button>
-
-<div id="add-modal">
-    <div id="add-modal-content">
-        <form id="add-form">
-            <input name="name" placeholder="Bar Name" required>
-            <input name="address" placeholder="Address">
-            <input name="deal" placeholder="Deal" required>
-            <select name="day">
-                <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
-                <option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
-            </select>
-            <button type="submit">Save</button>
-            <button type="button" id="add-close">Cancel</button>
-        </form>
-    </div>
-</div>
-
-<script src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&callback=initBeerDollars" async defer></script>
-<script>
-let map, markers=[], infoWindow, tempMarker;
-
-function initBeerDollars() {
-    const defaultCenter={lat:41.101,lng:-80.649};
-    map=new google.maps.Map(document.getElementById("map"),{zoom:13,center:defaultCenter});
-    infoWindow=new google.maps.InfoWindow();
-    map.addListener("click", e=>{openAddModal(e.latLng.lat(),e.latLng.lng());});
-
-    // Auto-set day to today
-    const daySelector = document.getElementById("day-filter");
-    const today = new Date();
-    const weekday = today.toLocaleDateString('en-US', { weekday: 'long' });
-    if(Array.from(daySelector.options).some(opt=>opt.value===weekday)){
-        daySelector.value = weekday;
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      font-family: Arial;
     }
 
-    fetchSpecials();
-}
-window.initBeerDollars=initBeerDollars;
+    #top-bar {
+      background: #ffffff;
+      padding: 10px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      z-index: 2;
+    }
 
-async function fetchSpecials() {
-    let day=document.getElementById("day-filter").value;
-    const res=await fetch('/api/specials'); 
-    let data=await res.json();
-    if(day) data=data.filter(d=>d.day===day);
+    #map {
+      height: 50%;
+      width: 100%;
+    }
 
-    // Clear previous markers
-    markers.forEach(m=>m.setMap(null)); markers=[];
-    document.getElementById("bar-list").innerHTML="";
+    #deals-panel {
+      height: 50%;
+      overflow-y: auto;
+      background: #0A3D62;
+      color: white;
+      padding: 10px;
+    }
 
-    data.forEach(s=>{
-        if(s.lat && s.lng){
-            const marker=new google.maps.Marker({
-                position:{lat:parseFloat(s.lat),lng:parseFloat(s.lng)},
-                map,
-                title:`${s.name}: ${s.deal}`
-            });
-            marker.addListener("click",()=>{
-                infoWindow.setContent(`<b>${s.name}</b><br>${s.deal}<br>${s.address||""}`);
-                infoWindow.open(map,marker);
-            });
-            markers.push(marker);
+    .deal {
+      background: #145A86;
+      margin-bottom: 10px;
+      padding: 10px;
+      border-radius: 8px;
+    }
+
+    button, select {
+      padding: 8px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="top-bar">
+    <button id="nearMeBtn">📍 Near Me</button>
+
+    <select id="daySelect">
+      <option value="Thursday">Thursday</option>
+      <option value="Friday">Friday</option>
+      <option value="Saturday">Saturday</option>
+    </select>
+  </div>
+
+  <div id="map"></div>
+
+  <div id="deals-panel">
+    <h2>Deals</h2>
+    <div id="deals-list"></div>
+  </div>
+
+  <script>
+    let map;
+    let markers = [];
+    let userLocation = { lat: 41.0998, lng: -80.6495 }; // Youngstown fallback
+
+    // 🔥 MOCK DATA (guaranteed working)
+    const mockDeals = [
+      {
+        bar: "The Downtown Bar",
+        lat: 41.0998,
+        lng: -80.6495,
+        deals: {
+          Thursday: "$2 Beers",
+          Friday: "Live DJ + $3 Shots",
+          Saturday: "$5 Pitchers"
         }
+      },
+      {
+        bar: "Campus Pub",
+        lat: 41.105,
+        lng: -80.646,
+        deals: {
+          Thursday: "Trivia Night + $1 Wings",
+          Friday: "$4 Long Islands",
+          Saturday: "Karaoke + $3 Drinks"
+        }
+      }
+    ];
 
-        const div=document.createElement("div");
-        div.className="bar-item";
-        div.innerHTML=`<div class="bar-name">${s.name}</div><div class="bar-deal">${s.deal}</div><div class="bar-address">${s.address||""}</div>`;
-        div.onclick=()=>{map.panTo({lat:parseFloat(s.lat),lng:parseFloat(s.lng)}); map.setZoom(15);};
-        document.getElementById("bar-list").appendChild(div);
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: userLocation,
+        zoom: 13,
+      });
+
+      loadDeals();
+    }
+
+    function loadDeals(day = null) {
+      const selectedDay = day || document.getElementById("daySelect").value;
+
+      clearMarkers();
+
+      mockDeals.forEach(bar => {
+        const marker = new google.maps.Marker({
+          position: { lat: bar.lat, lng: bar.lng },
+          map: map,
+          title: bar.bar
+        });
+
+        marker.addListener("click", () => {
+          renderDeals([bar], selectedDay);
+        });
+
+        markers.push(marker);
+      });
+
+      // Show all deals by default
+      renderDeals(mockDeals, selectedDay);
+    }
+
+    function renderDeals(bars, day) {
+      const list = document.getElementById("deals-list");
+      list.innerHTML = "";
+
+      bars.forEach(bar => {
+        const div = document.createElement("div");
+        div.className = "deal";
+
+        div.innerHTML = `
+          <h3>${bar.bar}</h3>
+          <p><strong>${day}:</strong> ${bar.deals[day] || "No deal"}</p>
+        `;
+
+        list.appendChild(div);
+      });
+    }
+
+    function clearMarkers() {
+      markers.forEach(m => m.setMap(null));
+      markers = [];
+    }
+
+    // 📍 Near Me
+    document.getElementById("nearMeBtn").addEventListener("click", () => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          userLocation = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
+          };
+
+          map.setCenter(userLocation);
+
+          new google.maps.Marker({
+            position: userLocation,
+            map: map,
+            title: "You are here"
+          });
+        });
+      }
     });
-}
 
-function openAddModal(lat=null,lng=null){
-    if(lat&&lng){ window.pendingLat=lat; window.pendingLng=lng; }
-    document.getElementById("add-modal").classList.add("visible");
-}
-document.getElementById("add-close").onclick=()=>{document.getElementById("add-modal").classList.remove("visible");};
-
-document.getElementById("add-form").addEventListener("submit", async e=>{
-    e.preventDefault();
-    const form=new FormData(e.target);
-    const payload={
-        name:form.get("name"), address:form.get("address"),
-        deal:form.get("deal"), day:form.get("day"),
-        lat:window.pendingLat||41.101, lng:window.pendingLng||-80.649
-    };
-    await fetch('/api/add_special',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    document.getElementById("add-modal").classList.remove("visible");
-    fetchSpecials();
-});
-
-function findMe(){
-    navigator.geolocation.getCurrentPosition(pos=>{
-        const loc={lat:pos.coords.latitude,lng:pos.coords.longitude};
-        map.setCenter(loc); map.setZoom(14);
+    // 📅 Day change
+    document.getElementById("daySelect").addEventListener("change", function() {
+      loadDeals(this.value);
     });
-}
-</script>
+
+  </script>
+
+  <!-- 🔑 YOUR GOOGLE MAPS API KEY HERE -->
+  <script async
+    src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap">
+  </script>
+
 </body>
 </html>
