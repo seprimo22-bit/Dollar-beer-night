@@ -5,59 +5,10 @@
   <title>Beer Dollars</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <style>
-    /* Reset and layout */
-    body, html {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      font-family: Arial, sans-serif;
-    }
-
-    /* Top bar */
-    #top-bar {
-      background: #ffffff;
-      padding: 10px;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      z-index: 2;
-    }
-
-    button, select {
-      padding: 8px 12px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-
-    /* Map */
-    #map {
-      height: 50%; /* 50% of viewport height */
-      width: 100%;
-    }
-
-    /* Deals panel */
-    #deals-panel {
-      height: 50%; /* remaining 50% */
-      overflow-y: auto;
-      background: #0A3D62;
-      color: white;
-      padding: 10px;
-    }
-
-    .deal {
-      background: #145A86;
-      margin-bottom: 10px;
-      padding: 10px;
-      border-radius: 8px;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- Top Bar -->
   <div id="top-bar">
     <button id="nearMeBtn">📍 Near Me</button>
     <select id="daySelect">
@@ -67,131 +18,21 @@
     </select>
   </div>
 
-  <!-- Map -->
   <div id="map"></div>
+  <div id="map-error"></div>
 
-  <!-- Deals Panel -->
   <div id="deals-panel">
     <h2>Deals</h2>
     <div id="deals-list"></div>
   </div>
 
-  <!-- Main JS -->
-  <script>
-    let map;
-    let markers = [];
-    let userLocation = { lat: 41.0998, lng: -80.6495 }; // fallback to Youngstown
-
-    // MOCK DEALS
-    const mockDeals = [
-      {
-        bar: "The Downtown Bar",
-        lat: 41.0998,
-        lng: -80.6495,
-        deals: {
-          Thursday: "$2 Beers",
-          Friday: "Live DJ + $3 Shots",
-          Saturday: "$5 Pitchers"
-        }
-      },
-      {
-        bar: "Campus Pub",
-        lat: 41.105,
-        lng: -80.646,
-        deals: {
-          Thursday: "Trivia Night + $1 Wings",
-          Friday: "$4 Long Islands",
-          Saturday: "Karaoke + $3 Drinks"
-        }
-      }
-    ];
-
-    // Initialize Map
-    function initMap() {
-      map = new google.maps.Map(document.getElementById("map"), {
-        center: userLocation,
-        zoom: 13
-      });
-
-      loadDeals();
-    }
-
-    // Load Deals and Markers
-    function loadDeals(selectedDay = null) {
-      const day = selectedDay || document.getElementById("daySelect").value;
-      clearMarkers();
-
-      mockDeals.forEach(bar => {
-        const marker = new google.maps.Marker({
-          position: { lat: bar.lat, lng: bar.lng },
-          map: map,
-          title: bar.bar
-        });
-
-        marker.addListener("click", () => {
-          renderDeals([bar], day);
-        });
-
-        markers.push(marker);
-      });
-
-      renderDeals(mockDeals, day); // show all deals by default
-    }
-
-    // Render deals in panel
-    function renderDeals(bars, day) {
-      const list = document.getElementById("deals-list");
-      list.innerHTML = "";
-
-      bars.forEach(bar => {
-        const div = document.createElement("div");
-        div.className = "deal";
-        div.innerHTML = `
-          <h3>${bar.bar}</h3>
-          <p><strong>${day}:</strong> ${bar.deals[day] || "No deal"}</p>
-        `;
-        list.appendChild(div);
-      });
-    }
-
-    // Remove all existing markers
-    function clearMarkers() {
-      markers.forEach(m => m.setMap(null));
-      markers = [];
-    }
-
-    // Near Me button
-    document.getElementById("nearMeBtn").addEventListener("click", () => {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(pos => {
-          userLocation = {
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude
-          };
-          map.setCenter(userLocation);
-
-          new google.maps.Marker({
-            position: userLocation,
-            map: map,
-            title: "You are here"
-          });
-        }, err => {
-          alert("Could not get your location.");
-        });
-      } else {
-        alert("Geolocation is not supported by your browser.");
-      }
-    });
-
-    // Day selector
-    document.getElementById("daySelect").addEventListener("change", function() {
-      loadDeals(this.value);
-    });
-  </script>
+  <!-- JS -->
+  <script src="script.js"></script>
 
   <!-- Google Maps API -->
   <script async
-    src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY_HERE&callback=initMap">
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiEK4CduUBr7EWeqtSsFhG1nQyqON6QYI&callback=initMap"
+    onerror="document.getElementById('map-error').innerText='Failed to load Google Maps script.'">
   </script>
 
 </body>
