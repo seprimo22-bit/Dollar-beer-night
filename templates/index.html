@@ -4,8 +4,7 @@
   <meta charset="UTF-8">
   <title>Beer Dollars</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
@@ -26,14 +25,12 @@
     <div id="deals-list"></div>
   </div>
 
-  <!-- JS -->
-  <script src="script.js"></script>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
 
   <!-- Google Maps API -->
   <script async
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiEK4CduUBr7EWeqtSsFhG1nQyqON6QYI&callback=initMap"
     onerror="document.getElementById('map-error').innerText='Failed to load Google Maps script.'">
   </script>
-
 </body>
 </html>
