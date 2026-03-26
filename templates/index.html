@@ -9,12 +9,8 @@
 <body>
 
   <div id="top-bar">
+    <div id="day-bubbles"></div>
     <button id="nearMeBtn">📍 Near Me</button>
-    <select id="daySelect">
-      <option value="Thursday">Thursday</option>
-      <option value="Friday">Friday</option>
-      <option value="Saturday">Saturday</option>
-    </select>
   </div>
 
   <div id="map"></div>
@@ -27,10 +23,10 @@
 
   <script src="{{ url_for('static', filename='script.js') }}"></script>
 
-  <!-- Google Maps API -->
   <script async
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiEK4CduUBr7EWeqtSsFhG1nQyqON6QYI&callback=initMap"
     onerror="document.getElementById('map-error').innerText='Failed to load Google Maps script.'">
   </script>
+
 </body>
 </html>
