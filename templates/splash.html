@@ -1,30 +1,22 @@
+
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>Beer Dollars Login</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Beer Dollars</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-<div id="splash">
-  <img src="{{ url_for('static', filename='177397813598135981_squigglyline2.png') }}" alt="Beer Dollars" id="splash-image">
-</div>
-
-<div id="login-form">
-  <form id="phoneForm" method="POST" action="/send-code">
-    <input type="tel" name="phone" placeholder="Enter your phone" required>
-    <button type="submit">Send Code</button>
-  </form>
-
-  <form id="codeForm" method="POST" action="/verify-code">
-    <input type="text" name="code" placeholder="Enter code" required>
-    <button type="submit">Verify</button>
-  </form>
-
-  {% if error %}
-    <p style="color:red;">{{ error }}</p>
-  {% endif %}
-</div>
+    <div class="splash-container">
+        <h1>Beer Dollars</h1>
+        <p>Stretch your beer money!</p>
+        {% if error %}
+        <p class="error">{{ error }}</p>
+        {% endif %}
+        <form method="POST">
+            <input type="text" name="phone" placeholder="Phone Number" required>
+            <input type="text" name="code" placeholder="Enter Code" required>
+            <button type="submit">Enter</button>
+        </form>
+    </div>
 </body>
 </html>
