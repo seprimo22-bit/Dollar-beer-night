@@ -1,87 +1,12 @@
-body, html {
-  margin: 0;
-  padding: 0;
-  font-family: Arial, sans-serif;
-}
+body { font-family: Arial; margin: 0; padding: 0; background: #0A3D62; color: white; }
+h1 { text-align: center; margin-top: 20px; }
+#day-buttons { text-align: center; margin: 10px; }
+#day-buttons button { margin: 3px; padding: 8px 12px; }
+#bar-list { margin: 10px auto; width: 90%; max-width: 600px; }
+#map { height: 400px; width: 90%; margin: 10px auto; }
+#add-bar-btn { position: fixed; bottom: 20px; right: 20px; font-size: 24px; padding: 10px; border-radius: 50%; background: #F39C12; color: white; border: none; cursor: pointer; }
 
-#splash {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  text-align: center;
-}
-
-#splash img {
-  max-width: 300px;
-  margin-bottom: 20px;
-}
-
-#app {
-  padding: 10px;
-}
-
-#days {
-  display: flex;
-  justify-content: space-around;
-  margin-bottom: 10px;
-}
-
-.dayBtn {
-  padding: 5px 10px;
-  border: 1px solid #333;
-  border-radius: 5px;
-  cursor: pointer;
-  background: #fff;
-}
-
-.dayBtn.selected {
-  background: #145A86;
-  color: #fff;
-}
-
-#bars-list .bar {
-  background: #0A3D62;
-  color: white;
-  margin-bottom: 5px;
-  padding: 10px;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-#map {
-  width: 100%;
-  height: 300px;
-  margin-top: 10px;
-}
-
-#addBarBtn {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  padding: 10px 15px;
-  border-radius: 50%;
-  background: #145A86;
-  color: white;
-  font-size: 24px;
-  border: none;
-  cursor: pointer;
-}
-
-#addBarForm {
-  position: fixed;
-  bottom: 70px;
-  right: 20px;
-  background: white;
-  padding: 10px;
-  border-radius: 8px;
-  box-shadow: 0px 2px 8px rgba(0,0,0,0.3);
-}
-
-#addBarForm input {
-  display: block;
-  margin-bottom: 5px;
-  width: 200px;
-  padding: 5px;
-}
+/* Modal */
+.modal { display: none; position: fixed; z-index: 1000; left:0; top:0; width:100%; height:100%; background: rgba(0,0,0,0.7); }
+.modal-content { background: white; color: black; margin: 15% auto; padding: 20px; width: 300px; border-radius: 10px; }
+.close { float: right; cursor: pointer; }
