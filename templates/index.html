@@ -1,53 +1,51 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Beer Dollars</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="static/style.css">
 </head>
 <body>
-<div class="main-container">
-    <h1>Beer Dollars — Stretch your beer money</h1>
-
-    <!-- Day buttons -->
-    <div class="days">
-        {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] %}
-            <button class="day-btn {% if day == current_day %}active{% endif %}" onclick="filterDay('{{ day }}')">{{ day }}</button>
-        {% endfor %}
+    <!-- Splash Page -->
+    <div id="splash-page" class="splash">
+        <img src="static/beer_dollars_logo.png" alt="Beer Dollars Logo" class="splash-logo">
+        <div class="splash-form">
+            <input type="text" id="phone" placeholder="Enter your phone number">
+            <input type="text" id="code" placeholder="Enter your code">
+            <button id="enter-btn">Enter</button>
+        </div>
+        <div id="splash-error" class="error-msg"></div>
     </div>
 
-    <!-- Bar listings -->
-    <div id="bar-list">
-        {% for bar in bars %}
-            <div class="bar-item" data-day="{{ bar.day }}" data-lat="{{ bar.lat }}" data-lng="{{ bar.lng }}">
-                <h3>{{ bar.name }} {% if bar.verified %}✔{% endif %}</h3>
-                <p>{{ bar.special }}</p>
-                <p>{{ bar.address }}</p>
-            </div>
-        {% endfor %}
+    <!-- Main App Page -->
+    <div id="main-app" class="hidden">
+        <h1>Beer Dollars — Stretch Your Beer Money</h1>
+
+        <!-- Day Selector -->
+        <div id="day-selector">
+            <button class="day-btn" data-day="Monday">Mon</button>
+            <button class="day-btn" data-day="Tuesday">Tue</button>
+            <button class="day-btn" data-day="Wednesday">Wed</button>
+            <button class="day-btn" data-day="Thursday">Thu</button>
+            <button class="day-btn" data-day="Friday">Fri</button>
+            <button class="day-btn" data-day="Saturday">Sat</button>
+            <button class="day-btn" data-day="Sunday">Sun</button>
+        </div>
+
+        <!-- Bar Listings -->
+        <div id="bar-list"></div>
+
+        <!-- Map -->
+        <div id="map"></div>
+
+        <!-- Add Bar Floating Button -->
+        <button id="add-bar-btn" class="floating-btn">+</button>
     </div>
 
-    <!-- Map -->
-    <div id="map" style="height:300px;"></div>
-
-    <!-- Floating add bar button -->
-    <button id="add-bar-btn" onclick="toggleAddBarForm()">+ Add Bar</button>
-
-    <!-- Add bar form -->
-    <div id="add-bar-form" style="display:none;">
-        <input type="text" id="bar-name" placeholder="Bar Name">
-        <input type="text" id="bar-address" placeholder="Address">
-        <input type="text" id="bar-special" placeholder="Special">
-        <select id="bar-day">
-            {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] %}
-                <option value="{{ day }}">{{ day }}</option>
-            {% endfor %}
-        </select>
-        <button onclick="submitBar()">Add</button>
-    </div>
-</div>
-
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_KEY"></script>
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+    <!-- Google Maps + App Scripts -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiEK4CduUBr7EWeqtSsFhG1nQyqON6QYI&callback=initMap" async defer></script>
+    <script src="static/script.js"></script>
 </body>
 </html>
