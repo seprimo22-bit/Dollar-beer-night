@@ -1,12 +1,78 @@
-body { font-family: Arial; margin: 0; padding: 0; background: #0A3D62; color: white; }
-h1 { text-align: center; margin-top: 20px; }
-#day-buttons { text-align: center; margin: 10px; }
-#day-buttons button { margin: 3px; padding: 8px 12px; }
-#bar-list { margin: 10px auto; width: 90%; max-width: 600px; }
-#map { height: 400px; width: 90%; margin: 10px auto; }
-#add-bar-btn { position: fixed; bottom: 20px; right: 20px; font-size: 24px; padding: 10px; border-radius: 50%; background: #F39C12; color: white; border: none; cursor: pointer; }
+body, html {
+    margin:0;
+    padding:0;
+    font-family: Arial, sans-serif;
+}
 
-/* Modal */
-.modal { display: none; position: fixed; z-index: 1000; left:0; top:0; width:100%; height:100%; background: rgba(0,0,0,0.7); }
-.modal-content { background: white; color: black; margin: 15% auto; padding: 20px; width: 300px; border-radius: 10px; }
-.close { float: right; cursor: pointer; }
+.splash-container {
+    display:flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height:100vh;
+    text-align:center;
+}
+
+.splash-container .logo {
+    max-width:200px;
+    margin-bottom:20px;
+}
+
+.error {
+    color:red;
+}
+
+.main-container {
+    padding: 20px;
+}
+
+.days {
+    margin-bottom: 20px;
+}
+
+.day-btn {
+    margin: 2px;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+.day-btn.active {
+    background-color: #3498db;
+    color: white;
+}
+
+.bar-item {
+    border: 1px solid #ccc;
+    margin-bottom: 8px;
+    padding: 8px;
+    cursor: pointer;
+}
+
+#add-bar-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    font-size: 24px;
+    padding: 10px 15px;
+    border-radius: 50%;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+#add-bar-form {
+    position: fixed;
+    bottom: 70px;
+    right: 20px;
+    background:white;
+    padding:10px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    display:flex;
+    flex-direction:column;
+}
+
+#add-bar-form input, #add-bar-form select {
+    margin-bottom:5px;
+}
