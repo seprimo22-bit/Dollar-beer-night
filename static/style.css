@@ -1,78 +1,192 @@
+/* General resets */
 body, html {
-    margin:0;
-    padding:0;
-    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    font-family: 'Arial', sans-serif;
+    background-color: #f5f5f5;
+    color: #222;
 }
 
-.splash-container {
-    display:flex;
+/* Splash page */
+.splash {
+    display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height:100vh;
-    text-align:center;
+    height: 100vh;
+    background: linear-gradient(135deg, #0A3D62, #1B9CFC);
+    color: white;
 }
 
-.splash-container .logo {
-    max-width:200px;
-    margin-bottom:20px;
+.splash-logo {
+    width: 250px;
+    height: auto;
+    margin-bottom: 40px;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
 }
 
-.error {
-    color:red;
+.splash-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 80%;
+    max-width: 300px;
 }
 
-.main-container {
+.splash-form input {
+    padding: 10px 15px;
+    border-radius: 8px;
+    border: none;
+    font-size: 16px;
+}
+
+.splash-form button {
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    background-color: #FFC312;
+    color: #222;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.splash-form button:hover {
+    background-color: #f1c40f;
+}
+
+.error-msg {
+    color: #ff6b6b;
+    margin-top: 10px;
+    text-align: center;
+}
+
+/* Main App Page */
+#main-app {
     padding: 20px;
 }
 
-.days {
+/* Header */
+#main-app h1 {
+    text-align: center;
+    color: #0A3D62;
+    margin-bottom: 20px;
+}
+
+/* Day selector */
+#day-selector {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
     margin-bottom: 20px;
 }
 
 .day-btn {
-    margin: 2px;
-    padding: 8px 12px;
+    padding: 10px 15px;
+    border: 2px solid #0A3D62;
+    border-radius: 25px;
+    background-color: #fff;
+    color: #0A3D62;
     cursor: pointer;
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+.day-btn:hover {
+    background-color: #0A3D62;
+    color: white;
 }
 
 .day-btn.active {
-    background-color: #3498db;
+    background-color: #0A3D62;
     color: white;
+}
+
+/* Bar listings */
+#bar-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
 }
 
 .bar-item {
-    border: 1px solid #ccc;
-    margin-bottom: 8px;
-    padding: 8px;
+    padding: 12px 15px;
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     cursor: pointer;
+    transition: 0.2s;
 }
 
-#add-bar-btn {
+.bar-item:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* Verified indicator */
+.bar-item.verified::after {
+    content: "✔";
+    color: green;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+/* Map */
+#map {
+    width: 100%;
+    height: 300px; /* small enough to scroll */
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-bottom: 40px;
+}
+
+/* Floating Add Bar button */
+.floating-btn {
     position: fixed;
     bottom: 20px;
     right: 20px;
-    font-size: 24px;
-    padding: 10px 15px;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
-    background-color: #3498db;
-    color: white;
     border: none;
+    background-color: #ff6b6b;
+    color: white;
+    font-size: 32px;
+    font-weight: bold;
     cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    transition: 0.3s;
 }
 
-#add-bar-form {
-    position: fixed;
-    bottom: 70px;
-    right: 20px;
-    background:white;
-    padding:10px;
-    border:1px solid #ccc;
-    border-radius:8px;
-    display:flex;
-    flex-direction:column;
+.floating-btn:hover {
+    background-color: #e55039;
 }
 
-#add-bar-form input, #add-bar-form select {
-    margin-bottom:5px;
+/* Hidden class */
+.hidden {
+    display: none;
 }
+
+/* Responsive */
+@media (max-width: 600px) {
+    #day-selector {
+        gap: 5px;
+    }
+
+    .day-btn {
+        padding: 8px 10px;
+        font-size: 14px;
+    }
+
+    .splash-logo {
+        width: 180px;
+        margin-bottom: 30px;
+    }
+
+    .floating-btn {
+        width: 50px;
+        height: 50px;
+        font
