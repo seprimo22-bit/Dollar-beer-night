@@ -1,49 +1,53 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>Beer Dollars</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY"></script>
 </head>
 <body>
-    <div class="main-container">
-        <h1>Beer Dollars</h1>
+<div class="main-container">
+    <h1>Beer Dollars — Stretch your beer money</h1>
 
-        <!-- Day buttons -->
-        <div id="day-buttons">
-            <button onclick="loadBars('Monday')">Monday</button>
-            <button onclick="loadBars('Tuesday')">Tuesday</button>
-            <button onclick="loadBars('Wednesday')">Wednesday</button>
-            <button onclick="loadBars('Thursday')">Thursday</button>
-            <button onclick="loadBars('Friday')">Friday</button>
-            <button onclick="loadBars('Saturday')">Saturday</button>
-            <button onclick="loadBars('Sunday')">Sunday</button>
-        </div>
-
-        <!-- Bar list -->
-        <div id="bar-list"></div>
-
-        <!-- Map -->
-        <div id="map"></div>
-
-        <!-- Add bar floating icon -->
-        <button id="add-bar-btn" onclick="showAddBarForm()">＋ Add Bar</button>
-
-        <!-- Add bar form modal -->
-        <div id="add-bar-form" class="modal">
-            <div class="modal-content">
-                <span class="close" onclick="closeAddBarForm()">&times;</span>
-                <h2>Add New Bar</h2>
-                <input type="text" id="bar-name" placeholder="Bar Name">
-                <input type="text" id="bar-address" placeholder="Address">
-                <input type="text" id="bar-lat" placeholder="Latitude">
-                <input type="text" id="bar-lng" placeholder="Longitude">
-                <input type="text" id="bar-day" placeholder="Day (Monday–Sunday)">
-                <input type="text" id="bar-special" placeholder="Special">
-                <button onclick="submitBar()">Submit</button>
-            </div>
-        </div>
+    <!-- Day buttons -->
+    <div class="days">
+        {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] %}
+            <button class="day-btn {% if day == current_day %}active{% endif %}" onclick="filterDay('{{ day }}')">{{ day }}</button>
+        {% endfor %}
     </div>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+    <!-- Bar listings -->
+    <div id="bar-list">
+        {% for bar in bars %}
+            <div class="bar-item" data-day="{{ bar.day }}" data-lat="{{ bar.lat }}" data-lng="{{ bar.lng }}">
+                <h3>{{ bar.name }} {% if bar.verified %}✔{% endif %}</h3>
+                <p>{{ bar.special }}</p>
+                <p>{{ bar.address }}</p>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Map -->
+    <div id="map" style="height:300px;"></div>
+
+    <!-- Floating add bar button -->
+    <button id="add-bar-btn" onclick="toggleAddBarForm()">+ Add Bar</button>
+
+    <!-- Add bar form -->
+    <div id="add-bar-form" style="display:none;">
+        <input type="text" id="bar-name" placeholder="Bar Name">
+        <input type="text" id="bar-address" placeholder="Address">
+        <input type="text" id="bar-special" placeholder="Special">
+        <select id="bar-day">
+            {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] %}
+                <option value="{{ day }}">{{ day }}</option>
+            {% endfor %}
+        </select>
+        <button onclick="submitBar()">Add</button>
+    </div>
+</div>
+
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_KEY"></script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
