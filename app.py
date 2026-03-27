@@ -5,96 +5,108 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__)
-# Secure the session
-app.secret_key = os.environ.get('SECRET_KEY', 'beer_dollars_999_security')
+app.secret_key = os.environ.get('SECRET_KEY', 'beer_dollars_999_super_secret')
 
 # 1. Master Override Codes
 MASTER_CODES = ['999', '1616', '999-000']
 
+# 2. Database Connection Fix
 def get_db_connection():
-    # Pulls the new database URL from your Render Environment Variables
-    return psycopg2.connect(os.environ.get('DATABASE_URL'), sslmode='require')
+    url = os.environ.get('DATABASE_URL')
+    if url and url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
+    return psycopg2.connect(url, sslmode='require')
 
+# 3. AUTO-BUILD THE TABLE (Runs every time the app starts)
+def init_db():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS bars (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                address TEXT,
+                special TEXT,
+                day TEXT,
+                lat DOUBLE PRECISION,
+                lng DOUBLE PRECISION,
+                verified BOOLEAN DEFAULT FALSE
+            );
+        """)
+        conn.commit()
+        cur.close()
+        conn.close()
+        print("Database Table Initialized Successfully")
+    except Exception as e:
+        print(f"Database Init Error: {e}")
+
+# Call the init function immediately
+init_db()
+
+# 4. Smart Day Logic (The 2:30 AM Rule)
 def get_business_day():
-    # The 2:30 AM Rule: If it's 1:00 AM Saturday, it's still Friday night.
     now = datetime.now()
     if now.hour < 2 or (now.hour == 2 and now.minute < 30):
         now -= timedelta(days=1)
-    return now.strftime('%A') # Returns 'Friday', 'Saturday', etc.
+    return now.strftime('%A')
+
+# -------------------------
+# ROUTES
+# -------------------------
 
 @app.route('/', methods=['GET', 'POST'])
 def splash():
     if request.method == 'POST':
-        phone = request.form.get('phone')
         code = request.form.get('code')
-        
-        # MASTER OVERRIDE CHECK
         if code in MASTER_CODES:
             session['authorized'] = True
             return redirect(url_for('main'))
-        
-        # Twilio Placeholder (If you enter a phone and any code, it lets you in for now)
-        if phone and code:
-            session['authorized'] = True
-            return redirect(url_for('main'))
-            
     return render_template('splash.html')
 
 @app.route('/main')
 def main():
-    # Gatekeeper: Redirect to splash if not logged in
     if not session.get('authorized'):
         return redirect(url_for('splash'))
-    
     current_day = get_business_day()
     return render_template('index.html', current_day=current_day)
 
-@app.route('/api/bars')
-def get_bars():
-    # This API handles the 50-mile radius and the day filtering
+@app.route('/api/specials', methods=['GET'])
+def get_specials():
     day = request.args.get('day', get_business_day())
-    user_lat = float(request.args.get('lat', 0))
-    user_lng = float(request.args.get('lng', 0))
-    
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    
-    # Haversine formula to find bars within 50 miles
-    query = """
-        SELECT *, 
-        (3959 * acos(cos(radians(%s)) * cos(radians(lat)) * cos(radians(lng) - radians(%s)) + sin(radians(%s)) * sin(radians(lat)))) AS distance 
-        FROM bars 
-        WHERE (day = %s OR day = 'Daily')
-        GROUP BY id
-        HAVING (3959 * acos(cos(radians(%s)) * cos(radians(lat)) * cos(radians(lng) - radians(%s)) + sin(radians(%s)) * sin(radians(lat)))) < 50
-        ORDER BY distance ASC;
-    """
-    cur.execute(query, (user_lat, user_lng, user_lat, day, user_lat, user_lng, user_lat))
-    bars = cur.fetchall()
+    cur.execute("SELECT * FROM bars WHERE day = %s OR day = 'Daily'", (day,))
+    specials = cur.fetchall()
     cur.close()
     conn.close()
-    return jsonify(bars)
+    return jsonify(specials)
 
-@app.route('/add_bar', methods=['POST'])
-def add_bar():
+@app.route('/api/specials', methods=['POST'])
+def add_special():
     if not session.get('authorized'):
-        return jsonify({'status': 'unauthorized'}), 401
-        
+        return jsonify({"error": "Unauthorized"}), 401
     data = request.json
     conn = get_db_connection()
     cur = conn.cursor()
-    
-    # Insert new bar - Defaulted to NOT verified (Matthew's manual check)
     cur.execute("""
         INSERT INTO bars (name, address, special, day, lat, lng, verified)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
-    """, (data['name'], data['address'], data['special'], data['day'], data['lat'], data['lng'], False))
-    
+    """, (
+        data.get('name'), 
+        data.get('address'), 
+        data.get('special'), 
+        data.get('day'),
+        data.get('lat', 0), 
+        data.get('lng', 0),
+        False 
+    ))
     conn.commit()
     cur.close()
     conn.close()
-    return jsonify({'status': 'success'})
+    return jsonify({"status": "added"})
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
     
