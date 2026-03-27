@@ -1,22 +1,22 @@
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Beer Dollars</title>
+    <meta charset="UTF-8">
+    <title>Beer Dollars Splash</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="splash-container">
-        <h1>Beer Dollars</h1>
-        <p>Stretch your beer money!</p>
-        {% if error %}
+<div class="splash-container">
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="Beer Dollars Logo" class="logo">
+    <h1>Stretch your beer money!</h1>
+    {% if error %}
         <p class="error">{{ error }}</p>
-        {% endif %}
-        <form method="POST">
-            <input type="text" name="phone" placeholder="Phone Number" required>
-            <input type="text" name="code" placeholder="Enter Code" required>
-            <button type="submit">Enter</button>
-        </form>
-    </div>
+    {% endif %}
+    <form method="POST">
+        <input type="text" name="phone" placeholder="Phone Number" required>
+        <input type="text" name="code" placeholder="Code" required>
+        <button type="submit">Enter</button>
+    </form>
+</div>
 </body>
 </html>
