@@ -1,92 +1,79 @@
-
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
-from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime, timedelta
+import json
 import os
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "supersecret")
+app.secret_key = 'supersecretkey123'  # Change in production
 
-# Database setup (SQLite for MVP)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///beerdollars.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
+# File to store bars
+BARS_FILE = 'bars.json'
 
-# Models
-class Bar(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    address = db.Column(db.String(200), nullable=False)
-    latitude = db.Column(db.Float, nullable=False)
-    longitude = db.Column(db.Float, nullable=False)
-    day = db.Column(db.String(10), nullable=False)  # Monday, Tuesday, etc.
-    special = db.Column(db.String(100), nullable=False)
+# Master override codes
+MASTER_CODES = ['999-000', '1616']
 
-# Initialize database
-with app.app_context():
-    db.create_all()
+# Load bars from file
+def load_bars():
+    if not os.path.exists(BARS_FILE):
+        return []
+    with open(BARS_FILE, 'r') as f:
+        return json.load(f)
 
-# Master codes
-MASTER_CODES = ["999-000", "1616"]
+# Save bars to file
+def save_bars(bars):
+    with open(BARS_FILE, 'w') as f:
+        json.dump(bars, f, indent=2)
 
-# Splash page
-@app.route("/", methods=["GET", "POST"])
+# Determine current day considering 2:30 AM cutoff
+def get_current_day():
+    now = datetime.now()
+    if now.hour < 2 or (now.hour == 2 and now.minute < 30):
+        # before 2:30 AM counts as previous day
+        now -= timedelta(days=1)
+    return now.strftime('%A')  # e.g., 'Thursday'
+
+@app.route('/', methods=['GET', 'POST'])
 def splash():
-    if request.method == "POST":
-        phone = request.form.get("phone")
-        code = request.form.get("code")
+    if request.method == 'POST':
+        phone = request.form.get('phone')
+        code = request.form.get('code')
         if code in MASTER_CODES:
             session['authorized'] = True
-            return redirect(url_for("main"))
-        else:
-            return render_template("splash.html", error="Invalid code")
-    return render_template("splash.html")
+            return redirect(url_for('main'))
+        # Here you could implement SMS code verification logic
+        if phone and code:
+            # For MVP, assume any code works for now
+            session['authorized'] = True
+            return redirect(url_for('main'))
+        return render_template('splash.html', error="Invalid code or phone.")
+    return render_template('splash.html')
 
-# Main app page
-@app.route("/main")
+@app.route('/main')
 def main():
-    if not session.get("authorized"):
-        return redirect(url_for("splash"))
-    return render_template("index.html")
+    if not session.get('authorized'):
+        return redirect(url_for('splash'))
+    bars = load_bars()
+    current_day = get_current_day()
+    return render_template('index.html', bars=bars, current_day=current_day)
 
-# API: Get bars (optionally by day)
-@app.route("/api/bars")
-def get_bars():
-    day = request.args.get("day")
-    query = Bar.query
-    if day:
-        query = query.filter_by(day=day)
-    bars = query.all()
-    bars_list = [
-        {
-            "id": bar.id,
-            "name": bar.name,
-            "address": bar.address,
-            "latitude": bar.latitude,
-            "longitude": bar.longitude,
-            "day": bar.day,
-            "special": bar.special
-        } for bar in bars
-    ]
-    return jsonify(bars_list)
-
-# API: Add new bar
-@app.route("/api/bars/add", methods=["POST"])
+@app.route('/add_bar', methods=['POST'])
 def add_bar():
+    if not session.get('authorized'):
+        return jsonify({'error': 'Unauthorized'}), 401
     data = request.json
-    try:
-        bar = Bar(
-            name=data['name'],
-            address=data['address'],
-            latitude=float(data['latitude']),
-            longitude=float(data['longitude']),
-            day=data['day'],
-            special=data['special']
-        )
-        db.session.add(bar)
-        db.session.commit()
-        return jsonify({"status": "success", "id": bar.id})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+    bars = load_bars()
+    new_bar = {
+        'name': data.get('name'),
+        'address': data.get('address'),
+        'special': data.get('special'),
+        'day': data.get('day'),
+        'verified': False,
+        'lat': data.get('lat', 0),  # optional for map
+        'lng': data.get('lng', 0)
+    }
+    bars.append(new_bar)
+    save_bars(bars)
+    return jsonify({'success': True, 'bar': new_bar})
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(debug=True)
