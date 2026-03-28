@@ -110,3 +110,45 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
     
+# Add to app.py
+from twilio.rest import Client
+import random
+
+# You'll put your Twilio credentials in Render's environment variables
+TWILIO_SID = os.environ.get('TWILIO_SID')
+TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
+TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER')
+
+# Store temporary codes in memory (or database)
+generated_codes = {}
+
+@app.route('/api/send-code', methods=['POST'])
+def send_code():
+    phone = request.json.get('phone')
+    
+    # Generate a random 6-digit code
+    code = str(random.randint(100000, 999999))
+    generated_codes[phone] = code
+    
+    try:
+        client = Client(TWILIO_SID, TWILIO_AUTH_TOKEN)
+        message = client.messages.create(
+            body=f"Your Beer Dollars login code is: {code}",
+            from_=TWILIO_PHONE_NUMBER,
+            to=phone
+        )
+        return jsonify({"status": "Code sent!"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/verify-code', methods=['POST'])
+def verify_code():
+    phone = request.json.get('phone')
+    code = request.json.get('code')
+    
+    # Check if code matches the one we sent, OR if it's your master admin code
+    if generated_codes.get(phone) == code or code in MASTER_CODES:
+        session['authorized'] = True
+        return jsonify({"status": "success"})
+    
+    return jsonify({"error": "Invalid code"}), 401
