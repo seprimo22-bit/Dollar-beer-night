@@ -9,14 +9,97 @@
 <div class="splash-container">
     <img src="{{ url_for('static', filename='logo.png') }}" alt="Beer Dollars Logo" class="logo">
     <h1>Stretch your beer money!</h1>
-    {% if error %}
-        <p class="error">{{ error }}</p>
-    {% endif %}
-    <form method="POST">
-        <input type="text" name="phone" placeholder="Phone Number" required>
-        <input type="text" name="code" placeholder="Code" required>
-        <button type="submit">Enter</button>
-    </form>
+    <p>Enter your phone number to get started.</p>
+
+    <div class="splash-form">
+        <input type="text" id="phone" placeholder="Phone Number" required>
+        <button id="send-code-btn">Send Code</button>
+    </div>
+
+    <div class="splash-form">
+        <input type="text" id="code" placeholder="Enter Code or Admin 1616">
+        <button id="verify-code-btn">Verify Code</button>
+    </div>
+
+    <div id="splash-error" class="error-msg"></div>
 </div>
+
+<script>
+    // -----------------------------
+    // Splash Page JS for Twilio + Master Code
+    // -----------------------------
+    const sendBtn = document.getElementById("send-code-btn");
+    const verifyBtn = document.getElementById("verify-code-btn");
+    const errorMsg = document.getElementById("splash-error");
+
+    // Send code via Twilio API
+    sendBtn.addEventListener("click", async () => {
+        const phone = document.getElementById("phone").value.trim();
+        if (!phone) {
+            errorMsg.textContent = "Enter a valid phone number!";
+            return;
+        }
+
+        try {
+            const res = await fetch("/api/send-code", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ phone })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                errorMsg.style.color = "green";
+                errorMsg.textContent = "Code sent! Check your phone.";
+            } else {
+                errorMsg.style.color = "red";
+                errorMsg.textContent = data.error || "Failed to send code.";
+            }
+        } catch (err) {
+            errorMsg.style.color = "red";
+            errorMsg.textContent = "Error sending code.";
+            console.error(err);
+        }
+    });
+
+    // Verify code or master admin code 1616
+    verifyBtn.addEventListener("click", async () => {
+        const phone = document.getElementById("phone").value.trim();
+        const code = document.getElementById("code").value.trim();
+
+        if (!phone || !code) {
+            errorMsg.style.color = "red";
+            errorMsg.textContent = "Enter both phone and code!";
+            return;
+        }
+
+        try {
+            // Master admin code bypass
+            if (code === "1616") {
+                sessionStorage.setItem("authorized", "true");
+                window.location.href = "/main";
+                return;
+            }
+
+            const res = await fetch("/api/verify-code", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ phone, code })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                sessionStorage.setItem("authorized", "true");
+                window.location.href = "/main";
+            } else {
+                errorMsg.style.color = "red";
+                errorMsg.textContent = data.error || "Invalid code";
+            }
+        } catch (err) {
+            errorMsg.style.color = "red";
+            errorMsg.textContent = "Error verifying code.";
+            console.error(err);
+        }
+    });
+</script>
 </body>
 </html>
