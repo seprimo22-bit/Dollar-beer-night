@@ -9,23 +9,23 @@ import random
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'beer_dollars_999_super_secret')
 
-# -----------------------
-# MASTER ADMIN CODES
-# -----------------------
-MASTER_CODES = ['999', '1616', '999-000']
+# ----------------------------
+# 1. Master Code for Admin
+# ----------------------------
+MASTER_CODE = '1616'
 
-# -----------------------
-# DATABASE CONNECTION
-# -----------------------
+# ----------------------------
+# 2. Database Connection
+# ----------------------------
 def get_db_connection():
     url = os.environ.get('DATABASE_URL')
     if url and url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
     return psycopg2.connect(url, sslmode='require')
 
-# -----------------------
-# INIT DB
-# -----------------------
+# ----------------------------
+# 3. Auto-create Table
+# ----------------------------
 def init_db():
     try:
         conn = get_db_connection()
@@ -45,24 +45,33 @@ def init_db():
         conn.commit()
         cur.close()
         conn.close()
-        print("Database Table Initialized Successfully")
+        print("Database table initialized successfully")
     except Exception as e:
         print(f"Database Init Error: {e}")
 
 init_db()
 
-# -----------------------
-# SMART BUSINESS DAY (2:30 AM rule)
-# -----------------------
+# ----------------------------
+# 4. Smart Day Logic
+# ----------------------------
 def get_business_day():
     now = datetime.now()
     if now.hour < 2 or (now.hour == 2 and now.minute < 30):
         now -= timedelta(days=1)
     return now.strftime('%A')
 
-# -----------------------
+# ----------------------------
+# 5. Twilio Setup
+# ----------------------------
+TWILIO_SID = os.environ.get('TWILIO_SID')
+TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
+TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER')
+
+generated_codes = {}
+
+# ----------------------------
 # ROUTES
-# -----------------------
+# ----------------------------
 @app.route('/', methods=['GET'])
 def splash():
     return render_template('splash.html')
@@ -71,12 +80,11 @@ def splash():
 def main():
     if not session.get('authorized'):
         return redirect(url_for('splash'))
-    current_day = get_business_day()
-    return render_template('index.html', current_day=current_day)
+    return render_template('index.html')
 
-# -----------------------
-# API: FETCH SPECIALS
-# -----------------------
+# ----------------------------
+# API: Fetch Specials
+# ----------------------------
 @app.route('/api/specials', methods=['GET'])
 def get_specials():
     day = request.args.get('day', get_business_day())
@@ -88,9 +96,9 @@ def get_specials():
     conn.close()
     return jsonify(specials)
 
-# -----------------------
-# API: ADD SPECIAL
-# -----------------------
+# ----------------------------
+# API: Add a Special
+# ----------------------------
 @app.route('/api/specials', methods=['POST'])
 def add_special():
     if not session.get('authorized'):
@@ -102,11 +110,11 @@ def add_special():
         INSERT INTO bars (name, address, special, day, lat, lng, verified)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
     """, (
-        data.get('name'), 
-        data.get('address'), 
-        data.get('special'), 
+        data.get('name'),
+        data.get('address'),
+        data.get('special'),
         data.get('day'),
-        data.get('lat', 0), 
+        data.get('lat', 0),
         data.get('lng', 0),
         False
     ))
@@ -115,17 +123,14 @@ def add_special():
     conn.close()
     return jsonify({"status": "added"})
 
-# -----------------------
-# TWILIO LOGIN FLOW
-# -----------------------
-TWILIO_SID = os.environ.get('TWILIO_SID')
-TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
-TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER')
-generated_codes = {}
-
+# ----------------------------
+# API: Send SMS Login Code
+# ----------------------------
 @app.route('/api/send-code', methods=['POST'])
 def send_code():
     phone = request.json.get('phone')
+    if not phone:
+        return jsonify({"error": "Phone required"}), 400
     code = str(random.randint(100000, 999999))
     generated_codes[phone] = code
     try:
@@ -139,20 +144,22 @@ def send_code():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# ----------------------------
+# API: Verify SMS / Master Code
+# ----------------------------
 @app.route('/api/verify-code', methods=['POST'])
 def verify_code():
     phone = request.json.get('phone')
     code = request.json.get('code')
 
-    if code in MASTER_CODES or generated_codes.get(phone) == code:
+    if code == MASTER_CODE or generated_codes.get(phone) == code:
         session['authorized'] = True
         return jsonify({"status": "success"})
-    
     return jsonify({"error": "Invalid code"}), 401
 
-# -----------------------
+# ----------------------------
 # RUN
-# -----------------------
+# ----------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
