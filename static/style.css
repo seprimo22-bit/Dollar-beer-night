@@ -1,192 +1,90 @@
-/* General resets */
-body, html {
+/* General body */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f4f8;
+    color: #0a3d62;
     margin: 0;
     padding: 0;
-    font-family: 'Arial', sans-serif;
-    background-color: #f5f5f5;
-    color: #222;
 }
 
-/* Splash page */
-.splash {
+/* Splash container */
+.splash-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     height: 100vh;
-    background: linear-gradient(135deg, #0A3D62, #1B9CFC);
-    color: white;
-}
-
-.splash-logo {
-    width: 250px;
-    height: auto;
-    margin-bottom: 40px;
-    border-radius: 15px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-}
-
-.splash-form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    width: 80%;
-    max-width: 300px;
-}
-
-.splash-form input {
-    padding: 10px 15px;
-    border-radius: 8px;
-    border: none;
-    font-size: 16px;
-}
-
-.splash-form button {
-    padding: 12px;
-    border: none;
-    border-radius: 8px;
-    background-color: #FFC312;
-    color: #222;
-    font-weight: bold;
-    cursor: pointer;
-    transition: 0.3s;
-}
-
-.splash-form button:hover {
-    background-color: #f1c40f;
-}
-
-.error-msg {
-    color: #ff6b6b;
-    margin-top: 10px;
     text-align: center;
 }
 
-/* Main App Page */
-#main-app {
-    padding: 20px;
-}
-
-/* Header */
-#main-app h1 {
-    text-align: center;
-    color: #0A3D62;
+/* Logo */
+.logo {
+    width: 180px;
     margin-bottom: 20px;
-}
-
-/* Day selector */
-#day-selector {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 20px;
-}
-
-.day-btn {
-    padding: 10px 15px;
-    border: 2px solid #0A3D62;
-    border-radius: 25px;
+    border: 4px solid #1e90ff; /* Blue border */
+    border-radius: 12px;
+    padding: 4px;
     background-color: #fff;
-    color: #0A3D62;
+}
+
+/* Input fields */
+.splash-form input {
+    padding: 10px;
+    margin: 5px;
+    width: 200px;
+    border: 2px solid #1e90ff; /* Blue border */
+    border-radius: 6px;
+}
+
+/* Buttons */
+.splash-form button, .floating-btn, .day-btn {
+    background-color: #1e90ff; /* Blue */
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 16px;
     cursor: pointer;
     font-weight: bold;
-    transition: 0.3s;
 }
 
+.splash-form button:hover,
+.floating-btn:hover,
 .day-btn:hover {
-    background-color: #0A3D62;
-    color: white;
+    background-color: #0a3d62; /* Darker blue on hover */
 }
 
-.day-btn.active {
-    background-color: #0A3D62;
-    color: white;
+/* Error message */
+.error-msg {
+    color: red;
+    margin-top: 10px;
 }
 
-/* Bar listings */
+/* Bar list */
 #bar-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-bottom: 20px;
+    margin: 20px;
+    padding: 10px;
 }
 
 .bar-item {
-    padding: 12px 15px;
-    background-color: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    cursor: pointer;
-    transition: 0.2s;
+    border: 2px solid #1e90ff; /* Blue border */
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 8px;
+    background-color: #fff;
 }
 
-.bar-item:hover {
-    transform: scale(1.02);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-
-/* Verified indicator */
-.bar-item.verified::after {
-    content: "✔";
-    color: green;
-    font-weight: bold;
-    margin-left: 10px;
-}
-
-/* Map */
+/* Map container */
 #map {
-    width: 100%;
-    height: 300px; /* small enough to scroll */
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    margin-bottom: 40px;
+    margin: 20px;
+    height: 400px;
+    border: 2px solid #1e90ff; /* Blue border */
+    border-radius: 6px;
 }
 
-/* Floating Add Bar button */
+/* Floating add bar button */
 .floating-btn {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    border: none;
-    background-color: #ff6b6b;
-    color: white;
-    font-size: 32px;
-    font-weight: bold;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    transition: 0.3s;
+    bottom: 30px;
+    right: 30px;
+    font-size: 24px;
 }
-
-.floating-btn:hover {
-    background-color: #e55039;
-}
-
-/* Hidden class */
-.hidden {
-    display: none;
-}
-
-/* Responsive */
-@media (max-width: 600px) {
-    #day-selector {
-        gap: 5px;
-    }
-
-    .day-btn {
-        padding: 8px 10px;
-        font-size: 14px;
-    }
-
-    .splash-logo {
-        width: 180px;
-        margin-bottom: 30px;
-    }
-
-    .floating-btn {
-        width: 50px;
-        height: 50px;
-        font
