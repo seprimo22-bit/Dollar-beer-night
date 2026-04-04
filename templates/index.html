@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,7 +8,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-<div id="main-app">
+<div id="main-app" class="hidden">
     <h1>Beer Dollars — Stretch Your Beer Money</h1>
 
     <!-- Day Selector -->
@@ -25,14 +26,14 @@
     <div id="bar-list"></div>
 
     <!-- Map -->
-    <div id="map" style="height: 400px; width: 100%;"></div>
+    <div id="map"></div>
 
     <!-- Add Bar Floating Button -->
     <button id="add-bar-btn" class="floating-btn">+</button>
 </div>
 
-<!-- Scripts -->
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap" async defer></script>
+<!-- Google Maps -->
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_ACTUAL_API_KEY&callback=initMap" async defer></script>
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
