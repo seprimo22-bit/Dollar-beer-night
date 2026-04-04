@@ -1,12 +1,14 @@
-// -----------------------------
-// Beer Dollars Frontend Script
-// -----------------------------
+// ========================================
+// Beer Dollars Unified Frontend Script
+// Handles Splash Page + Main App + Maps
+// ========================================
 
 let userLocation = null;
 let geocoder;
 let map;
 let bars = [];
 let selectedDay = null;
+let markers = [];
 
 // -----------------------------
 // 1. Initialize Google Map
@@ -14,10 +16,9 @@ let selectedDay = null;
 function initMap() {
     geocoder = new google.maps.Geocoder();
 
-    // Default map center (Youngstown)
     map = new google.maps.Map(document.getElementById("map"), {
         zoom: 12,
-        center: { lat: 41.099, lng: -80.649 },
+        center: { lat: 41.099, lng: -80.649 }, // Default Youngstown
     });
 
     // Ask for user location
@@ -37,56 +38,82 @@ function initMap() {
 }
 
 // -----------------------------
-// 2. Splash Page Login Handling
+// 2. Splash Page: Send Code / Verify Code
 // -----------------------------
-const splashEnterBtn = document.getElementById("enter-btn");
-const splashError = document.getElementById("splash-error");
+const sendBtn = document.getElementById("send-code-btn");
+const verifyBtn = document.getElementById("verify-code-btn");
+const errorMsg = document.getElementById("splash-error");
 
-splashEnterBtn.addEventListener("click", async () => {
-    const phoneInput = document.getElementById("phone").value.trim();
-    const codeInput = document.getElementById("code").value.trim();
+sendBtn?.addEventListener("click", async () => {
+    const phone = document.getElementById("phone").value.trim();
+    if (!phone) {
+        showError("Enter a valid phone number!");
+        return;
+    }
 
-    if (!phoneInput || !codeInput) {
-        splashError.textContent = "Enter phone and code!";
+    try {
+        const res = await fetch("/api/send-code", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showError("Code sent! Check your phone.", true);
+        } else {
+            showError(data.error || "Failed to send code.");
+        }
+    } catch (err) {
+        console.error(err);
+        showError("Error sending code.");
+    }
+});
+
+verifyBtn?.addEventListener("click", async () => {
+    const phone = document.getElementById("phone").value.trim();
+    const code = document.getElementById("code").value.trim();
+
+    if (!phone || !code) {
+        showError("Enter both phone and code!");
         return;
     }
 
     try {
         // Master admin code bypass
-        if (codeInput === "1616") {
+        if (code === "1616") {
             sessionStorage.setItem("authorized", "true");
-            showMainApp();
+            window.location.href = "/main";
             return;
         }
 
         const res = await fetch("/api/verify-code", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ phone: phoneInput, code: codeInput })
+            body: JSON.stringify({ phone, code })
         });
         const data = await res.json();
 
         if (res.ok) {
             sessionStorage.setItem("authorized", "true");
-            showMainApp();
+            window.location.href = "/main";
         } else {
-            splashError.textContent = data.error || "Invalid code";
+            showError(data.error || "Invalid code");
         }
     } catch (err) {
-        splashError.textContent = "Error verifying code.";
         console.error(err);
+        showError("Error verifying code.");
     }
 });
 
-function showMainApp() {
-    document.getElementById("splash-page").classList.add("hidden");
-    document.getElementById("main-app").classList.remove("hidden");
-    selectedDay = getSelectedDay();
-    fetchBars(selectedDay);
+function showError(msg, success = false) {
+    if (errorMsg) {
+        errorMsg.style.color = success ? "green" : "red";
+        errorMsg.textContent = msg;
+    }
 }
 
 // -----------------------------
-// 3. Day Selector Handling
+// 3. Day Selector
 // -----------------------------
 const dayButtons = document.querySelectorAll(".day-btn");
 dayButtons.forEach(btn => {
@@ -105,12 +132,13 @@ function getSelectedDay() {
 // 4. Fetch Bars from Backend
 // -----------------------------
 async function fetchBars(day) {
+    selectedDay = day || getSelectedDay();
     try {
-        const res = await fetch(`/api/specials?day=${day}`);
+        const res = await fetch(`/api/specials?day=${selectedDay}`);
         const data = await res.json();
         bars = data;
 
-        // Sort bars by distance if user location exists, else by name
+        // Sort by distance if available, else alphabetically
         if (userLocation) {
             bars.forEach(bar => {
                 bar.distance = calculateDistance(userLocation.lat, userLocation.lng, bar.lat, bar.lng);
@@ -129,16 +157,15 @@ async function fetchBars(day) {
 }
 
 // -----------------------------
-// 5. Render Bars to UI & Map
+// 5. Render Bars & Map Markers
 // -----------------------------
-let markers = [];
-
 function renderBars(barsList) {
     const listEl = document.getElementById("bar-list");
+    if (!listEl) return;
     listEl.innerHTML = "";
 
-    // Clear previous map markers
-    markers.forEach(marker => marker.setMap(null));
+    // Clear existing markers
+    markers.forEach(m => m.setMap(null));
     markers = [];
 
     barsList.forEach(bar => {
@@ -152,7 +179,7 @@ function renderBars(barsList) {
         div.addEventListener("click", () => focusMarker(bar));
         listEl.appendChild(div);
 
-        // Add marker to map
+        // Map marker
         const marker = new google.maps.Marker({
             position: { lat: bar.lat, lng: bar.lng },
             map: map,
@@ -170,7 +197,8 @@ function focusMarker(bar) {
 // -----------------------------
 // 6. Add Bar Button
 // -----------------------------
-document.getElementById("add-bar-btn").addEventListener("click", () => {
+const addBarBtn = document.getElementById("add-bar-btn");
+addBarBtn?.addEventListener("click", () => {
     const name = prompt("Bar Name:");
     if (!name) return;
 
@@ -180,4 +208,62 @@ document.getElementById("add-bar-btn").addEventListener("click", () => {
     const special = prompt("What's the special?");
     if (!special) return;
 
-    const
+    const day = prompt("Day of the week:", getSelectedDay());
+    if (!day) return;
+
+    geocoder.geocode({ address }, async (results, status) => {
+        if (status === "OK") {
+            const lat = results[0].geometry.location.lat();
+            const lng = results[0].geometry.location.lng();
+
+            const newBar = { name, address, special, day, lat, lng, verified: false };
+            try {
+                await fetch('/api/specials', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newBar)
+                });
+                alert("Bar added! Refreshing list...");
+                fetchBars(day);
+            } catch (err) {
+                console.error(err);
+                alert("Error adding bar.");
+            }
+        } else {
+            alert("Could not find address. Try city only.");
+        }
+    });
+});
+
+// -----------------------------
+// 7. Distance Calculation
+// -----------------------------
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 3958.8; // miles
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2)**2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+// -----------------------------
+// 8. Initialize on Page Load
+// -----------------------------
+window.onload = () => {
+    initMap();
+    selectedDay = getSelectedDay();
+
+    // If already authorized via master code/session, skip splash
+    if (sessionStorage.getItem("authorized")) {
+        const splash = document.getElementById("splash-page");
+        const mainApp = document.getElementById("main-app");
+        if (splash && mainApp) {
+            splash.classList.add("hidden");
+            mainApp.classList.remove("hidden");
+            fetchBars(selectedDay);
+        }
+    }
+};
