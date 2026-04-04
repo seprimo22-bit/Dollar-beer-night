@@ -7,17 +7,19 @@
 </head>
 <body>
 <div class="splash-container">
-    <img src="{{ url_for('static', filename='logo.png') }}" alt="Beer Dollars Logo" class="logo">
+    <!-- Logo from your image number folder -->
+    <img src="{{ url_for('static', filename='1773978135981~2.png') }}" alt="Beer Dollars Logo" class="logo">
+
     <h1>Stretch your beer money!</h1>
+
+    {% if error %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
 
     <div class="splash-form">
         <input type="text" id="phone" placeholder="Phone Number" required>
-        <button id="send-code-btn">Send Code</button>
-    </div>
-
-    <div class="splash-form">
-        <input type="text" id="code" placeholder="Enter Code or Admin 1616">
-        <button id="verify-code-btn">Verify Code</button>
+        <input type="text" id="code" placeholder="Code" required>
+        <button id="enter-btn">Enter</button>
     </div>
 
     <div id="splash-error" class="error-msg"></div>
