@@ -6,16 +6,18 @@
     <title>Beer Dollars | Youngstown</title>
     <style>
         :root { --primary: #2196F3; --dark: #1976D2; }
-        body { font-family: sans-serif; margin: 0; background: #f4f4f4; }
-        .header { background: var(--primary); color: white; text-align: center; padding: 15px; }
-        .day-picker { display: flex; overflow-x: auto; background: white; padding: 10px; gap: 8px; border-bottom: 1px solid #ddd; }
-        .day-btn { background: var(--primary); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; flex-shrink: 0; }
-        .day-btn.active { background: var(--dark); font-weight: bold; }
-        #main-view { display: flex; flex-direction: column; height: calc(100vh - 120px); }
-        #specialsList { flex: 1; padding: 10px; overflow-y: auto; }
-        .card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; border-left: 5px solid var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .price { color: #2e7d32; font-weight: bold; }
-        #map { flex: 1; min-height: 250px; background: #ddd; }
+        body { font-family: sans-serif; margin: 0; background: #f4f4f4; color: #333; }
+        .header { background: var(--primary); color: white; text-align: center; padding: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .day-picker { display: flex; overflow-x: auto; background: white; padding: 10px; gap: 8px; border-bottom: 1px solid #ddd; justify-content: center; }
+        .day-btn { background: #eee; color: #555; border: 1px solid #ccc; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .day-btn.active { background: var(--primary); color: white; border-color: var(--dark); }
+        #main-view { display: flex; flex-direction: column; height: calc(100vh - 110px); }
+        #specialsList { flex: 1; padding: 15px; overflow-y: auto; }
+        .card { background: white; padding: 15px; margin-bottom: 12px; border-radius: 8px; border-left: 6px solid var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .card h3 { margin: 0; font-size: 1.1em; }
+        .price { color: #2e7d32; font-weight: bold; margin-top: 5px; }
+        #map { flex: 1.2; min-height: 300px; border-top: 2px solid #ccc; }
+        .nav-btn { background: var(--primary); color: white; padding: 10px; text-decoration: none; border-radius: 4px; display: block; text-align: center; margin-top: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -33,68 +35,5 @@
 <script>
     let map;
     let markers = [];
-
-    // HARDCODED DATA (The "Backup" so it's never empty)
-    const barData = [
-        { name: "Denny's Blue Angel", lat: 41.0772, lng: -80.6400, special: "$2 Bottles (5-8pm)", day: "Wed" },
-        { name: "Cricket's Bar & Grill", lat: 41.0715, lng: -80.6655, special: "$3 Yuengling", day: "Wed" },
-        { name: "Los Gallos", lat: 41.1025, lng: -80.7240, special: "$2 Bottles", day: "Tue" }
-    ];
-
-    function initMap() {
-        map = new google.maps.Map(document.getElementById("map"), {
-            zoom: 12,
-            center: { lat: 41.0998, lng: -80.6495 }
-        });
-        createDayButtons();
-        filterByDay('Wed'); // Start on Wednesday
-    }
-
-    function createDayButtons() {
-        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        const container = document.getElementById('dayPicker');
-        days.forEach(day => {
-            const btn = document.createElement('button');
-            btn.className = 'day-btn';
-            btn.innerText = day;
-            btn.onclick = () => filterByDay(day);
-            container.appendChild(btn);
-        });
-    }
-
-    function filterByDay(selectedDay) {
-        // Update Buttons
-        document.querySelectorAll('.day-btn').forEach(b => b.classList.toggle('active', b.innerText === selectedDay));
-        
-        const list = document.getElementById('specialsList');
-        list.innerHTML = '';
-        markers.forEach(m => m.setMap(null));
-        markers = [];
-
-        // Filter the hardcoded data
-        const filtered = barData.filter(b => b.day === selectedDay);
-
-        if (filtered.length === 0) {
-            list.innerHTML = `<p style="text-align:center; padding:20px;">No specials found for ${selectedDay}.</p>`;
-            return;
-        }
-
-        filtered.forEach(bar => {
-            // Add Card
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.innerHTML = `<h3>${bar.name}</h3><p class="price">${bar.special}</p>`;
-            list.appendChild(card);
-
-            // Add Marker
-            const marker = new google.maps.Marker({
-                position: { lat: bar.lat, lng: bar.lng },
-                map: map,
-                title: bar.name
-            });
-            markers.push(marker);
-        });
-    }
-</script>
-</body>
-</html>
+    let infoWindow
+    
