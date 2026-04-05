@@ -1,32 +1,40 @@
 from flask import Flask, render_template, jsonify
-from datetime import datetime, timedelta
+from flask_sqlalchemy import SQLAlchemy
 import os
 
 app = Flask(__name__)
 
-# DATA REGISTRY (Update with your PostgreSQL database URL in Render)
-bar_deals = [
-    {"name": "Steel City", "day": "Saturday", "deal": "$2.50 Shots", "lat": 41.0998, "lng": -80.6495},
-    {"name": "Quench", "day": "Saturday", "deal": "$3.00 Shots", "lat": 41.1005, "lng": -80.6550},
-    {"name": "Casaloma", "day": "Saturday", "deal": "$2.00 Drafts", "lat": 41.0950, "lng": -80.6400}
-]
+# Database Configuration (Linking to your Render/SQL setup)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///beer_dollars.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
 
-def get_logical_day():
-    # 2:30 AM LOGIC: If before 2:30 AM, it is still "last night" for bar specials
-    now = datetime.now()
-    if now.hour < 2 or (now.hour == 2 and now.minute < 30):
-        return (now - timedelta(days=1)).strftime('%A')
-    return now.strftime('%A')
+# Model for Bars/Specials
+class Bar(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    lat = db.Column(db.Float, nullable=False)
+    lng = db.Column(db.Float, nullable=False)
+    special = db.Column(db.String(250))
 
 @app.route('/')
 def index():
-    return render_template('index.html', current_day=get_logical_day())
+    return render_template('index.html')
 
-@app.route('/api/deals/<day>')
-def get_deals(day):
-    filtered = [d for d in bar_deals if d['day'].lower() == day.lower()]
-    return jsonify(filtered)
+@app.route('/api/bars')
+def get_bars():
+    # Pulls all bars currently in your database
+    bars = Bar.query.all()
+    return jsonify([{
+        'name': b.name,
+        'lat': b.lat,
+        'lng': b.lng,
+        'special': b.special
+    } for b in bars])
 
 if __name__ == '__main__':
+    # Initialize DB tables if they don't exist
+    with app.app_context():
+        db.create_all()
     app.run(debug=True)
     
