@@ -1,39 +1,54 @@
-
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
     <title>Beer Dollars</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<div id="main-app" class="hidden">
-    <h1>Beer Dollars — Stretch Your Beer Money</h1>
 
-    <!-- Day Selector -->
-    <div id="day-selector">
-        <button class="day-btn" data-day="Monday">Mon</button>
-        <button class="day-btn" data-day="Tuesday">Tue</button>
-        <button class="day-btn" data-day="Wednesday">Wed</button>
-        <button class="day-btn" data-day="Thursday">Thu</button>
-        <button class="day-btn" data-day="Friday">Fri</button>
-        <button class="day-btn" data-day="Saturday">Sat</button>
-        <button class="day-btn" data-day="Sunday">Sun</button>
-    </div>
+<h1>Beer Dollars</h1>
+<div id="bar-list"></div>
+<div id="map"></div>
+<button onclick="addBar()">+</button>
 
-    <!-- Bar Listings -->
-    <div id="bar-list"></div>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiEK4CduUBr7EWeqtSsFhG1nQyqON6QYI&callback=initMap" async defer></script>
 
-    <!-- Map -->
-    <div id="map"></div>
+<script>
+let map;
 
-    <!-- Add Bar Floating Button -->
-    <button id="add-bar-btn" class="floating-btn">+</button>
-</div>
+function initMap() {
+    map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 12,
+        center: { lat: 41.099, lng: -80.649 }
+    });
+}
 
-<!-- Google Maps -->
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_ACTUAL_API_KEY&callback=initMap" async defer></script>
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+async function loadBars() {
+    const res = await fetch('/api/specials');
+    const bars = await res.json();
+    const list = document.getElementById('bar-list');
+    list.innerHTML = '';
+    bars.forEach(bar => {
+        const div = document.createElement('div');
+        div.innerText = `${bar.name} - ${bar.special}`;
+        list.appendChild(div);
+    });
+}
+
+async function addBar() {
+    const name = prompt("Name");
+    const address = prompt("Address");
+    const special = prompt("Special");
+    await fetch('/api/specials', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name, address, special, day:"Daily", lat:41.1, lng:-80.6})
+    });
+    loadBars();
+}
+
+loadBars();
+</script>
+
 </body>
 </html>
