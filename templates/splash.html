@@ -1,30 +1,33 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Beer Dollars Splash</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Beer Dollars</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <div class="splash-container">
-    <!-- Logo from your image number folder -->
-    <img src="{{ url_for('static', filename='1773978135981~2.png') }}" alt="Beer Dollars Logo" class="logo">
-
-    <h1>Stretch your beer money!</h1>
-
-    {% if error %}
-        <p class="error">{{ error }}</p>
-    {% endif %}
-
-    <div class="splash-form">
-        <input type="text" id="phone" placeholder="Phone Number" required>
-        <input type="text" id="code" placeholder="Code" required>
-        <button id="enter-btn">Enter</button>
-    </div>
-
-    <div id="splash-error" class="error-msg"></div>
+    <img src="/static/1773978135981~2.png" class="logo">
+    <h1>Enter Beer Dollars</h1>
+    <input id="code" placeholder="Enter Code (1616)">
+    <button onclick="login()">Enter</button>
+    <p id="error" style="color:red"></p>
 </div>
 
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script>
+async function login() {
+    const code = document.getElementById('code').value;
+    const res = await fetch('/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({code})
+    });
+
+    if (res.ok) {
+        window.location.href = "/main";
+    } else {
+        document.getElementById('error').innerText = "Invalid Code";
+    }
+}
+</script>
 </body>
 </html>
