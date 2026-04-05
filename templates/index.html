@@ -1,7 +1,93 @@
-<div id="map" style="height: 500px; width: 100%;"></div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beer Dollars | Youngstown Specials</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; padding: 0; }
+        #map { height: 80vh; width: 100%; background-color: #e5e3df; }
+        .controls { padding: 15px; background: #222; color: #fff; text-align: center; }
+        .marker-label { font-weight: bold; color: #d32f2f; }
+    </style>
+</head>
+<body>
 
-<script 
-    src="https://maps.googleapis.com/maps/api/js?key=YOUR_ACTUAL_API_KEY&callback=initMap" 
-    async defer>
-</script>
-<script src="script.js"></script>
+    <div class="controls">
+        <h1>Beer Dollars Pipeline</h1>
+        <p>Current Area: Youngstown / Austintown</p>
+    </div>
+
+    <div id="map"></div>
+
+    <script 
+        src="https://maps.googleapis.com/maps/api/js?key=YOUR_ACTUAL_API_KEY&callback=initMap" 
+        async defer>
+    </script>
+
+    <script>
+        let map;
+        let markers = [];
+
+        // 1. Initialize the Map
+        function initMap() {
+            const youngstown = { lat: 41.0998, lng: -80.6495 };
+            
+            map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 13,
+                center: youngstown,
+                mapTypeId: 'roadmap',
+                disableDefaultUI: false,
+                zoomControl: true
+            });
+
+            console.log("Maps API authenticated. Initializing Beer Dollars layer...");
+            
+            // Trigger data fetch once map is ready
+            fetchBarData();
+        }
+
+        // 2. Fetch Bar Specials from Flask Backend
+        function fetchBarData() {
+            fetch('/api/bars')
+                .then(response => response.json())
+                .then(data => {
+                    renderMarkers(data);
+                })
+                .catch(err => {
+                    console.error("Pipeline Error: Could not retrieve bar data.", err);
+                });
+        }
+
+        // 3. Render Data onto Map
+        function renderMarkers(bars) {
+            bars.forEach(bar => {
+                const marker = new google.maps.Marker({
+                    position: { lat: parseFloat(bar.lat), lng: parseFloat(bar.lng) },
+                    map: map,
+                    title: bar.name,
+                    animation: google.maps.Animation.DROP
+                });
+
+                const infoWindow = new google.maps.InfoWindow({
+                    content: `<div><strong>${bar.name}</strong><br>${bar.special || 'No special listed'}</div>`
+                });
+
+                marker.addListener("click", () => {
+                    infoWindow.open(map, marker);
+                });
+
+                markers.push(marker);
+            });
+        }
+
+        // Master Override Function (Code 9999)
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'F9') { // Shortcut example for debug
+                console.log("System Override: Refreshing Geodata...");
+                fetchBarData();
+            }
+        });
+    </script>
+</body>
+</html>
