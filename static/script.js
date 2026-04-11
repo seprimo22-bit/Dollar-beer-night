@@ -1,16 +1,16 @@
 let map, markers = [], tempMarker = null;
 
 function initMap() {
-    // Start the map in Bellaire since that's your focus area
-    const bellaire = { lat: 40.0162, lng: -80.7423 }; 
+    // Center map near Bellaire, OH
+    const defaultCenter = { lat: 40.0162, lng: -80.7423 }; 
     map = new google.maps.Map(document.getElementById("map"), {
         zoom: 13,
-        center: bellaire,
+        center: defaultCenter,
         disableDefaultUI: false,
         gestureHandling: "greedy"
     });
 
-    // When the user taps the map to add a bar
+    // Tap to drop pin functionality
     map.addListener("click", (e) => {
         if (tempMarker) tempMarker.setMap(null);
         tempMarker = new google.maps.Marker({
@@ -18,7 +18,7 @@ function initMap() {
             map: map,
             animation: google.maps.Animation.DROP
         });
-        // Auto-fill the hidden lat/lng so the user never sees them
+        // Captures coordinates from the tap so users don't have to type them
         document.getElementById("lat").value = e.latLng.lat();
         document.getElementById("lng").value = e.latLng.lng();
         document.getElementById("addForm").style.display = "block";
@@ -26,21 +26,20 @@ function initMap() {
 }
 
 async function saveBar() {
-    const address = document.getElementById("address").value;
+    const addressText = document.getElementById("address").value;
     const geocoder = new google.maps.Geocoder();
 
-    // The "Magic" Step: Turn the address text into map coordinates automatically
-    geocoder.geocode({ address: address }, async (results, status) => {
+    // AUTO-LOOKUP: Turns address text into map coordinates automatically
+    geocoder.geocode({ address: addressText }, async (results, status) => {
         if (status === "OK") {
             const coords = results[0].geometry.location;
-            
             const data = {
                 name: document.getElementById("name").value,
-                address: address,
+                address: addressText,
                 special: document.getElementById("special").value,
                 day: document.getElementById("day").value,
-                lat: coords.lat(), // Google found this for us
-                lng: coords.lng()  // Google found this for us
+                lat: coords.lat(), 
+                lng: coords.lng()  
             };
 
             const response = await fetch('/add_bar', {
@@ -54,15 +53,13 @@ async function saveBar() {
                 loadBars(data.day);
             }
         } else {
-            alert("Google couldn't find that address. Please check the spelling!");
+            alert("Google couldn't find that address. Check your spelling!");
         }
     });
 }
 
 async function loadBars(day) {
     const list = document.getElementById("specialsList");
-    list.innerHTML = `<p style="text-align:center;">Finding ${day} deals...</p>`;
-    
     try {
         const jsonRes = await fetch('/get_json_bars');
         const jsonBars = await jsonRes.json();
@@ -75,14 +72,22 @@ async function loadBars(day) {
         markers = [];
 
         allBars.forEach(bar => {
+            // FIX: HARDCODED OVERRIDE FOR DENNY'S
+            // This forces the map to use Bellaire coordinates if the name matches
+            if (bar.name.includes("Denny's Blue Angel")) {
+                bar.lat = 40.01258;
+                bar.lng = -80.74317;
+            }
+
             const card = document.createElement("div");
             card.className = "card";
             
-            // Navigation link using the saved coordinates
-            const navUrl = `https://www.google.com/maps/dir/?api=1&destination=${bar.lat},${bar.lng}`;
+            // NAVIGATION FIX: Use the actual address text for the Rocket Ship
+            const destination = encodeURIComponent(`${bar.name} ${bar.address}`);
+            const navUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
 
             card.innerHTML = `
-                <a href="${navUrl}" target="_blank" style="float:right; text-decoration:none; font-size:30px;">➡️</a>
+                <a href="${navUrl}" target="_blank" style="float:right; text-decoration:none; font-size:35px;">🚀</a>
                 <span class="price" style="color:#28a745; font-weight:bold;">${bar.special}</span>
                 <strong>${bar.name}</strong><br>
                 <small>${bar.address}</small>
