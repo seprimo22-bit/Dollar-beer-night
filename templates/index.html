@@ -6,18 +6,18 @@
     <title>Beer Dollars</title>
     <link rel="stylesheet" href="/static/style.css">
     <style>
-        body { font-family: sans-serif; margin: 0; padding: 0; }
+        body { font-family: sans-serif; margin: 0; background: #f4f4f4; }
         #day-selector { display: flex; overflow-x: auto; background: #007bff; padding: 10px; gap: 8px; }
-        #day-selector button { flex: 0 0 auto; padding: 10px; border-radius: 5px; border: none; font-weight: bold; background: #fff; }
-        #specialsList { min-height: 200px; padding: 10px; background: #f9f9f9; }
+        #day-selector button { flex: 0 0 auto; padding: 10px 15px; border-radius: 5px; border: none; font-weight: bold; background: white; }
+        #specialsList { padding: 10px; min-height: 200px; }
         .card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .price { color: #28a745; font-weight: bold; float: right; }
-        #map { height: 350px; width: 100%; background: #ddd; }
+        #map { height: 300px; width: 100%; background: #e0e0e0; display: block; }
     </style>
 </head>
 <body>
 
-<header style="text-align:center; padding:10px;"><h1>🍺 Beer Dollars</h1></header>
+<header style="text-align:center; padding:10px; background:white;"><h1>🍺 Beer Dollars</h1></header>
 
 <nav id="day-selector">
     <button onclick="loadBars('Monday')">Mon</button>
@@ -30,10 +30,12 @@
 </nav>
 
 <div id="specialsList">
-    <p style="text-align:center;">Loading today's specials...</p>
+    <p style="text-align:center;">Loading deals...</p>
 </div>
 
-<div id="map"></div>
+<div id="map">
+    <p style="text-align:center; padding-top:100px; color:#666;">Map loading (requires API/Data)...</p>
+</div>
 
 <script src="/static/script.js"></script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiEK4CduUBr7EWeqtSsFhG1nQyqON6QYI&callback=initMap" async defer></script>
