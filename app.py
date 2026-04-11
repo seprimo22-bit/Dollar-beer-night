@@ -4,7 +4,8 @@ from datetime import datetime, timedelta
 import os
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'beer_dollars_secret_1616')
+# This uses the secret key from your Render environment
+app.secret_key = os.environ.get('SECRET_KEY', 'beer_dollars_1616_key')
 
 # Database Configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
@@ -18,11 +19,11 @@ class Bar(db.Model):
     lat = db.Column(db.Float, nullable=False)
     lng = db.Column(db.Float, nullable=False)
     special = db.Column(db.String(250))
-    day = db.Column(db.String(20)) # Monday, Tuesday, etc.
+    day = db.Column(db.String(20))
 
 def get_effective_day():
-    """Logic to handle bar time (day changes at 2:30 AM)"""
     now = datetime.now()
+    # Logic: Before 2:30 AM, it's still "yesterday"
     if now.hour < 2 or (now.hour == 2 and now.minute < 30):
         return (now - timedelta(days=1)).strftime('%A')
     return now.strftime('%A')
@@ -41,11 +42,10 @@ def index():
 def verify_code():
     data = request.json
     code = data.get('code')
-    # MASTER BYPASS CODES
+    # MASTER OVERRIDE
     if code in ["1616", "0000", "9999"]:
         session['authorized'] = True
         return jsonify({"status": "success"})
-    # Normal Twilio logic would go here
     return jsonify({"error": "Invalid code"}), 401
 
 @app.route('/api/specials', methods=['GET'])
@@ -73,4 +73,3 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     app.run(debug=True)
-    
