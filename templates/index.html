@@ -2,17 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Beer Dollars</title>
     <style>
-        body { font-family: sans-serif; margin: 0; background: #f4f4f4; }
+        body { font-family: sans-serif; margin: 0; background: #f4f4f4; color: #333; overflow-x: hidden; }
         header { background: white; text-align: center; padding: 15px; border-bottom: 1px solid #ddd; }
-        #day-selector { display: flex; overflow-x: auto; background: #007bff; padding: 12px; gap: 8px; }
+        #day-selector { display: flex; overflow-x: auto; background: #007bff; padding: 12px; gap: 8px; sticky: top; }
         #day-selector button { flex: 0 0 auto; padding: 10px 15px; border-radius: 6px; border: none; font-weight: bold; background: white; color: #007bff; }
-        #specialsList { padding: 15px; min-height: 200px; }
+        #specialsList { padding: 15px; min-height: 100px; max-height: 300px; overflow-y: auto; }
         .card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; }
         .price { color: #28a745; font-weight: bold; float: right; }
-        #map { height: 350px; width: 100%; border-top: 1px solid #ccc; }
+        #map { height: 450px; width: 100%; position: relative; z-index: 1; border-top: 2px solid #007bff; }
     </style>
 </head>
 <body>
@@ -30,6 +30,7 @@
 </nav>
 
 <div id="specialsList"></div>
+
 <div id="map"></div>
 
 <script src="/static/script.js"></script>
