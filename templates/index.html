@@ -2,19 +2,20 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Beer Dollars</title>
     <style>
         body { font-family: sans-serif; margin: 0; background: #f4f4f4; }
-        header { background: white; text-align: center; padding: 15px; }
+        header { background: white; text-align: center; padding: 15px; border-bottom: 2px solid #007bff; }
         #day-selector { display: flex; overflow-x: auto; background: #007bff; padding: 10px; gap: 8px; }
-        #day-selector button { flex: 0 0 auto; padding: 8px 12px; border-radius: 5px; border: none; font-weight: bold; }
-        #specialsList { padding: 15px; }
-        .card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        #day-selector button { flex: 0 0 auto; padding: 10px 15px; border-radius: 6px; border: none; font-weight: bold; background: white; color: #007bff; }
+        #specialsList { padding: 15px; min-height: 100px; }
+        .card { background: white; padding: 20px; margin-bottom: 12px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .price { color: #28a745; font-weight: bold; }
         #map { height: 400px; width: 100%; border-top: 2px solid #007bff; }
-        .add-btn { position: fixed; bottom: 20px; right: 20px; background: #28a745; color: white; border: none; border-radius: 50%; width: 60px; height: 60px; font-size: 30px; z-index: 100; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
-        #addForm { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; z-index: 200; width: 80%; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        #addForm input, #addForm select { width: 100%; margin-bottom: 10px; padding: 10px; box-sizing: border-box; }
+        .add-btn { position: fixed; bottom: 25px; right: 25px; background: #28a745; color: white; border: none; border-radius: 50%; width: 65px; height: 65px; font-size: 35px; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
+        #addForm { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 12px; z-index: 200; width: 85%; box-shadow: 0 0 30px rgba(0,0,0,0.6); }
+        #addForm input, #addForm select { width: 100%; margin-bottom: 12px; padding: 12px; border: 1px solid #ccc; border-radius: 5px; }
     </style>
 </head>
 <body>
@@ -34,13 +35,13 @@
 <div id="specialsList"></div>
 <div id="map"></div>
 
-<button class="add-btn" onclick="alert('Tap the map where the bar is to add it!')">+</button>
+<button class="add-btn" onclick="alert('Step 1: Find the bar on the map.\nStep 2: Tap the map to drop a pin!\nStep 3: Fill in the details.')">+</button>
 
 <div id="addForm">
-    <h3>Add New Bar</h3>
-    <input type="text" id="name" placeholder="Bar Name">
-    <input type="text" id="address" placeholder="Address">
-    <input type="text" id="special" placeholder="Special (e.g. $2 Bottles)">
+    <h3>📍 Add New Bar Deal</h3>
+    <input type="text" id="name" placeholder="Bar Name (e.g. Denny's Blue Angel)">
+    <input type="text" id="address" placeholder="Address (e.g. Bellaire, OH)">
+    <input type="text" id="special" placeholder="Special (e.g. $1 Drafts)">
     <select id="day">
         <option value="Monday">Monday</option><option value="Tuesday">Tuesday</option>
         <option value="Wednesday">Wednesday</option><option value="Thursday">Thursday</option>
@@ -48,8 +49,8 @@
         <option value="Sunday">Sunday</option>
     </select>
     <input type="hidden" id="lat"><input type="hidden" id="lng">
-    <button onclick="saveBar()" style="background:#28a745; color:white; border:none; padding:10px; width:100%;">Save Bar</button>
-    <button onclick="document.getElementById('addForm').style.display='none'" style="background:#ccc; border:none; padding:5px; width:100%; margin-top:5px;">Cancel</button>
+    <button onclick="saveBar()" style="background:#28a745; color:white; border:none; padding:15px; width:100%; border-radius:5px; font-weight:bold;">SAVE TO DATABASE</button>
+    <button onclick="document.getElementById('addForm').style.display='none'" style="background:none; color:red; border:none; padding:10px; width:100%; margin-top:10px;">Cancel</button>
 </div>
 
 <script src="/static/script.js"></script>
