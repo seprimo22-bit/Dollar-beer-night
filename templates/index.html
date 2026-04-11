@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Beer Dollars | Youngstown</title>
     <style>
         :root { --primary: #2196F3; --dark: #1976D2; --success: #2e7d32; }
@@ -77,39 +77,42 @@
         }
 
         .card strong { font-size: 1.1em; display: block; margin-bottom: 4px; }
-        .price { color: var(--success); font-weight: bold; font-size: 1.05em; }
-        .address { color: #666; font-size: 0.85em; display: block; margin-top: 4px; }
+        .price { color: var(--success); font-weight: bold; font-size: 1.05em; display: block; }
+        .address { color: #666; font-size: 0.85em; display: block; margin-top: 6px; font-style: italic; }
 
         #map { 
-            height: 35vh; 
+            height: 40vh; 
             width: 100%; 
             background: #e5e3df; 
-            border-top: 1px solid #ddd;
+            border-top: 2px solid #ddd;
             flex-shrink: 0;
         }
 
-        /* Float Button for Adding Bars */
+        /* Floating Add Button */
         .add-btn { 
             position: fixed; 
-            bottom: calc(35vh + 20px); 
+            bottom: calc(40vh + 20px); 
             right: 20px; 
             background: var(--success); 
             color: white; 
             border: none; 
-            width: 56px; 
-            height: 56px; 
-            border-radius: 28px; 
-            font-size: 30px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3); 
+            width: 60px; 
+            height: 60px; 
+            border-radius: 30px; 
+            font-size: 35px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4); 
             z-index: 100; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        /* Modal Styling */
+        /* Modal / Form Styling */
         #add-modal { 
             display: none; 
             position: fixed; 
             top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.7); 
+            background: rgba(0,0,0,0.85); 
             z-index: 2000; 
             justify-content: center; 
             align-items: center; 
@@ -123,24 +126,38 @@
             max-width: 400px; 
         }
 
+        label { font-size: 12px; font-weight: bold; color: #444; text-transform: uppercase; }
         input, select { 
             width: 100%; 
             padding: 12px; 
-            margin: 10px 0; 
-            border: 1px solid #ccc; 
+            margin: 8px 0 16px 0; 
+            border: 2px solid #ddd; 
             border-radius: 6px; 
             box-sizing: border-box; 
+            font-size: 16px;
         }
+
+        input:focus { border-color: var(--primary); outline: none; }
 
         .submit-btn { 
             width: 100%; 
             background: var(--success); 
             color: white; 
-            padding: 12px; 
+            padding: 14px; 
             border: none; 
             border-radius: 6px; 
             font-weight: bold; 
-            font-size: 16px; 
+            font-size: 18px; 
+        }
+
+        .cancel-btn {
+            width: 100%; 
+            background: transparent; 
+            color: #666; 
+            padding: 10px; 
+            border: none; 
+            margin-top: 10px;
+            font-size: 14px;
         }
     </style>
 </head>
@@ -160,7 +177,7 @@
 
 <div id="main-content">
     <div id="specialsList">
-        <p style="text-align:center; padding:20px; color:#999;">Loading specials...</p>
+        <p style="text-align:center; padding:40px; color:#666;">Loading your specials...</p>
     </div>
     <div id="map"></div>
 </div>
@@ -169,20 +186,27 @@
 
 <div id="add-modal">
     <div class="modal-content">
-        <h3 style="margin-top:0;">Add New Special</h3>
-        <input id="bar-search" type="text" placeholder="Search Bar Name (Google Places)">
-        <input id="special-input" type="text" placeholder="The Deal (e.g. $2 Bottles)">
+        <h3 style="margin: 0 0 15px 0; color: var(--dark);">Add Bar Special</h3>
+        
+        <label>Bar Name & Address</label>
+        <input id="bar-search" type="text" placeholder="Search or Click Map...">
+        
+        <label>Special Offer</label>
+        <input id="special-input" type="text" placeholder="e.g. $1.50 PBR Cans">
+        
+        <label>Day of Week</label>
         <select id="day-input">
             <option value="Monday">Monday</option>
             <option value="Tuesday">Tuesday</option>
             <option value="Wednesday">Wednesday</option>
             <option value="Thursday">Thursday</option>
-            <option value="Friday">Friday</option>
+            <option value="Friday" selected>Friday</option>
             <option value="Saturday">Saturday</option>
             <option value="Sunday">Sunday</option>
         </select>
-        <button class="submit-btn" onclick="saveBar()">Post Special</button>
-        <button onclick="closeModal()" style="width:100%; background:none; border:none; color:#666; margin-top:10px;">Cancel</button>
+        
+        <button class="submit-btn" onclick="saveBar()">Post Deal to Map</button>
+        <button class="cancel-btn" onclick="closeModal()">Cancel</button>
     </div>
 </div>
 
@@ -190,22 +214,33 @@
 <script src="/static/script.js"></script>
 
 <script>
-    // Local UI Handlers for the Modal
-    function openModal() { document.getElementById('add-modal').style.display = 'flex'; }
-    function closeModal() { document.getElementById('add-modal').style.display = 'none'; }
+    function openModal() { 
+        document.getElementById('add-modal').style.display = 'flex'; 
+    }
+    
+    function closeModal() { 
+        document.getElementById('add-modal').style.display = 'none'; 
+        document.getElementById('bar-search').value = "";
+        document.getElementById('special-input').value = "";
+    }
     
     function filterDay(day) {
-        // Update Button UI
         document.querySelectorAll('.day-btn').forEach(btn => btn.classList.remove('active'));
-        document.getElementById(`btn-${day}`).classList.add('active');
+        const activeBtn = document.getElementById(`btn-${day}`);
+        if(activeBtn) activeBtn.classList.add('active');
         
-        // Call the function in script.js to fetch data
         if (typeof loadBars === "function") {
             loadBars(day);
         }
     }
+
+    // Set default day on load
+    window.addEventListener('DOMContentLoaded', () => {
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const today = days[new Date().getDay()];
+        filterDay(today);
+    });
 </script>
 
 </body>
-            </html>
-
+</html>
