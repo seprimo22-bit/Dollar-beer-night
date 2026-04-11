@@ -1,36 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Beer Dollars</title>
     <link rel="stylesheet" href="/static/style.css">
     <style>
-        /* Essential styles to ensure the map is visible */
-        #map { 
-            height: 350px; 
-            width: 100%; 
-            background-color: #e5e3df; 
-            margin-top: 10px;
-            border-top: 2px solid #ddd;
-        }
-        .card {
-            background: white;
-            padding: 15px;
-            margin: 10px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            cursor: pointer;
-        }
-        .price { color: #2ecc71; font-weight: bold; float: right; }
-        .nav-hint { color: #2196F3; font-size: 0.8em; margin-top: 5px; font-weight: bold; }
+        #map { height: 300px; width: 100%; background: #eee; }
+        #day-selector { display: flex; overflow-x: auto; background: #007bff; padding: 10px; gap: 5px; }
+        #day-selector button { flex: 0 0 auto; padding: 8px 15px; border-radius: 4px; border: none; font-weight: bold; }
+        .card { padding: 15px; margin: 10px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .price { color: green; font-weight: bold; float: right; }
     </style>
 </head>
 <body>
-
-    <header>
-        <h1>🍺 Beer Dollars</h1>
-    </header>
+    <header style="text-align:center; padding:10px;"><h1>🍺 Beer Dollars</h1></header>
 
     <nav id="day-selector">
         <button onclick="loadBars('Monday')">Mon</button>
@@ -42,32 +25,23 @@
         <button onclick="loadBars('Sunday')">Sun</button>
     </nav>
 
-    <main>
-        <div id="specialsList">
-            <p style="text-align:center; padding: 20px;">Detecting location and fetching deals...</p>
-        </div>
-        
-        <div id="map"></div>
-    </main>
+    <div id="specialsList">
+        <p style="text-align:center; padding:20px;">Detecting location...</p>
+    </div>
 
-    <button id="fab" onclick="document.getElementById('add-modal').style.display='block'">+</button>
+    <div id="map"></div>
+
+    <button id="fab" onclick="openAddModal()" style="position:fixed; bottom:20px; right:20px; width:60px; height:60px; border-radius:30px; background:green; color:white; font-size:30px; border:none;">+</button>
 
     <div id="add-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000;">
-        <div style="background:white; margin:10% auto; padding:20px; width:80%; border-radius:10px;">
-            <h3>Add a Special</h3>
-            <input type="text" id="bar-search" placeholder="Search for a bar..." style="width:90%; padding:10px; margin-bottom:10px;">
-            <input type="text" id="special-desc" placeholder="Special (e.g. $1 Drafts)" style="width:90%; padding:10px; margin-bottom:10px;">
-            <select id="special-day" style="width:95%; padding:10px; margin-bottom:20px;">
-                <option value="Monday">Monday</option>
-                <option value="Tuesday">Tuesday</option>
-                <option value="Wednesday">Wednesday</option>
-                <option value="Thursday">Thursday</option>
-                <option value="Friday">Friday</option>
-                <option value="Saturday">Saturday</option>
-                <option value="Sunday">Sunday</option>
-            </select>
-            <button onclick="submitBar()" style="background:#2ecc71; color:white; padding:10px; width:100%; border:none;">Publish to Live App</button>
-            <button onclick="document.getElementById('add-modal').style.display='none'" style="background:#eee; margin-top:10px; width:100%; border:none; padding:5px;">Cancel</button>
+        <div style="background:white; margin:10% auto; padding:20px; width:85%; border-radius:10px;">
+            <h3>Add Special</h3>
+            <p style="font-size:12px; color:gray;">Enter details below or click the map to drop a pin.</p>
+            <input type="text" id="manual-name" placeholder="Bar Name" style="width:100%; padding:10px; margin-bottom:10px;">
+            <input type="text" id="manual-address" placeholder="Address (or use current location)" style="width:100%; padding:10px; margin-bottom:10px;">
+            <input type="text" id="manual-special" placeholder="Special (e.g. $1.50 Cans)" style="width:100%; padding:10px; margin-bottom:10px;">
+            <button onclick="submitManualBar()" style="width:100%; padding:15px; background:green; color:white; border:none; font-weight:bold;">Publish to Live App</button>
+            <button onclick="closeModal()" style="width:100%; margin-top:10px; background:transparent; border:none;">Cancel</button>
         </div>
     </div>
 
