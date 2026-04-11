@@ -1,89 +1,96 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Beer Dollars</title>
-    <style>
-        :root { --primary: #2196F3; --success: #2e7d32; --bg: #f8f9fa; }
-        body { font-family: sans-serif; margin: 0; background: var(--bg); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        .header { background: var(--primary); color: white; text-align: center; padding: 15px; flex-shrink: 0; font-weight: bold; font-size: 20px; }
-        .day-picker { display: flex; overflow-x: auto; background: white; padding: 10px; gap: 8px; border-bottom: 1px solid #ddd; flex-shrink: 0; }
-        .day-btn { background: #eee; border: none; padding: 10px 15px; border-radius: 20px; font-weight: bold; color: #666; cursor: pointer; min-width: 60px; }
-        .day-btn.active { background: var(--primary); color: white; }
-        #main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        #specialsList { flex: 1; overflow-y: auto; padding: 10px; }
-        .card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 10px; border-left: 6px solid var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .card strong { font-size: 18px; display: block; }
-        .price { color: var(--success); font-weight: bold; }
-        .address { display: block; font-size: 13px; color: #888; margin-top: 5px; font-style: italic; }
-        #map { height: 40vh; width: 100%; border-top: 1px solid #ccc; flex-shrink: 0; }
-        .add-btn { position: fixed; bottom: calc(40vh + 20px); right: 20px; background: var(--success); color: white; border: none; width: 65px; height: 65px; border-radius: 50%; font-size: 40px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 99; display: flex; align-items: center; justify-content: center; }
-        #add-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-content { background: white; padding: 25px; border-radius: 15px; width: 85%; max-width: 400px; box-sizing: border-box; }
-        input, select { width: 100%; padding: 15px; margin: 10px 0; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; }
-        .submit-btn { width: 100%; background: var(--success); color: white; padding: 15px; border: none; border-radius: 8px; font-weight: bold; font-size: 18px; }
-    </style>
-</head>
-<body>
+let map, autocomplete, selectedPlace, userLocation;
+let markers = [];
 
-<div class="header">🍺 Beer Dollars</div>
-
-<div class="day-picker" id="dayPicker">
-    <button class="day-btn" id="btn-Monday" onclick="filterDay('Monday')">Mon</button>
-    <button class="day-btn" id="btn-Tuesday" onclick="filterDay('Tuesday')">Tue</button>
-    <button class="day-btn" id="btn-Wednesday" onclick="filterDay('Wednesday')">Wed</button>
-    <button class="day-btn" id="btn-Thursday" onclick="filterDay('Thursday')">Thu</button>
-    <button class="day-btn" id="btn-Friday" onclick="filterDay('Friday')">Fri</button>
-    <button class="day-btn" id="btn-Saturday" onclick="filterDay('Saturday')">Sat</button>
-    <button class="day-btn" id="btn-Sunday" onclick="filterDay('Sunday')">Sun</button>
-</div>
-
-<div id="main-content">
-    <div id="specialsList"><p style="text-align:center; padding-top:20px;">Fetching local deals...</p></div>
-    <div id="map"></div>
-</div>
-
-<button class="add-btn" onclick="openModal()">+</button>
-
-<div id="add-modal">
-    <div class="modal-content">
-        <h2 style="margin:0 0 15px 0;">Add a Special</h2>
-        <input id="bar-search" type="text" placeholder="Search Bar or Tap Map">
-        <input id="special-input" type="text" placeholder="The Deal (e.g. $1.50 PBR)">
-        <select id="day-input">
-            <option value="Monday">Monday</option>
-            <option value="Tuesday">Tuesday</option>
-            <option value="Wednesday">Wednesday</option>
-            <option value="Thursday">Thursday</option>
-            <option value="Friday">Friday</option>
-            <option value="Saturday">Saturday</option>
-            <option value="Sunday">Sunday</option>
-        </select>
-        <button class="submit-btn" onclick="saveBar()">Publish to Live App</button>
-        <button onclick="closeModal()" style="width:100%; background:none; border:none; color:#999; margin-top:10px;">Cancel</button>
-    </div>
-</div>
-
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiEK4CduUBr7EWeqtSsFhG1nQyqON6QYI&libraries=places&callback=initMap" async defer></script>
-<script src="/static/script.js"></script>
-
-<script>
-    function openModal() { document.getElementById('add-modal').style.display = 'flex'; }
-    function closeModal() { document.getElementById('add-modal').style.display = 'none'; }
+function initMap() {
+    // Default to Youngstown if GPS fails
+    const defaultCenter = { lat: 41.1030, lng: -80.6514 };
     
-    function filterDay(day) {
-        document.querySelectorAll('.day-btn').forEach(btn => btn.classList.remove('active'));
-        const activeBtn = document.getElementById(`btn-${day}`);
-        if(activeBtn) activeBtn.classList.add('active');
-        if (typeof loadBars === "function") { loadBars(day); }
+    map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 12,
+        center: defaultCenter,
+        disableDefaultUI: true
+    });
+
+    // 1. GET USER GPS & CENTER MAP
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                userLocation = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+                map.setCenter(userLocation);
+                loadBars("Monday"); // Trigger load once we have location
+            },
+            () => { console.log("GPS denied, using default."); loadBars("Monday"); }
+        );
     }
 
-    window.onload = () => {
-        const d = new Date();
-        const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-        filterDay(days[d.getDay()]);
-    }
-</script>
-</body>
-</html>
+    // 2. AUTOCOMPLETE FOR ADDING BARS
+    const input = document.getElementById("bar-search");
+    autocomplete = new google.maps.places.Autocomplete(input);
+    autocomplete.addListener("place_changed", () => {
+        const place = autocomplete.getPlace();
+        if (!place.geometry) return;
+        selectedPlace = {
+            name: place.name,
+            address: place.formatted_address,
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng()
+        };
+    });
+}
+
+// 3. NAVIGATION FEATURE
+function startNavigation(lat, lng) {
+    // Opens native Google Maps app for turn-by-turn
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+}
+
+async function loadBars(day) {
+    const res = await fetch(`/api/specials?day=${day}`);
+    const data = await res.json();
+    const list = document.getElementById("specialsList");
+    list.innerHTML = "";
+    
+    markers.forEach(m => m.setMap(null));
+    markers = [];
+
+    data.forEach(bar => {
+        // 4. RADIUS FILTER: 45 MILES
+        const distance = calculateDistance(userLocation, {lat: bar.lat, lng: bar.lng});
+        if (userLocation && distance > 45) return; 
+
+        const card = document.createElement("div");
+        card.className = "card";
+        // Click the card to navigate
+        card.onclick = () => startNavigation(bar.lat, bar.lng);
+        card.innerHTML = `
+            <strong>${bar.name}</strong>
+            <span class="price">${bar.special}</span><br>
+            <small class="address">${bar.address}</small>
+            <div style="color: #2196F3; font-size: 12px; margin-top: 5px;">Tap to Navigate (${distance.toFixed(1)} mi)</div>
+        `;
+        list.appendChild(card);
+
+        const marker = new google.maps.Marker({
+            position: { lat: bar.lat, lng: bar.lng },
+            map: map,
+            title: bar.name
+        });
+        markers.push(marker);
+    });
+}
+
+// Distance calculation (Haversine Formula)
+function calculateDistance(p1, p2) {
+    if (!p1 || !p2) return 0;
+    const R = 3958.8; // Miles
+    const dLat = (p2.lat - p1.lat) * Math.PI / 180;
+    const dLon = (p2.lng - p1.lng) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(p1.lat * Math.PI / 180) * Math.cos(p2.lat * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
