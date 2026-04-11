@@ -1,6 +1,6 @@
 let map, markers = [];
 
-// Load data immediately when page opens
+// This makes the list load IMMEDIATELY when the page opens
 document.addEventListener("DOMContentLoaded", () => {
     const today = new Date().toLocaleDateString('en-US', { weekday: 'Long' });
     loadBars(today);
@@ -8,14 +8,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function initMap() {
     try {
-        const centerPoint = { lat: 41.0664, lng: -80.6273 }; // Youngstown/Boardman
+        const centerPoint = { lat: 41.0664, lng: -80.6273 }; // Center on Boardman/Youngstown
         map = new google.maps.Map(document.getElementById("map"), {
             zoom: 12,
             center: centerPoint,
             disableDefaultUI: false
         });
     } catch (e) {
-        console.error("Map failed to load. List will still function.");
+        console.log("Map API delayed or offline.");
     }
 }
 
@@ -24,8 +24,8 @@ async function loadBars(day) {
     list.innerHTML = `<p style="text-align:center;">Searching ${day} specials...</p>`;
     
     try {
-        // Fetch from the static folder
-        const response = await fetch('/static/specials.json');
+        // Pointing to the root where your file is
+        const response = await fetch('/specials.json');
         if (!response.ok) throw new Error("File not found");
         
         const allSpecials = await response.json();
@@ -43,8 +43,6 @@ async function loadBars(day) {
         dailyDeals.forEach(bar => {
             const card = document.createElement("div");
             card.className = "card";
-            
-            // Logic: Click bar to center map
             card.onclick = () => {
                 if (map) {
                     map.setCenter({ lat: bar.lat, lng: bar.lng });
@@ -70,6 +68,7 @@ async function loadBars(day) {
             }
         });
     } catch (err) {
-        list.innerHTML = `<div class="error">Error loading list. Check if specials.json is in the /static folder.</div>`;
+        // If it still fails, it tells you exactly why
+        list.innerHTML = `<p style="text-align:center; color:red;">Could not find specials.json in the main folder.</p>`;
     }
 }
