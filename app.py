@@ -5,6 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 
+# Fix for Render's postgres:// vs postgresql://
 uri = os.environ.get('DATABASE_URL', 'sqlite:///local.db')
 if uri and uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
@@ -41,6 +42,21 @@ def get_db_bars():
     day = request.args.get('day')
     bars = Bar.query.filter_by(day=day).all()
     return jsonify([{"name": b.name, "address": b.address, "special": b.special, "lat": b.lat, "lng": b.lng} for b in bars])
+
+@app.route('/add_bar', methods=['POST'])
+def add_bar():
+    data = request.json
+    new_bar = Bar(
+        name=data['name'],
+        address=data['address'],
+        special=data['special'],
+        day=data['day'],
+        lat=data['lat'],
+        lng=data['lng']
+    )
+    db.session.add(new_bar)
+    db.session.commit()
+    return jsonify({"success": True})
 
 if __name__ == '__main__':
     with app.app_context():
