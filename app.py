@@ -5,7 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 
-# Render's DATABASE_URL fix
+# Render Database fix
 uri = os.environ.get('DATABASE_URL', 'sqlite:///local.db')
 if uri and uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
