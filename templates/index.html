@@ -3,167 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Beer Dollars | Youngstown</title>
+    <title>Beer Dollars</title>
     <style>
-        :root { --primary: #2196F3; --dark: #1976D2; --success: #2e7d32; }
+        :root { --primary: #2196F3; --success: #2e7d32; --bg: #f8f9fa; }
+        body { font-family: sans-serif; margin: 0; background: var(--bg); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            margin: 0; 
-            background: #f4f4f4; 
-            display: flex; 
-            flex-direction: column; 
-            height: 100vh; 
-            overflow: hidden; 
-        }
+        .header { background: var(--primary); color: white; text-align: center; padding: 15px; flex-shrink: 0; font-weight: bold; font-size: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        
+        .day-picker { display: flex; overflow-x: auto; background: white; padding: 10px; gap: 8px; border-bottom: 1px solid #ddd; flex-shrink: 0; -webkit-overflow-scrolling: touch; }
+        .day-btn { background: #eee; border: none; padding: 10px 15px; border-radius: 20px; font-weight: bold; color: #666; cursor: pointer; min-width: 60px; }
+        .day-btn.active { background: var(--primary); color: white; }
 
-        .header { 
-            background: var(--primary); 
-            color: white; 
-            text-align: center; 
-            padding: 12px; 
-            flex-shrink: 0; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
+        #main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        #specialsList { flex: 1; overflow-y: auto; padding: 10px; }
+        
+        .card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 10px; border-left: 6px solid var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .card strong { font-size: 18px; display: block; margin-bottom: 5px; }
+        .price { color: var(--success); font-weight: bold; font-size: 16px; }
+        .address { display: block; font-size: 13px; color: #888; margin-top: 5px; font-style: italic; }
 
-        .day-picker { 
-            display: flex; 
-            overflow-x: auto; 
-            background: white; 
-            padding: 10px; 
-            gap: 8px; 
-            border-bottom: 1px solid #ddd; 
-            flex-shrink: 0; 
-            -webkit-overflow-scrolling: touch;
-        }
+        #map { height: 40vh; width: 100%; border-top: 1px solid #ccc; flex-shrink: 0; }
 
-        .day-btn { 
-            background: #e0e0e0; 
-            border: none; 
-            padding: 10px 18px; 
-            border-radius: 20px; 
-            cursor: pointer; 
-            font-weight: bold;
-            color: #555;
-            white-space: nowrap;
-        }
+        .add-btn { position: fixed; bottom: calc(40vh + 20px); right: 20px; background: var(--success); color: white; border: none; width: 65px; height: 65px; border-radius: 50%; font-size: 40px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 99; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 
-        .day-btn.active { 
-            background: var(--primary); 
-            color: white; 
-        }
-
-        #main-content { 
-            flex: 1; 
-            display: flex; 
-            flex-direction: column; 
-            overflow: hidden; 
-        }
-
-        #specialsList { 
-            flex: 1; 
-            padding: 10px; 
-            overflow-y: auto; 
-            background: #fff; 
-        }
-
-        .card { 
-            background: white; 
-            padding: 15px; 
-            margin-bottom: 12px; 
-            border-radius: 8px; 
-            border-left: 5px solid var(--primary); 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
-        }
-
-        .card strong { font-size: 1.1em; display: block; margin-bottom: 4px; }
-        .price { color: var(--success); font-weight: bold; font-size: 1.05em; display: block; }
-        .address { color: #666; font-size: 0.85em; display: block; margin-top: 6px; font-style: italic; }
-
-        #map { 
-            height: 40vh; 
-            width: 100%; 
-            background: #e5e3df; 
-            border-top: 2px solid #ddd;
-            flex-shrink: 0;
-        }
-
-        /* Floating Add Button */
-        .add-btn { 
-            position: fixed; 
-            bottom: calc(40vh + 20px); 
-            right: 20px; 
-            background: var(--success); 
-            color: white; 
-            border: none; 
-            width: 60px; 
-            height: 60px; 
-            border-radius: 30px; 
-            font-size: 35px; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4); 
-            z-index: 100; 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* Modal / Form Styling */
-        #add-modal { 
-            display: none; 
-            position: fixed; 
-            top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.85); 
-            z-index: 2000; 
-            justify-content: center; 
-            align-items: center; 
-        }
-
-        .modal-content { 
-            background: white; 
-            padding: 20px; 
-            border-radius: 12px; 
-            width: 90%; 
-            max-width: 400px; 
-        }
-
-        label { font-size: 12px; font-weight: bold; color: #444; text-transform: uppercase; }
-        input, select { 
-            width: 100%; 
-            padding: 12px; 
-            margin: 8px 0 16px 0; 
-            border: 2px solid #ddd; 
-            border-radius: 6px; 
-            box-sizing: border-box; 
-            font-size: 16px;
-        }
-
-        input:focus { border-color: var(--primary); outline: none; }
-
-        .submit-btn { 
-            width: 100%; 
-            background: var(--success); 
-            color: white; 
-            padding: 14px; 
-            border: none; 
-            border-radius: 6px; 
-            font-weight: bold; 
-            font-size: 18px; 
-        }
-
-        .cancel-btn {
-            width: 100%; 
-            background: transparent; 
-            color: #666; 
-            padding: 10px; 
-            border: none; 
-            margin-top: 10px;
-            font-size: 14px;
-        }
+        /* Modal Overlay */
+        #add-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 25px; border-radius: 15px; width: 85%; max-width: 400px; box-sizing: border-box; }
+        
+        input, select { width: 100%; padding: 15px; margin: 10px 0; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        .submit-btn { width: 100%; background: var(--success); color: white; padding: 15px; border: none; border-radius: 8px; font-weight: bold; font-size: 18px; cursor: pointer; }
+        .close-modal { width: 100%; background: none; border: none; color: #999; margin-top: 10px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div class="header"><h2 style="margin:0;">🍺 Beer Dollars</h2></div>
+<div class="header">🍺 Beer Dollars</div>
 
 <div class="day-picker" id="dayPicker">
     <button class="day-btn" id="btn-Monday" onclick="filterDay('Monday')">Mon</button>
@@ -177,7 +51,7 @@
 
 <div id="main-content">
     <div id="specialsList">
-        <p style="text-align:center; padding:40px; color:#666;">Loading your specials...</p>
+        <p style="text-align:center; padding-top:20px;">Fetching local deals...</p>
     </div>
     <div id="map"></div>
 </div>
@@ -186,27 +60,20 @@
 
 <div id="add-modal">
     <div class="modal-content">
-        <h3 style="margin: 0 0 15px 0; color: var(--dark);">Add Bar Special</h3>
-        
-        <label>Bar Name & Address</label>
-        <input id="bar-search" type="text" placeholder="Search or Click Map...">
-        
-        <label>Special Offer</label>
-        <input id="special-input" type="text" placeholder="e.g. $1.50 PBR Cans">
-        
-        <label>Day of Week</label>
+        <h2 style="margin-top:0;">Add a Special</h2>
+        <input id="bar-search" type="text" placeholder="Search Bar or Tap Map">
+        <input id="special-input" type="text" placeholder="The Deal (e.g. $2 Domestic Bottles)">
         <select id="day-input">
             <option value="Monday">Monday</option>
             <option value="Tuesday">Tuesday</option>
             <option value="Wednesday">Wednesday</option>
             <option value="Thursday">Thursday</option>
-            <option value="Friday" selected>Friday</option>
+            <option value="Friday">Friday</option>
             <option value="Saturday">Saturday</option>
             <option value="Sunday">Sunday</option>
         </select>
-        
-        <button class="submit-btn" onclick="saveBar()">Post Deal to Map</button>
-        <button class="cancel-btn" onclick="closeModal()">Cancel</button>
+        <button class="submit-btn" onclick="saveBar()">Publish to Live App</button>
+        <button class="close-modal" onclick="closeModal()">Cancel</button>
     </div>
 </div>
 
@@ -214,32 +81,22 @@
 <script src="/static/script.js"></script>
 
 <script>
-    function openModal() { 
-        document.getElementById('add-modal').style.display = 'flex'; 
-    }
-    
-    function closeModal() { 
-        document.getElementById('add-modal').style.display = 'none'; 
-        document.getElementById('bar-search').value = "";
-        document.getElementById('special-input').value = "";
-    }
+    function openModal() { document.getElementById('add-modal').style.display = 'flex'; }
+    function closeModal() { document.getElementById('add-modal').style.display = 'none'; }
     
     function filterDay(day) {
         document.querySelectorAll('.day-btn').forEach(btn => btn.classList.remove('active'));
         const activeBtn = document.getElementById(`btn-${day}`);
         if(activeBtn) activeBtn.classList.add('active');
-        
-        if (typeof loadBars === "function") {
-            loadBars(day);
-        }
+        if (typeof loadBars === "function") { loadBars(day); }
     }
 
-    // Set default day on load
-    window.addEventListener('DOMContentLoaded', () => {
-        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const today = days[new Date().getDay()];
-        filterDay(today);
-    });
+    // On Load: Highlight Today
+    window.onload = () => {
+        const d = new Date();
+        const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+        filterDay(days[d.getDay()]);
+    }
 </script>
 
 </body>
