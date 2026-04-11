@@ -6,20 +6,23 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initMap() {
-    const centerPoint = { lat: 41.0664, lng: -80.6273 };
+    const centerPoint = { lat: 40.0162, lng: -80.7423 }; // Centered near Bellaire, OH
     map = new google.maps.Map(document.getElementById("map"), {
-        zoom: 12, center: centerPoint, disableDefaultUI: false, gestureHandling: "greedy"
+        zoom: 10,
+        center: centerPoint,
+        disableDefaultUI: false,
+        gestureHandling: "greedy"
     });
 
-    // Drop pin on click
-    map.addListener("click", (mapsMouseEvent) => {
+    // Tap map to drop pin and add bar
+    map.addListener("click", (e) => {
         if (tempMarker) tempMarker.setMap(null);
         tempMarker = new google.maps.Marker({
-            position: mapsMouseEvent.latLng,
+            position: e.latLng,
             map: map,
-            icon: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
+            animation: google.maps.Animation.DROP
         });
-        openAddForm(mapsMouseEvent.latLng.lat(), mapsMouseEvent.latLng.lng());
+        openAddForm(e.latLng.lat(), e.latLng.lng());
     });
 }
 
@@ -47,6 +50,7 @@ async function saveBar() {
 
     if (response.ok) {
         document.getElementById("addForm").style.display = "none";
+        if (tempMarker) tempMarker.setMap(null);
         loadBars(data.day);
     }
 }
@@ -56,10 +60,10 @@ async function loadBars(day) {
     list.innerHTML = `<p style="text-align:center;">Finding ${day} deals...</p>`;
     
     try {
-        const jsonResponse = await fetch('/get_json_bars');
-        const jsonBars = await jsonResponse.json();
-        const dbResponse = await fetch(`/get_db_bars?day=${day}`);
-        const dbBars = dbResponse.ok ? await dbResponse.json() : [];
+        const jsonRes = await fetch('/get_json_bars');
+        const jsonBars = await jsonRes.json();
+        const dbRes = await fetch(`/get_db_bars?day=${day}`);
+        const dbBars = dbRes.ok ? await dbRes.json() : [];
 
         const allBars = [...jsonBars.filter(b => b.day === day), ...dbBars];
         list.innerHTML = ""; markers.forEach(m => m.setMap(null)); markers = [];
@@ -67,16 +71,21 @@ async function loadBars(day) {
         allBars.forEach(bar => {
             const card = document.createElement("div");
             card.className = "card";
-            // Native navigation link
-            const navUrl = `https://www.google.com/maps/dir/?api=1&destination=${bar.lat},${bar.lng}`;
+            
+            // This URL forces the phone to open the Google Maps APP
+            const googleMapsAppUrl = `https://www.google.com/maps/dir/?api=1&destination=${bar.lat},${bar.lng}`;
 
             card.innerHTML = `
-                <a href="${navUrl}" target="_blank" style="float:right; text-decoration:none; font-size:24px;">➡️</a>
+                <a href="${googleMapsAppUrl}" target="_blank" style="float:right; text-decoration:none; font-size:28px;">🚀</a>
                 <span class="price">${bar.special}</span>
                 <strong>${bar.name}</strong><br><small>${bar.address}</small>
             `;
+            
             card.onclick = (e) => {
-                if (e.target.tagName !== 'A' && map) { map.setCenter({ lat: bar.lat, lng: bar.lng }); map.setZoom(16); }
+                if (e.target.tagName !== 'A') {
+                    map.setCenter({ lat: bar.lat, lng: bar.lng });
+                    map.setZoom(16);
+                }
             };
             list.appendChild(card);
 
