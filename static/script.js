@@ -1,14 +1,22 @@
-let map, autocomplete, selectedPlace;
+let map, autocomplete, selectedPlace, userLocation;
 let markers = [];
 
 function initMap() {
     map = new google.maps.Map(document.getElementById("map"), {
-        zoom: 14,
-        center: { lat: 41.1030, lng: -80.6514 }, // Centered on Youngstown
+        zoom: 13,
+        center: { lat: 41.1030, lng: -80.6514 }, // Youngstown
         disableDefaultUI: true
     });
 
-    // MAP CLICK: Reverse geocode tap into an address
+    // Get User GPS
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+            userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            map.setCenter(userLocation);
+        });
+    }
+
+    // MAP CLICK TO ADD
     map.addListener("click", (e) => {
         const geocoder = new google.maps.Geocoder();
         geocoder.geocode({ location: e.latLng }, (results, status) => {
@@ -25,7 +33,6 @@ function initMap() {
         });
     });
 
-    // AUTOCOMPLETE: Search for bar names
     const input = document.getElementById("bar-search");
     autocomplete = new google.maps.places.Autocomplete(input);
     autocomplete.addListener("place_changed", () => {
@@ -37,37 +44,11 @@ function initMap() {
             lng: place.geometry.location.lng()
         };
     });
-    
-    const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-    loadBars(days[new Date().getDay()]);
 }
 
-async function saveBar() {
-    const spec = document.getElementById("special-input").value;
-    const day = document.getElementById("day-input").value;
-
-    if (!selectedPlace || !spec) {
-        alert("Search for a bar or tap the map first!");
-        return;
-    }
-
-    const res = await fetch('/api/add-bar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            name: selectedPlace.name,
-            address: selectedPlace.address,
-            lat: selectedPlace.lat,
-            lng: selectedPlace.lng,
-            special: spec,
-            day: day
-        })
-    });
-
-    if (res.ok) {
-        closeModal();
-        loadBars(day);
-    }
+// NAVIGATION FUNCTION
+function navigateTo(lat, lng) {
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
 }
 
 async function loadBars(day) {
@@ -80,9 +61,19 @@ async function loadBars(day) {
     markers = [];
 
     data.forEach(bar => {
+        // Radius Filter (Roughly 45 miles)
+        const distance = getDistance(userLocation, {lat: bar.lat, lng: bar.lng});
+        if (distance > 45) return; 
+
         const card = document.createElement("div");
         card.className = "card";
-        card.innerHTML = `<strong>${bar.name}</strong><span class="price">${bar.special}</span><br><small class="address">${bar.address}</small>`;
+        card.onclick = () => navigateTo(bar.lat, bar.lng);
+        card.innerHTML = `
+            <strong>${bar.name}</strong>
+            <span class="price">${bar.special}</span><br>
+            <small class="address">${bar.address}</small>
+            <button style="margin-top:5px; background:#2196F3; color:white; border:none; border-radius:4px; padding:5px;">Navigate</button>
+        `;
         list.appendChild(card);
 
         const marker = new google.maps.Marker({
@@ -92,4 +83,16 @@ async function loadBars(day) {
         });
         markers.push(marker);
     });
+}
+
+// Distance Helper
+function getDistance(p1, p2) {
+    if (!p1) return 0;
+    const R = 3958.8; // Radius of Earth in miles
+    const dLat = (p2.lat - p1.lat) * Math.PI / 180;
+    const dLon = (p2.lng - p1.lng) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(p1.lat * Math.PI / 180) * Math.cos(p2.lat * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
 }
