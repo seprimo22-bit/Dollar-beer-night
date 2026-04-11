@@ -1,88 +1,43 @@
-from flask import Flask, render_template, jsonify, request, session, redirect, url_for
-from flask_sqlalchemy import SQLAlchemy
-from twilio.rest import Client
 import os
-from datetime import datetime, timedelta
+import json
+from flask import Flask, render_template, jsonify, request
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
-# Pulls the secret key you set in Render env
-app.secret_key = os.environ.get('SECRET_KEY', 'beer_dollars_secret_1616')
 
-# DATABASE CONNECTION: Handles Render's postgres prefix
-db_url = os.environ.get('DATABASE_URL')
-if db_url and db_url.startswith("postgres://"):
-    db_url = db_url.replace("postgres://", "postgresql://", 1)
-
-app.config['SQLALCHEMY_DATABASE_URI'] = db_url
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Database configuration for your PostgreSQL on Render
+app.config['SQLALCHEMY_DATABASE_SET_URL'] = os.environ.get('DATABASE_URL')
 db = SQLAlchemy(app)
-
-# TWILIO SETUP: Pulls from Render Environment Variables
-TWILIO_SID = os.environ.get('TWILIO_ACCOUNT_SID')
-TWILIO_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
-TWILIO_PHONE = os.environ.get('TWILIO_PHONE_NUMBER')
 
 class Bar(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    address = db.Column(db.String(255))
+    name = db.Column(db.String(100))
+    address = db.Column(db.String(200))
+    special = db.Column(db.String(100))
+    day = db.Column(db.String(20))
     lat = db.Column(db.Float)
     lng = db.Column(db.Float)
-    special = db.Column(db.String(250))
-    day = db.Column(db.String(20))
-
-# LOGIN LOGIC & OVERRIDES
-@app.route('/api/verify-code', methods=['POST'])
-def verify_code():
-    data = request.json
-    code = data.get('code')
-    # Master Overrides
-    if code in ['0000', '1616', '9999']:
-        session['logged_in'] = True
-        return jsonify({"status": "success"}), 200
-    
-    # Optional: Twilio verification logic can go here if needed later
-    return jsonify({"status": "invalid"}), 401
 
 @app.route('/')
-def splash():
-    return render_template('splash.html')
-
-@app.route('/main')
-def main_app():
-    if not session.get('logged_in'):
-        return redirect(url_for('splash'))
+def index():
     return render_template('index.html')
 
-@app.route('/api/add-bar', methods=['POST'])
-def add_bar():
-    data = request.json
+# This is the "Bridge" that pulls from your root specials.json
+@app.route('/get_json_bars')
+def get_json_bars():
     try:
-        new_bar = Bar(
-            name=data['name'], address=data['address'],
-            lat=data['lat'], lng=data['lng'],
-            special=data['special'], day=data['day']
-        )
-        db.session.add(new_bar)
-        db.session.commit()
-        return jsonify({"status": "success"}), 200
+        with open('specials.json', 'r') as f:
+            data = json.load(f)
+        return jsonify(data)
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": str(e)}), 500
 
-@app.route('/api/specials')
-def get_specials():
-    # Day Logic: Before 2:30 AM shows "yesterday"
-    now = datetime.now()
-    if now.hour < 2 or (now.hour == 2 and now.minute < 30):
-        query_day = (now - timedelta(days=1)).strftime('%A')
-    else:
-        query_day = request.args.get('day', now.strftime('%A'))
-        
-    bars = Bar.query.filter_by(day=query_day).all()
-    return jsonify([{
-        'name': b.name, 'address': b.address, 
-        'lat': b.lat, 'lng': b.lng, 'special': b.special
-    } for b in bars])
+# This route pulls any bars users added to the database
+@app.route('/get_db_bars')
+def get_db_bars():
+    day = request.args.get('day')
+    bars = Bar.query.filter_by(day=day).all()
+    return jsonify([{"name": b.name, "address": b.address, "special": b.special, "lat": b.lat, "lng": b.lng} for b in bars])
 
 if __name__ == '__main__':
     with app.app_context():
