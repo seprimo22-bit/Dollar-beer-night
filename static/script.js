@@ -1,12 +1,7 @@
 let map, markers = [], tempMarker = null;
 
-document.addEventListener("DOMContentLoaded", () => {
-    const today = new Date().toLocaleDateString('en-US', { weekday: 'Long' });
-    loadBars(today);
-});
-
 function initMap() {
-    // UPDATED: Centered on Bellaire, OH
+    // Start the map in Bellaire since that's your focus area
     const bellaire = { lat: 40.0162, lng: -80.7423 }; 
     map = new google.maps.Map(document.getElementById("map"), {
         zoom: 13,
@@ -15,7 +10,7 @@ function initMap() {
         gestureHandling: "greedy"
     });
 
-    // Tap map to drop pin
+    // When the user taps the map to add a bar
     map.addListener("click", (e) => {
         if (tempMarker) tempMarker.setMap(null);
         tempMarker = new google.maps.Marker({
@@ -23,6 +18,7 @@ function initMap() {
             map: map,
             animation: google.maps.Animation.DROP
         });
+        // Auto-fill the hidden lat/lng so the user never sees them
         document.getElementById("lat").value = e.latLng.lat();
         document.getElementById("lng").value = e.latLng.lng();
         document.getElementById("addForm").style.display = "block";
@@ -30,25 +26,37 @@ function initMap() {
 }
 
 async function saveBar() {
-    const data = {
-        name: document.getElementById("name").value,
-        address: document.getElementById("address").value,
-        special: document.getElementById("special").value,
-        day: document.getElementById("day").value,
-        lat: parseFloat(document.getElementById("lat").value),
-        lng: parseFloat(document.getElementById("lng").value)
-    };
+    const address = document.getElementById("address").value;
+    const geocoder = new google.maps.Geocoder();
 
-    const response = await fetch('/add_bar', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(data)
+    // The "Magic" Step: Turn the address text into map coordinates automatically
+    geocoder.geocode({ address: address }, async (results, status) => {
+        if (status === "OK") {
+            const coords = results[0].geometry.location;
+            
+            const data = {
+                name: document.getElementById("name").value,
+                address: address,
+                special: document.getElementById("special").value,
+                day: document.getElementById("day").value,
+                lat: coords.lat(), // Google found this for us
+                lng: coords.lng()  // Google found this for us
+            };
+
+            const response = await fetch('/add_bar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                document.getElementById("addForm").style.display = "none";
+                loadBars(data.day);
+            }
+        } else {
+            alert("Google couldn't find that address. Please check the spelling!");
+        }
     });
-
-    if (response.ok) {
-        document.getElementById("addForm").style.display = "none";
-        loadBars(data.day);
-    }
 }
 
 async function loadBars(day) {
@@ -62,18 +70,20 @@ async function loadBars(day) {
         const dbBars = dbRes.ok ? await dbRes.json() : [];
 
         const allBars = [...jsonBars.filter(b => b.day === day), ...dbBars];
-        list.innerHTML = ""; markers.forEach(m => m.setMap(null)); markers = [];
+        list.innerHTML = ""; 
+        markers.forEach(m => m.setMap(null)); 
+        markers = [];
 
         allBars.forEach(bar => {
             const card = document.createElement("div");
             card.className = "card";
             
-            // This URL opens the ACTUAL Google Maps App
+            // Navigation link using the saved coordinates
             const navUrl = `https://www.google.com/maps/dir/?api=1&destination=${bar.lat},${bar.lng}`;
 
             card.innerHTML = `
                 <a href="${navUrl}" target="_blank" style="float:right; text-decoration:none; font-size:30px;">➡️</a>
-                <span class="price">${bar.special}</span>
+                <span class="price" style="color:#28a745; font-weight:bold;">${bar.special}</span>
                 <strong>${bar.name}</strong><br>
                 <small>${bar.address}</small>
             `;
