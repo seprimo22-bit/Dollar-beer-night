@@ -4,96 +4,85 @@ let markers = [];
 function initMap() {
     map = new google.maps.Map(document.getElementById("map"), {
         zoom: 14,
-        center: { lat: 41.0998, lng: -80.6495 },
+        center: { lat: 41.1030, lng: -80.6514 }, // Centered on Youngstown
         disableDefaultUI: true
     });
 
-    // NEW: Click the map to add a bar at that location
-    map.addListener("click", (mapsMouseEvent) => {
-        const latLng = mapsMouseEvent.latLng;
-        reverseGeocode(latLng);
+    // MAP CLICK: Reverse geocode tap into an address
+    map.addListener("click", (e) => {
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ location: e.latLng }, (results, status) => {
+            if (status === "OK" && results[0]) {
+                selectedPlace = {
+                    name: "New Spot",
+                    address: results[0].formatted_address,
+                    lat: e.latLng.lat(),
+                    lng: e.latLng.lng()
+                };
+                document.getElementById("bar-search").value = results[0].formatted_address;
+                openModal();
+            }
+        });
     });
 
-    // Fix the Search Box
+    // AUTOCOMPLETE: Search for bar names
     const input = document.getElementById("bar-search");
     autocomplete = new google.maps.places.Autocomplete(input);
     autocomplete.addListener("place_changed", () => {
-        selectedPlace = autocomplete.getPlace();
-        // Automatically put the address in the UI so you can see it
-        if (selectedPlace.formatted_address) {
-            console.log("Found:", selectedPlace.formatted_address);
-        }
+        const place = autocomplete.getPlace();
+        selectedPlace = {
+            name: place.name,
+            address: place.formatted_address,
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng()
+        };
     });
-
-    loadBars();
-}
-
-// Helper to get address when you click the map
-function reverseGeocode(latLng) {
-    const geocoder = new google.maps.Geocoder();
-    geocoder.geocode({ location: latLng }, (results, status) => {
-        if (status === "OK" && results[0]) {
-            selectedPlace = {
-                name: "New Bar", // You can rename this in the input
-                formatted_address: results[0].formatted_address,
-                geometry: { location: latLng }
-            };
-            document.getElementById("bar-search").value = results[0].formatted_address;
-            openModal();
-        }
-    });
+    
+    const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    loadBars(days[new Date().getDay()]);
 }
 
 async function saveBar() {
-    const special = document.getElementById("special-input").value;
+    const spec = document.getElementById("special-input").value;
     const day = document.getElementById("day-input").value;
 
-    if (!selectedPlace || !special) {
-        alert("Please search for a bar or click the map first!");
+    if (!selectedPlace || !spec) {
+        alert("Search for a bar or tap the map first!");
         return;
     }
-
-    const barData = {
-        name: document.getElementById("bar-search").value || selectedPlace.name,
-        address: selectedPlace.formatted_address,
-        lat: typeof selectedPlace.geometry.location.lat === 'function' ? selectedPlace.geometry.location.lat() : selectedPlace.geometry.location.lat,
-        lng: typeof selectedPlace.geometry.location.lng === 'function' ? selectedPlace.geometry.location.lng() : selectedPlace.geometry.location.lng,
-        special: special,
-        day: day
-    };
 
     const res = await fetch('/api/add-bar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(barData)
+        body: JSON.stringify({
+            name: selectedPlace.name,
+            address: selectedPlace.address,
+            lat: selectedPlace.lat,
+            lng: selectedPlace.lng,
+            special: spec,
+            day: day
+        })
     });
 
     if (res.ok) {
         closeModal();
         loadBars(day);
-    } else {
-        alert("Error saving bar. Check your database connection.");
     }
 }
 
-async function loadBars(day = "") {
+async function loadBars(day) {
     const res = await fetch(`/api/specials?day=${day}`);
-    const bars = await res.json();
+    const data = await res.json();
     const list = document.getElementById("specialsList");
     list.innerHTML = "";
     
     markers.forEach(m => m.setMap(null));
     markers = [];
 
-    bars.forEach(bar => {
+    data.forEach(bar => {
         const card = document.createElement("div");
         card.className = "card";
-        // Now showing the address inside the card
-        card.innerHTML = `
-            <strong>${bar.name}</strong>
-            <span class="price">${bar.special}</span>
-            <span class="address">${bar.address}</span>
-        `;
+        card.innerHTML = `<strong>${bar.name}</strong><span class="price">${bar.special}</span><br><small class="address">${bar.address}</small>`;
         list.appendChild(card);
 
         const marker = new google.maps.Marker({
@@ -104,7 +93,3 @@ async function loadBars(day = "") {
         markers.push(marker);
     });
 }
-
-
-
-
