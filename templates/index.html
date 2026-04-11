@@ -15,7 +15,7 @@
         #map { height: 400px; width: 100%; border-top: 2px solid #007bff; }
         .add-btn { position: fixed; bottom: 25px; right: 25px; background: #28a745; color: white; border: none; border-radius: 50%; width: 65px; height: 65px; font-size: 35px; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
         #addForm { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 12px; z-index: 200; width: 85%; box-shadow: 0 0 30px rgba(0,0,0,0.6); }
-        #addForm input, #addForm select { width: 100%; margin-bottom: 12px; padding: 12px; border: 1px solid #ccc; border-radius: 5px; }
+        #addForm input, #addForm select { width: 100%; margin-bottom: 12px; padding: 12px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
     </style>
 </head>
 <body>
@@ -35,13 +35,13 @@
 <div id="specialsList"></div>
 <div id="map"></div>
 
-<button class="add-btn" onclick="alert('Step 1: Find the bar on the map.\nStep 2: Tap the map to drop a pin!\nStep 3: Fill in the details.')">+</button>
+<button class="add-btn" onclick="alert('Tap the map where the bar is located to add it!')">+</button>
 
 <div id="addForm">
-    <h3>📍 Add New Bar Deal</h3>
-    <input type="text" id="name" placeholder="Bar Name (e.g. Denny's Blue Angel)">
-    <input type="text" id="address" placeholder="Address (e.g. Bellaire, OH)">
-    <input type="text" id="special" placeholder="Special (e.g. $1 Drafts)">
+    <h3>📍 Add New Bar</h3>
+    <input type="text" id="name" placeholder="Name (e.g. Denny's Blue Angel)">
+    <input type="text" id="address" placeholder="Address (Bellaire, OH)">
+    <input type="text" id="special" placeholder="Deal (e.g. $2 Bottles)">
     <select id="day">
         <option value="Monday">Monday</option><option value="Tuesday">Tuesday</option>
         <option value="Wednesday">Wednesday</option><option value="Thursday">Thursday</option>
@@ -49,7 +49,7 @@
         <option value="Sunday">Sunday</option>
     </select>
     <input type="hidden" id="lat"><input type="hidden" id="lng">
-    <button onclick="saveBar()" style="background:#28a745; color:white; border:none; padding:15px; width:100%; border-radius:5px; font-weight:bold;">SAVE TO DATABASE</button>
+    <button onclick="saveBar()" style="background:#28a745; color:white; border:none; padding:15px; width:100%; border-radius:5px; font-weight:bold;">SAVE BAR</button>
     <button onclick="document.getElementById('addForm').style.display='none'" style="background:none; color:red; border:none; padding:10px; width:100%; margin-top:10px;">Cancel</button>
 </div>
 
