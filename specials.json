@@ -1,22 +1,90 @@
 [
-    {
-        "id": 1,
-        "name": "Sample Bar",
-        "lat": 40.7128,
-        "lng": -74.0060,
-        "description": "Happy hour specials",
-        "verified": true
-    }
-]
-
-
-[
-    {
-        "id": 2
-        "name": "Sample Bar",
-        "lat": 40.7128,
-        "lng": -74.0060,
-        "description": "Happy hour specials",
-        "verified": true
-    }
+  {
+    "name": "The Lanai Lounge",
+    "address": "7361 South Ave, Boardman, OH 44512",
+    "special": "$1.75 Cans",
+    "day": "Sunday",
+    "lat": 41.0185,
+    "lng": -80.6334
+  },
+  {
+    "name": "Los Gallos",
+    "address": "685 Boardman-Canfield Rd, Youngstown, OH 44512",
+    "special": "$2 Bottles",
+    "day": "Monday",
+    "lat": 41.0249,
+    "lng": -80.6622
+  },
+  {
+    "name": "Los Gallos",
+    "address": "685 Boardman-Canfield Rd, Youngstown, OH 44512",
+    "special": "$2 Bottles",
+    "day": "Tuesday",
+    "lat": 41.0249,
+    "lng": -80.6622
+  },
+  {
+    "name": "Los Gallos",
+    "address": "685 Boardman-Canfield Rd, Youngstown, OH 44512",
+    "special": "$2 Bottles",
+    "day": "Wednesday",
+    "lat": 41.0249,
+    "lng": -80.6622
+  },
+  {
+    "name": "Los Gallos",
+    "address": "685 Boardman-Canfield Rd, Youngstown, OH 44512",
+    "special": "$2 Bottles",
+    "day": "Thursday",
+    "lat": 41.0249,
+    "lng": -80.6622
+  },
+  {
+    "name": "Papa's Sports Bar & Grill",
+    "address": "1639 Poland Ave, Youngstown, OH 44502",
+    "special": "$1.50 Cans",
+    "day": "Friday",
+    "lat": 41.0825,
+    "lng": -80.6198
+  },
+  {
+    "name": "The Flying Pig",
+    "address": "175 Hope Rd, Salem, OH 44460",
+    "special": "$1.75 Cans",
+    "day": "Thursday",
+    "lat": 40.8906,
+    "lng": -80.8545
+  },
+  {
+    "name": "TJ's Brickhouse Tavern",
+    "address": "1524 Midlothian Blvd, Youngstown, OH 44502",
+    "special": "$2 Bottles (2-8pm)",
+    "day": "Saturday",
+    "lat": 41.0664,
+    "lng": -80.6273
+  },
+  {
+    "name": "TJ's Brickhouse Tavern",
+    "address": "1524 Midlothian Blvd, Youngstown, OH 44502",
+    "special": "$2 Bottles (12-8pm)",
+    "day": "Sunday",
+    "lat": 41.0664,
+    "lng": -80.6273
+  },
+  {
+    "name": "Steel City Bar & Grill",
+    "address": "1441 E Midlothian Blvd, Youngstown, OH 44502",
+    "special": "$2 Bottles (12-8pm)",
+    "day": "Saturday",
+    "lat": 41.0665,
+    "lng": -80.6288
+  },
+  {
+    "name": "Denny's Blue Angel",
+    "address": "1813 Belmont Ave, Youngstown, OH 44504",
+    "special": "$2 Bottles (5-8pm)",
+    "day": "Wednesday",
+    "lat": 41.1192,
+    "lng": -80.6548
+  }
 ]
