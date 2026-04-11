@@ -6,15 +6,16 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initMap() {
-    const centerPoint = { lat: 40.0162, lng: -80.7423 }; // Centered near Bellaire, OH
+    // UPDATED: Centered on Bellaire, OH
+    const bellaire = { lat: 40.0162, lng: -80.7423 }; 
     map = new google.maps.Map(document.getElementById("map"), {
-        zoom: 10,
-        center: centerPoint,
+        zoom: 13,
+        center: bellaire,
         disableDefaultUI: false,
         gestureHandling: "greedy"
     });
 
-    // Tap map to drop pin and add bar
+    // Tap map to drop pin
     map.addListener("click", (e) => {
         if (tempMarker) tempMarker.setMap(null);
         tempMarker = new google.maps.Marker({
@@ -22,14 +23,10 @@ function initMap() {
             map: map,
             animation: google.maps.Animation.DROP
         });
-        openAddForm(e.latLng.lat(), e.latLng.lng());
+        document.getElementById("lat").value = e.latLng.lat();
+        document.getElementById("lng").value = e.latLng.lng();
+        document.getElementById("addForm").style.display = "block";
     });
-}
-
-function openAddForm(lat, lng) {
-    document.getElementById("lat").value = lat;
-    document.getElementById("lng").value = lng;
-    document.getElementById("addForm").style.display = "block";
 }
 
 async function saveBar() {
@@ -50,7 +47,6 @@ async function saveBar() {
 
     if (response.ok) {
         document.getElementById("addForm").style.display = "none";
-        if (tempMarker) tempMarker.setMap(null);
         loadBars(data.day);
     }
 }
@@ -72,19 +68,20 @@ async function loadBars(day) {
             const card = document.createElement("div");
             card.className = "card";
             
-            // This URL forces the phone to open the Google Maps APP
-            const googleMapsAppUrl = `https://www.google.com/maps/dir/?api=1&destination=${bar.lat},${bar.lng}`;
+            // This URL opens the ACTUAL Google Maps App
+            const navUrl = `https://www.google.com/maps/dir/?api=1&destination=${bar.lat},${bar.lng}`;
 
             card.innerHTML = `
-                <a href="${googleMapsAppUrl}" target="_blank" style="float:right; text-decoration:none; font-size:28px;">🚀</a>
+                <a href="${navUrl}" target="_blank" style="float:right; text-decoration:none; font-size:30px;">➡️</a>
                 <span class="price">${bar.special}</span>
-                <strong>${bar.name}</strong><br><small>${bar.address}</small>
+                <strong>${bar.name}</strong><br>
+                <small>${bar.address}</small>
             `;
             
             card.onclick = (e) => {
                 if (e.target.tagName !== 'A') {
                     map.setCenter({ lat: bar.lat, lng: bar.lng });
-                    map.setZoom(16);
+                    map.setZoom(17);
                 }
             };
             list.appendChild(card);
