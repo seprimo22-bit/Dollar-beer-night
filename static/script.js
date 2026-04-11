@@ -1,61 +1,43 @@
 let map, markers = [];
 
-// This makes the list load IMMEDIATELY when the page opens
 document.addEventListener("DOMContentLoaded", () => {
     const today = new Date().toLocaleDateString('en-US', { weekday: 'Long' });
     loadBars(today);
 });
 
-function initMap() {
-    try {
-        const centerPoint = { lat: 41.0664, lng: -80.6273 }; // Center on Boardman/Youngstown
-        map = new google.maps.Map(document.getElementById("map"), {
-            zoom: 12,
-            center: centerPoint,
-            disableDefaultUI: false
-        });
-    } catch (e) {
-        console.log("Map API delayed or offline.");
-    }
-}
-
 async function loadBars(day) {
     const list = document.getElementById("specialsList");
-    list.innerHTML = `<p style="text-align:center;">Searching ${day} specials...</p>`;
+    list.innerHTML = `<p style="text-align:center;">Loading ${day} deals...</p>`;
     
     try {
-        // Pointing to the root where your file is
-        const response = await fetch('/specials.json');
-        if (!response.ok) throw new Error("File not found");
+        // 1. Fetch the verified bars from your moved JSON file
+        const jsonResponse = await fetch('/static/specials.json');
+        const jsonBars = await jsonResponse.json();
         
-        const allSpecials = await response.json();
-        const dailyDeals = allSpecials.filter(item => item.day === day);
+        // 2. Fetch user-added bars from your PostgreSQL (via app.py)
+        // Note: You must have a route in app.py for '/get_bars'
+        const dbResponse = await fetch(`/get_bars?day=${day}`);
+        const dbBars = dbResponse.ok ? await dbResponse.json() : [];
+
+        // Combine both lists
+        const allBars = [...jsonBars.filter(b => b.day === day), ...dbBars];
         
         list.innerHTML = ""; 
         markers.forEach(m => m.setMap(null));
         markers = [];
 
-        if (dailyDeals.length === 0) {
-            list.innerHTML = `<p style="text-align:center; padding:20px;">No specials listed for ${day}.</p>`;
+        if (allBars.length === 0) {
+            list.innerHTML = `<p style="text-align:center;">No deals today.</p>`;
             return;
         }
 
-        dailyDeals.forEach(bar => {
+        allBars.forEach(bar => {
             const card = document.createElement("div");
             card.className = "card";
+            card.innerHTML = `<span class="price">${bar.special}</span><strong>${bar.name}</strong><br><small>${bar.address}</small>`;
             card.onclick = () => {
-                if (map) {
-                    map.setCenter({ lat: bar.lat, lng: bar.lng });
-                    map.setZoom(16);
-                    document.getElementById('map').scrollIntoView({ behavior: 'smooth' });
-                }
+                if (map) { map.setCenter({ lat: bar.lat, lng: bar.lng }); map.setZoom(16); }
             };
-
-            card.innerHTML = `
-                <span class="price">${bar.special}</span>
-                <strong>${bar.name}</strong><br>
-                <small>${bar.address}</small>
-            `;
             list.appendChild(card);
 
             if (map) {
@@ -68,7 +50,6 @@ async function loadBars(day) {
             }
         });
     } catch (err) {
-        // If it still fails, it tells you exactly why
-        list.innerHTML = `<p style="text-align:center; color:red;">Could not find specials.json in the main folder.</p>`;
+        list.innerHTML = `<p style="color:red; text-align:center;">Make sure specials.json is in the STATIC folder!</p>`;
     }
 }
