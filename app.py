@@ -5,10 +5,17 @@ from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 
-# Database configuration for your PostgreSQL on Render
-app.config['SQLALCHEMY_DATABASE_SET_URL'] = os.environ.get('DATABASE_URL')
+# Render provides DATABASE_URL; we ensure it starts with 'postgresql://'
+uri = os.environ.get('DATABASE_URL', 'sqlite:///local.db')
+if uri and uri.startswith("postgres://"):
+    uri = uri.replace("postgres://", "postgresql://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = uri
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 db = SQLAlchemy(app)
 
+# Database Model for user-added bars
 class Bar(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))
@@ -22,17 +29,17 @@ class Bar(db.Model):
 def index():
     return render_template('index.html')
 
-# This is the "Bridge" that pulls from your root specials.json
+# The "Middleman" bridge to your root specials.json
 @app.route('/get_json_bars')
 def get_json_bars():
     try:
+        # Looking for the file in your main root folder
         with open('specials.json', 'r') as f:
             data = json.load(f)
         return jsonify(data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# This route pulls any bars users added to the database
 @app.route('/get_db_bars')
 def get_db_bars():
     day = request.args.get('day')
