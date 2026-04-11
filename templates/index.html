@@ -4,20 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Beer Dollars</title>
-    <link rel="stylesheet" href="/static/style.css">
     <style>
-        body { font-family: sans-serif; margin: 0; background: #f4f4f4; }
-        #day-selector { display: flex; overflow-x: auto; background: #007bff; padding: 10px; gap: 8px; }
-        #day-selector button { flex: 0 0 auto; padding: 10px 15px; border-radius: 5px; border: none; font-weight: bold; background: white; }
-        #specialsList { padding: 10px; min-height: 200px; }
-        .card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .price { color: #28a745; font-weight: bold; float: right; }
-        #map { height: 300px; width: 100%; background: #e0e0e0; display: block; }
+        body { font-family: sans-serif; margin: 0; background: #f4f4f4; color: #333; }
+        header { background: white; text-align: center; padding: 15px; border-bottom: 1px solid #ddd; }
+        #day-selector { display: flex; overflow-x: auto; background: #007bff; padding: 12px; gap: 10px; sticky: top; }
+        #day-selector button { flex: 0 0 auto; padding: 10px 20px; border-radius: 6px; border: none; font-weight: bold; background: white; cursor: pointer; color: #007bff; }
+        #day-selector button:active { background: #e0e0e0; }
+        #specialsList { padding: 15px; min-height: 200px; }
+        .card { background: white; padding: 20px; margin-bottom: 12px; border-radius: 10px; box-shadow: 0 3px 6px rgba(0,0,0,0.1); cursor: pointer; border-left: 5px solid #007bff; }
+        .price { color: #28a745; font-weight: bold; float: right; font-size: 1.2em; }
+        #map { height: 400px; width: 100%; background: #eee; border-top: 1px solid #ccc; }
+        .error { color: #d9534f; text-align: center; font-weight: bold; padding: 20px; }
     </style>
 </head>
 <body>
 
-<header style="text-align:center; padding:10px; background:white;"><h1>🍺 Beer Dollars</h1></header>
+<header><h1>🍺 Beer Dollars</h1></header>
 
 <nav id="day-selector">
     <button onclick="loadBars('Monday')">Mon</button>
@@ -30,12 +32,10 @@
 </nav>
 
 <div id="specialsList">
-    <p style="text-align:center;">Loading deals...</p>
+    <p style="text-align:center;">Select a day to find deals...</p>
 </div>
 
-<div id="map">
-    <p style="text-align:center; padding-top:100px; color:#666;">Map loading (requires API/Data)...</p>
-</div>
+<div id="map"></div>
 
 <script src="/static/script.js"></script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiEK4CduUBr7EWeqtSsFhG1nQyqON6QYI&callback=initMap" async defer></script>
