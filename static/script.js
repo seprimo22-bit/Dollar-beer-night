@@ -1,16 +1,12 @@
 let map, autocomplete, selectedPlace;
 let markers = [];
-let userPos = { lat: 41.099, lng: -80.649 }; // Default Youngstown
+let userPos = { lat: 41.099, lng: -80.649 };
 
 function initApp() {
-    // 1. Setup Map
     map = new google.maps.Map(document.getElementById("map"), {
-        zoom: 13,
-        center: userPos,
-        disableDefaultUI: true
+        zoom: 13, center: userPos, disableDefaultUI: true
     });
 
-    // 2. Get User Location
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(position => {
             userPos = { lat: position.coords.latitude, lng: position.coords.longitude };
@@ -19,11 +15,25 @@ function initApp() {
         });
     }
 
-    // 3. Setup Google Places Autocomplete for Adding Bars
     const input = document.getElementById("autocomplete");
     autocomplete = new google.maps.places.Autocomplete(input);
-    autocomplete.addListener("place_changed", () => {
-        selectedPlace = autocomplete.getPlace();
+    autocomplete.addListener("place_changed", () => { selectedPlace = autocomplete.getPlace(); });
+
+    // Handle Login Override if on splash
+    const verifyBtn = document.getElementById("verify-code-btn");
+    verifyBtn?.addEventListener("click", async () => {
+        const code = document.getElementById("code").value.trim();
+        const res = await fetch("/api/verify-code", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code: code })
+        });
+        if (res.ok) {
+            sessionStorage.setItem("authorized", "true");
+            window.location.href = "/main";
+        } else {
+            alert("Wrong code! Try 1616.");
+        }
     });
 
     loadBars();
@@ -35,23 +45,20 @@ async function loadBars(day = "") {
     const list = document.getElementById("bar-list");
     list.innerHTML = "";
     
-    // Clear old markers
     markers.forEach(m => m.setMap(null));
     markers = [];
 
-    // Sort by Distance
-    bars.sort((a, b) => {
-        const distA = getDistance(userPos.lat, userPos.lng, a.lat, a.lng);
-        const distB = getDistance(userPos.lat, userPos.lng, b.lat, b.lng);
-        return distA - distB;
-    });
+    bars.sort((a, b) => getDistance(userPos.lat, userPos.lng, a.lat, a.lng) - getDistance(userPos.lat, userPos.lng, b.lat, b.lng));
 
     bars.forEach(bar => {
         const card = document.createElement("div");
         card.className = "card";
         const dist = getDistance(userPos.lat, userPos.lng, bar.lat, bar.lng).toFixed(1);
-        card.innerHTML = `<strong>${bar.name}</strong><br><span style="color:green; font-weight:bold;">${bar.special}</span><br><small>${bar.address} (${dist} mi)</small>`;
-        card.onclick = () => map.panTo({lat: bar.lat, lng: bar.lng});
+        card.innerHTML = `<strong>${bar.name}</strong><br><span style="color:#2e7d32; font-weight:bold;">${bar.special}</span><br><small>${bar.address} (${dist} mi)</small>`;
+        card.onclick = () => {
+            map.panTo({lat: bar.lat, lng: bar.lng});
+            map.setZoom(16);
+        };
         list.appendChild(card);
 
         const marker = new google.maps.Marker({
@@ -72,14 +79,15 @@ function getDistance(lat1, lon1, lat2, lon2) {
 }
 
 async function saveBar() {
-    if (!selectedPlace || !document.getElementById("special-input").value) return alert("Select a bar and enter a special!");
+    const special = document.getElementById("special-input").value;
+    if (!selectedPlace || !special) return alert("Select a bar from the list and enter the special!");
     
     const data = {
         name: selectedPlace.name,
         address: selectedPlace.formatted_address,
         lat: selectedPlace.geometry.location.lat(),
         lng: selectedPlace.geometry.location.lng(),
-        special: document.getElementById("special-input").value,
+        special: special,
         day: document.getElementById("day-input").value
     };
 
@@ -94,7 +102,8 @@ async function saveBar() {
 }
 
 function filterDay(day) {
-    document.querySelectorAll('.day-btn').forEach(b => b.classList.toggle('active', b.innerText.includes(day.substring(0,3))));
+    document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`btn-${day}`).classList.add('active');
     loadBars(day);
 }
 
